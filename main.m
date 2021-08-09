@@ -1,6 +1,6 @@
 %% Parameters
 % Constants
-global g m_b m_p k_c; 
+global g m_b m_p k_c;
 g = 9.81;   % [m/s^2]
 k_c = 10;   % [1/s]  time-constant of velocity controller
 
@@ -105,23 +105,23 @@ end
 
 function [x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN] = simulate_one_step(dt, F_p_i, x_b_i, x_p_i, u_b_i, u_p_i)
     global g m_b m_p;
-    
+
     x_b_1_2 = x_b_i + 0.5*dt*u_b_i;
     x_p_1_2 = x_p_i + 0.5*dt*u_p_i;
-    
+
     gN = x_b_1_2 - x_p_1_2;
     gamma_n_i = u_b_i - u_p_i;
     if gN <=0
         dP_N = max(0,(-gamma_n_i + g*dt + F_p_i*dt/m_p)/ (m_b^-1 + m_p^-1));
-    else 
+    else
         dP_N = 0;
     end
-   
+
     u_b_new = u_b_i - g*dt + dP_N/m_b;
     u_p_new = u_p_i + F_p_i*dt/m_p - dP_N/m_p;
-    
+
     x_b_new = x_b_1_2 + u_b_new*dt/2;
-    x_p_new = x_p_1_2 + u_p_new*dt/2; 
+    x_p_new = x_p_1_2 + u_p_new*dt/2;
 end
 
 function [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec] = simulate_one_iteration(dt, N, x_b0, x_p0, u_b0, u_p0, u, input_is_force)
@@ -129,13 +129,13 @@ function [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec] = simulate_one_iteration(dt, N, 
     if nargin<8
       input_is_force=true;
     end
-    
+
     % Initialize state vectors of the system
     x_b = zeros(1,N+1); x_b(1) = x_b0;
     u_b = zeros(1,N+1); u_b(1) = u_b0;
     x_p = zeros(1,N+1); x_p(1) = x_p0;
     u_p = zeros(1,N+1); u_p(1) = u_p0;
-    
+
     % Initialize helpers used to gather info for debugging
     dP_N_vec = zeros(1,N+1);
     gN_vec = zeros(1,N+1);
@@ -171,7 +171,7 @@ end
 
 % 3. Plan Plate Trajectory
 function [xp_des] = plan_plate_trajectory(Tb, xb_0, xb_Tb, ub_0, ub_Tb)
-% xb_0, ub_0: conditions at t=0 
+% xb_0, ub_0: conditions at t=0
 % xb_Tb, ub_T: conditions at t=Tb
     xp_des = [];
 end
@@ -180,7 +180,7 @@ end
 function [u_des] = compute_optimal_input_signal(xp_des, dup)
 % xp_des
 % dup
-   
+
     u_des = [];
 end
 
