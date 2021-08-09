@@ -1,6 +1,6 @@
 %% Parameters
 % Constants
-global g m_b m_p; 
+global g m_b m_p k_c; 
 g = 9.81;   % [m/s^2]
 k_c = 10;   % [1/s]  time-constant of velocity controller
 
@@ -21,13 +21,13 @@ h_b_max = 1;                  % [m] maximal height the ball achievs
 T = 2 * sqrt(8*h_b_max/g);    % [s] time for one iteration T = 2 T_b
 N = 5*ceil(T / dt);           % number of steps for one iteration (mayve use floor)
 
-%%
+%% Simulation
 % Input
 A = 0.3;                                    % [m] amplitude
 timesteps = dt * (0:N);                     % [s,s,..] timesteps
 F_p = 100 * m_p * A*sin(2*pi/T *timesteps); % [N] input force on the plate
 
-%% Simulation
+% Simulation for N steps
 [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec] = simulate_one_iteration(dt, N, x_b0, x_p0, u_b0, u_p0, F_p);
 
 %% Plotting
@@ -88,7 +88,7 @@ for j = j:N
     [u_des] = compute_optimal_input_signal(xp_des, dup);
 
     % 3. Simulate the calculated inputs
-    [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec] = simulate_one_iteration(dt, N, x_b0, x_p0, u_b0, u_b0, u);
+    [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec] = simulate_one_iteration(dt, N, x_b0, x_p0, u_b0, u_b0, u, false);
 
     % 4.Identify errors d1, d2, dp_j (kalman filter or optimization problem
     [d1, d2, dup] = filter_disturbances(x_b, u_b, x_p, u_p, d1, d2, dup);
@@ -100,7 +100,7 @@ end
 % 1. Dynamics
 function F_p = force_from_velocity(u_des_p, u_p)
     global m_p k_c;
-    F_p  = m_p*k_c * (u_des_p-u_p);
+    F_p  = m_p * k_c * (u_des_p-u_p);
 end
 
 function [x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN] = simulate_one_step(dt, F_p_i, x_b_i, x_p_i, u_b_i, u_p_i)
@@ -124,7 +124,12 @@ function [x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN] = simulate_one_step(dt, 
     x_p_new = x_p_1_2 + u_p_new*dt/2; 
 end
 
-function [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec] = simulate_one_iteration(dt, N, x_b0, x_p0, u_b0, u_p0, u)
+function [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec] = simulate_one_iteration(dt, N, x_b0, x_p0, u_b0, u_p0, u, input_is_force)
+    % if otherwise not specified input is force
+    if nargin<8
+      input_is_force=true;
+    end
+    
     % Initialize state vectors of the system
     x_b = zeros(1,N+1); x_b(1) = x_b0;
     u_b = zeros(1,N+1); u_b(1) = u_b0;
@@ -138,7 +143,11 @@ function [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec] = simulate_one_iteration(dt, N, 
     % Simulation
     for i = (1:N)
         % one step simulation
-        F_p = force_from_velocity(u(i), u_p(i));
+        if input_is_force
+            F_p = u(i);
+        else
+            F_p = force_from_velocity(u(i), u_p(i));
+        end
         [x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN] = simulate_one_step(dt, F_p, x_b(i), x_p(i), u_b(i), u_p(i));
 
         % collect state of the system
