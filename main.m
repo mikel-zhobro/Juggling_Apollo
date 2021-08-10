@@ -1,3 +1,5 @@
+
+
 %% Parameters
 % Constants
 global g m_b m_p k_c;
@@ -78,11 +80,8 @@ x_p0 = x_b0;
 x_pTb = x_p0;
 
 for j = j:N
-    % 0. Plan Ball Trajectory
-    [Tb, ub_0] = plan_ball_trajectory(hb, d1, d2);
-
-    % 1. Calculate Desired Platte Trajectory (optimization problem)
-    [xp_des] = plan_plate_trajectory(Tb, x_b0, x_pTb, ub_0, ub_0);
+    % 1. Plan desired Plate trajectory
+    [xp_des] = compute_desired_trajectory(h_b_max, d1, d2, x_b0, x_pTb);
 
     % 2. Compute optimal input velocities u_des
     [u_des] = compute_optimal_input_signal(xp_des, dup);
@@ -162,21 +161,49 @@ function [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec] = simulate_one_iteration(dt, N, 
     end
 end
 
-% 2. Plan Ball Trajectory
+% 2. Plan desired Trajectory
 function [Tb, ub_0] = plan_ball_trajectory(hb, d1, d2)
     global g;
     ub_0 = sqrt(2*g*(hb - d1));  % velocity of ball at throw point
     Tb = 2*ub_0/g + d2; % flying time of the ball
 end
 
-% 3. Plan Plate Trajectory
-function [xp_des] = plan_plate_trajectory(Tb, xb_0, xb_Tb, ub_0, ub_Tb)
-% xb_0, ub_0: conditions at t=0
-% xb_Tb, ub_T: conditions at t=Tb
-    xp_des = [];
+function [xp_des] = plan_plate_trajectory(Tb, ub_0, ub_Tb, x_b0, x_pTb)
+    % xb_0, ub_0: conditions at t=0
+    % xb_Tb, ub_T: conditions at t=Tb  [assumed 0]
+    % xp_des(t) = [x_p(t); u_p(t)]
+    
+    % calculate the coeficients
+    C_cv = [10/(7*Tb^2), -120/(7*Tb^4), 240/(7*Tb^5);
+            3/(7*Tb), -120/(7*Tb^3), 240/(7*Tb^4);
+               Tb/84,     -8/(7*Tb),  30/(7*Tb^2)];
+    v = [0, ub_Tb-ub_0; -ub_0*Tb];
+    c = C_cv * v;
+    c1 = c(1);
+    c2 = c(2);
+    c4 = c(3);
+    c5 = ub_0;
+    
+    % calculate desired plate input
+    t = 1:Tb;
+    u = -c1*t.^2/2 + c2*t;                          % jerk of the plate for t=0 -> t=Tb
+    a_p = c1*t^3/6 - c2*t^2/2 + c4;                 % acceleration of the plate for t=0 -> t=Tb
+    u_p = c1*t^4/24 - c2*t^3/6 + c4*t;              % velocity of the plate for t=0 -> t=Tb
+    x_p = c1*t^5/120 - c2*t^4/24 + c4*t^2/2 + c5*t; % position of the plate for t=0 -> t=Tb
+    % for t=Tb -> t=2Tb we just take the symmetric negative of the
+    % corresponding trajectory in t=0 -> t=Tb
+    xp_des = [x_p, x_p(end:-1:1)*-1; u_p, u_p(end:-1:1)*-1];
 end
 
-% 5. Calculate Optimal Input Signal
+function [xp_des] = compute_desired_trajectory(hb, d1, d2, x_b0, x_pTb)
+    % 0. Plan Ball Trajectory
+    [Tb, ub_0] = plan_ball_trajectory(hb, d1, d2);
+
+    % 1. Calculate Desired Platte Trajectory (min jerk trajectory)
+    [xp_des] = plan_plate_trajectory(Tb, ub_0, ub_0, x_b0, x_pTb);
+end
+
+% 3. Calculate Optimal Input Signal
 function [u_des] = compute_optimal_input_signal(xp_des, dup)
 % xp_des
 % dup
@@ -184,7 +211,7 @@ function [u_des] = compute_optimal_input_signal(xp_des, dup)
     u_des = [];
 end
 
-% 5. Calculate Optimal Input Signal
+% 4. Calculate Optimal Input Signal
 function [d1, d2, dup] = filter_disturbances(x_b, u_b, x_p, u_p, d1, d2, dup)
     d1 = [];
     d2 = [];
