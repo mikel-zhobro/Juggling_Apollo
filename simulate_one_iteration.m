@@ -62,3 +62,15 @@ function [x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN] = simulate_one_step(dt, 
     x_b_new = x_b_1_2 + u_b_new*dt/2;
     x_p_new = x_p_1_2 + u_p_new*dt/2;
 end
+
+%% If we want to organise them as static methods of a class 
+% classdef functionsContainer
+%    methods (Static)
+%       function res = func1(a)
+%          res = a * 5; 
+%       end
+%       function res = func2(x)
+%          res = x .^ 2;
+%       end
+%    end
+% end

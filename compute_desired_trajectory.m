@@ -110,7 +110,17 @@ function [c1, c2, c3, x3_0, x2_0, x1_0] = set_start_end_acceleration(Tb, up_0, u
     x1_0 = x_p0;
 end
 
-
+%% If we want to organise them as static methods of a class 
+% classdef functionsContainer
+%    methods (Static)
+%       function res = func1(a)
+%          res = a * 5; 
+%       end
+%       function res = func2(x)
+%          res = x .^ 2;
+%       end
+%    end
+% end
 
 
 
