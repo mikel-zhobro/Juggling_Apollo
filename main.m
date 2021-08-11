@@ -29,72 +29,40 @@ timesteps = dt * (0:N);                     % [s,s,..] timesteps
 F_p = 100 * m_p * A*sin(2*pi/T *timesteps); % [N] input force on the plate
 
 % Simulation for N steps
-[x_b, u_b, x_p, u_p, dP_N_vec, gN_vec] = simulate_one_iteration(dt, N, x_b0, x_p0, u_b0, u_p0, F_p);
+[x_b, u_b, x_p, u_p, dP_N_vec, gN_vec] = Simulation.simulate_one_iteration(dt, N, x_b0, x_p0, u_b0, u_p0, F_p);
 
-%% Plotting for Simulation Example
-intervals = find_continuous_intervals(find(gN_vec<0));
-
+% Plotting for Simulation Example
 close all
-figure
-subplot(5,1,1)
-plot(timesteps, x_b, 'r', timesteps, x_p, 'b')
-plot_intervals(intervals, dt)
-legend("Ball position", "Plate position")
-
-subplot(5,1,2)
-plot(timesteps, u_b, 'r', timesteps, u_p, 'b')
-plot_intervals(intervals, dt)
-legend("Ball velocity", "Plate velocity")
-
-subplot(5,1,3)
-plot(timesteps, dP_N_vec)
-plot_intervals(intervals, dt)
-legend("dP_N")
-
-subplot(5,1,4)
-plot(timesteps, gN_vec)
-plot_intervals(intervals, dt)
-legend("g_{N_{vec}}")
-
-subplot(5,1,5)
-plot(timesteps, F_p)
-plot_intervals(intervals, dt)
-legend("F_p")
+Simulation.plot_results(dt, F_p, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec)
 
 %% Desired Trajectory planning example
-% Design params
-h_b_max = 1;                  % [m] maximal height the ball achievs
-
 % Initialize disturbances
-d1 = 0;
-d2 = 0;
-dup = 0;
+    d1 = 0;
+    d2 = 0;
 
-% Initialize throw point
-x_b0 = 0;
-x_p0 = x_b0;
-x_pTb = x_p0;
-[xp_des, T] = compute_desired_trajectory(h_b_max, d1, d2, x_b0, x_pTb);
+% Initialize throw and catch point
+    h_b_max = 1; % [m] maximal height the ball achievs
+    x_p0 = 0;
+    x_pTb = x_p0;
+    ap_0 = 0;
+    ap_T = 0;
 
-close all
-figure
-timesteps = 0:dt:T;
-subplot(4,1,1)
-plot(timesteps, xp_des(1,:))
-legend("Plate position")
+% A] Ball Height and Time
+    [Tb, ub_0] = plan_ball_trajectory(h_b_max, d1, d2);
 
-subplot(4,1,2)
-plot(timesteps, xp_des(2,:))
-legend("Plate velocity")
+% B] Plate Trajectory
+    close all
+    % 1) Free start and end acceleration
+    [xp_des, T] = MinJerkTrajectory.plan_plate_trajectory(Tb, x_p0, x_pTb, ub_0, -ub_0); 
+    MinJerkTrajectory.plot_paths(xp_des, T, dt, 'Free start and end acceleration')
 
-subplot(4,1,3)
-plot(timesteps, xp_des(3,:))
-legend("Plate acceleration")
+    % 2) Free end acceleration 
+    [xp_des, T] = MinJerkTrajectory.plan_plate_trajectory(Tb, x_p0, x_pTb, ub_0, -ub_0, ap_0); 
+    MinJerkTrajectory.plot_paths(xp_des, T, dt, 'Free end acceleration')
 
-subplot(4,1,4)
-plot(timesteps, xp_des(4,:))
-legend("Plate jerk")
-
+    % 3) Set start and end acceleration 
+    [xp_des, T] = MinJerkTrajectory.plan_plate_trajectory(Tb, x_p0, x_pTb, ub_0, -ub_0, ap_0, ap_T); 
+    MinJerkTrajectory.plot_paths(xp_des, T, dt, 'Set start and end acceleration')
 
 %% Feedforward controled system
 % Design params
@@ -113,8 +81,13 @@ x_p0 = x_b0;
 x_pTb = x_p0;
 
 for j = j:N
-    % 1. Plan desired Plate trajectory
-    [xp_des] = compute_desired_trajectory(h_b_max, d1, d2, x_b0, x_pTb);
+    % 0. Compute Ball Height and Time
+    [Tb, ub_0] = plan_ball_trajectory(h_b_max, d1, d2);
+    
+    % 1. Plan desired Plate trajectory (min jerk trajectory)
+    [xp_des, T] = MinJerkTrajectory.plan_plate_trajectory(Tb, x_p0, x_pTb, ub_0, -ub_0);
+%     [xp_des, T] = MinJerkTrajectory.plan_plate_trajectory(Tb, x_p0, x_pTb, ub_0, -ub_0, ap_0);
+%     [xp_des, T] = MinJerkTrajectory.plan_plate_trajectory(Tb, x_p0, x_pTb, ub_0, -ub_0, ap_0, ap_T);
 
     % 2. Compute optimal input velocities u_des
     [u_des] = compute_optimal_input_signal(xp_des, dup);
@@ -128,6 +101,13 @@ end
 
 
 %% Components
+% 1. Ball Trajectory
+function [Tb, ub_0] = plan_ball_trajectory(hb, d1, d2)
+    global g;
+    ub_0 = sqrt(2*g*(hb - d1));  % velocity of ball at throw point
+    Tb = 2*ub_0/g + d2; % flying time of the ball
+end
+
 % 3. Calculate Optimal Input Signal
 function [u_des] = compute_optimal_input_signal(xp_des, dup)
 % xp_des
@@ -141,28 +121,4 @@ function [d1, d2, dup] = filter_disturbances(x_b, u_b, x_p, u_p, d1, d2, dup)
     d1 = [];
     d2 = [];
     dup = [];
-end
-
-%% Helpers
-% Find intervals where gN<=0
-function intervals = find_continuous_intervals(indices)
-    last = indices(1);
-    start = last;
-    starts = [];
-    ends = [];
-    for i=indices(1:end)
-        if i-last>1
-            starts(end+1) = start;
-            ends(end+1) = last;
-            start = i;
-        end
-        last = i;
-    end
-    intervals = [starts; ends];
-end
-
-function plot_intervals(intervals, dt)
-    for i = intervals
-        patch(dt*[i(1) i(1), i(2) i(2)], [min(ylim) max(ylim) max(ylim) min(ylim)], [91, 207, 244]/255, 'LineStyle', 'none', 'FaceAlpha', 0.3 )
-    end
 end
