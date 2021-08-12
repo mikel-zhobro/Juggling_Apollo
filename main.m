@@ -120,7 +120,7 @@ for j = j:M
     [u_des] = desired_input_optimizer.calcDesiredInput(dup, y_des);
 
     % 3. Simulate the calculated inputs
-    [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec] = sim.simulate_one_iteration(dt, N, x_b0, x_p0, u_b0, u_b0, u, false);
+    [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec] = sim.simulate_one_iteration(dt, T, x_b0, x_p0, u_b0, u_b0, u, false);
 
     % 4.Identify errors d1, d2, dp_j (kalman filter or optimization problem
     [d1, d2, dup] = filter_disturbances(x_b, u_b, x_p, u_p, d1, d2, dup);
