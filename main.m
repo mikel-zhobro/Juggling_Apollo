@@ -81,7 +81,8 @@ myopt = OptimizationDesiredInput('Ad', Ad, 'Bd', Bd, ...
 % Test solving the quadratic problem
 dup = zeros(N,1);
 y_des = ones(2*N,1);
-u_des = myopt.calcDesiredInput(dup, y_des)
+u_des = myopt.calcDesiredInput(dup, y_des);
+display(u_des);
 
 %% Feedforward controled system
 % Design params
@@ -99,10 +100,13 @@ x_p0 = x_b0;
 x_pTb = x_p0;
 
 
+% Set up simulation
 [Tb, ~] = plan_ball_trajectory(h_b_max, d1, d2);    % [s] flying time of the ball
 T = 2 * Tb;                                         % [s] time for one iteration T = 2 T_b
 N = Simulation.steps_from_time(T, dt);              % number of steps for one iteration (mayve use floor)
 sim = Simulation('m_b', m_b, 'm_p', m_p, 'k_c', k_c, 'g', g);
+
+% Set up desired input optimizer
 sys = DynamicSystem('m_b', m_b, 'm_p', m_p, 'k_c', k_c, 'g', g, 'dt', dt);
 if force_controlled
     [Ad, Bd, Cd, S, c] = getSystemMarixesForceControl(dt);
@@ -122,7 +126,7 @@ for j = j:M
 %     [xp_des, T] = MinJerkTrajectory.plan_plate_trajectory(dt, Tb, x_p0, x_pTb, ub_0, -ub_0, ap_0);          % free end acceleration
 %     [xp_des, T] = MinJerkTrajectory.plan_plate_trajectory(dt, Tb, x_p0, x_pTb, ub_0, -ub_0, ap_0, ap_T);    % set start and end acceleration
 
-    % 2. Compute optimal input velocities u_des
+    % 2. Compute optimal input signal
     [u_des] = desired_input_optimizer.calcDesiredInput(dup, y_des);
 
     % 3. Simulate the calculated inputs
@@ -139,17 +143,6 @@ function [Tb, ub_0] = plan_ball_trajectory(hb, d1, d2)
     g = 9.80665;    % [m/s^2]
     ub_0 = sqrt(2*g*(hb - d1));  % velocity of ball at throw point
     Tb = 2*ub_0/g + d2; % flying time of the ball
-end
-
-% 3. Calculate Optimal Input Signal
-function [u_des] = compute_optimal_input_signal(xp_des, dup)
-% Once we have the desired motion xp for the plate we can compute the
-% "optimal" feedforward v_des by solvingthe QP
-
-% xp_des
-% dup
-
-    u_des = [];
 end
 
 % 4. Estimate disturbances

@@ -77,8 +77,10 @@ classdef OptimizationDesiredInput < matlab.System
         end
        
         function u_des = calcDesiredInput(obj, dup, y_des)
-            %METHOD1 Calculate deired input from desired trajectory
-            %        and estimated disturbances.
+            %CALCDESIREDINPUT Once we have the desired motion y_des for the
+            %plate and have estimated disturbances we can compute the
+            %"optimal" feedforward v_des by solving the QP problem.
+            %TODO: maybe constrained QP (to make sure state doesnt gocrazy)
             %   dup: [ndup*(N+1),1]  [dup_0,..dip_(N-1)]
             %   ydes: [ndy*(N+1),1]   [ydes_0,..ydes_N]
             u_des = linsolve((transpose(obj.GF) * obj.GF), transpose(obj.GF)*(obj.GK*dup + obj.Gd0 - y_des));
