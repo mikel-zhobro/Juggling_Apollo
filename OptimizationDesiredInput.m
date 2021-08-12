@@ -28,11 +28,9 @@ classdef OptimizationDesiredInput < matlab.System
             %OPTIMIZATIONDESIREDINPUT Construct an instance of this class
             %   Support name-value pair arguments when constructing object
             setProperties(obj,nargin,varargin{:})
-            obj.initLiftedSpace()
-            display(obj.GFTGF_1)
-            display(obj.GK)
-            display(obj.Gd0)
+            obj.initLiftedSpace();
         end
+
         function obj = initLiftedSpace(obj)
             nx = size(obj.Ad,1);
             ny = size(obj.Cd,1);

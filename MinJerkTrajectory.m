@@ -7,7 +7,7 @@ classdef MinJerkTrajectory
     
    methods (Static)
     % X. Plate trajectory
-    function [xp_des, T] = plan_plate_trajectory(Tb, x_p0, x_pTb, up_0, up_Tb, ap_0, ap_T)
+    function [xp_des, T] = plan_plate_trajectory(dt, Tb, x_p0, x_pTb, up_0, up_Tb, ap_0, ap_T)
         % Input:
         %   xb_0, ub_0: conditions at t=0
         %   xb_Tb, ub_T: conditions at t=Tb  [assumed 0]
@@ -27,7 +27,6 @@ classdef MinJerkTrajectory
 
         % Calculate desired plate trajectories
         % 1. 0->Tb
-        global dt;
         t = 0:dt:Tb;
         [u1, a_p1, u_p1, x_p1] = MinJerkTrajectory.get_trajectories(t, c1, c2, c3, x3_0, x2_0, x1_0);
 
