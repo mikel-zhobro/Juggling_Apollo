@@ -12,10 +12,10 @@ classdef OptimizationDesiredInput < matlab.System
         N;  % nr of steps
     end
     properties (Access = private)
-       F;       % [nx*(N+1), nu*(N+1)] 
-       G;       % [ny*(N+1), nx*(N+1)] 
-       K;       % [nx*(N+1), ndup*(N+1)] 
-       d0;      % [nx*(N+1), 1]
+       F;       % [nx*N, nu*N] 
+       G;       % [ny*N, nx*N] 
+       K;       % [nx*N, ndup*N] 
+       d0;      % [nx*N, 1]
        GF;  % helper
        GFTGF_1; % ((G*F)^T * (G*F))^-1
        GK;      % G * k;
@@ -51,26 +51,25 @@ classdef OptimizationDesiredInput < matlab.System
             for i = 3:obj.N+1
                eigen_holder{i} = eigen_holder{i-1} .* eigens; % correct
             end
-            % collect all powers of A 1->N
+            % collect all powers of Ad: Ad^n for n=1,..,N
             A_power_holder = cellfun(@(n){V * diag(n) * W}, eigen_holder);  % [I, A, A^2,..A^N] correct N+1
                  
             %% Create lifted-space matrixes
             % Create matrixes F, K, G, d0
-            obj.d0 = transpose(cell2mat(cellfun(@(A){transpose(A*obj.x0)}, A_power_holder)));
-            obj.F = zeros(nx*(obj.N+1), nu*(obj.N+1));
-            obj.K = zeros(nx*(obj.N+1), ndup*(obj.N+1));
-            obj.G = zeros(ny*(obj.N+1), nx*(obj.N+1));
-            M = zeros(nx*(obj.N+1), nx*(obj.N+1));
-            for l=2:obj.N+1
+            obj.d0 = transpose(cell2mat(cellfun(@(A){transpose(A*obj.x0)}, A_power_holder(2:end))));
+            obj.F = zeros(nx*obj.N, nu*obj.N);
+            obj.K = zeros(nx*obj.N, ndup*obj.N);
+            obj.G = zeros(ny*obj.N, nx*obj.N);
+            M = zeros(nx*obj.N, nx*obj.N);
+            for l=1:obj.N
                 obj.G((l-1)*ny+1:l*ny,(l-1)*nx+1:l*nx) = obj.Cd;
-                for m=1:l-1
-                    M((l-1)*nx+1:l*nx,(m-1)*nx+1:m*nx) = A_power_holder{l-m};
-                    obj.F((l-1)*nx+1:l*nx,(m-1)*nu+1:m*nu) = A_power_holder{l-m}*obj.Bd;
-                    obj.K((l-1)*nx+1:l*nx,(m-1)*ndup+1:m*ndup) = A_power_holder{l-m}*obj.S;
+                for m=1:l
+                    M((l-1)*nx+1:l*nx,(m-1)*nx+1:m*nx) = A_power_holder{l-m+1};
+                    obj.F((l-1)*nx+1:l*nx,(m-1)*nu+1:m*nu) = A_power_holder{l-m+1}*obj.Bd;
+                    obj.K((l-1)*nx+1:l*nx,(m-1)*ndup+1:m*ndup) = A_power_holder{l-m+1}*obj.S;
                 end
             end
-            obj.G(1:ny,1:nx) = obj.Cd;
-            obj.d0 = obj.d0 + M * repmat(obj.c,obj.N+1,1);
+            obj.d0 = obj.d0 + M * repmat(obj.c,obj.N,1);
             
             % Prepare matrixes needed for the quadratic problem
             obj.GF = obj.G*obj.F;
@@ -82,10 +81,10 @@ classdef OptimizationDesiredInput < matlab.System
         function u_des = calcDesiredInput(obj, dup, y_des)
             %METHOD1 Calculate deired input from desired trajectory
             %        and estimated disturbances.
-            %   dup: [ndup*(N+1),1]
-            %   dup: [ndy*(N+1),1]
-            u_des = linsolve((transpose(obj.GF) * obj.GF), transpose(obj.GK*dup + obj.Gd0 - y_des)*obj.GF);
-%             u_des = -obj.GFTGF_1 * (obj.GK*dup + obj.Gd0 - y_des)*obj.GF;
+            %   dup: [ndup*(N+1),1]  [dup_0,..dip_(N-1)]
+            %   ydes: [ndy*(N+1),1]   [ydes_0,..ydes_N]
+            u_des = linsolve((transpose(obj.GF) * obj.GF), transpose(obj.GF)*(obj.GK*dup + obj.Gd0 - y_des));
+            % u_des = -obj.GFTGF_1 * (obj.GK*dup + obj.Gd0 - y_des)*obj.GF;
         end
     end
 end

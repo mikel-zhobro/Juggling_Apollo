@@ -77,8 +77,8 @@ c = [0.1;0.1;0.1];
 myopt = OptimizationDesiredInput('Ad', Ad, 'Bd', Bd, 'Cd', Cd, 'S', S, 'x0', x0, 'c', c, 'N', N);
 
 %% Test solving the quadratic problem
-dup = zeros(N+1,1);
-y_des = ones(2*(N+1),1);
+dup = zeros(N,1);
+y_des = ones(2*N,1);
 u_des = myopt.calcDesiredInput(dup, y_des)
 
 %% Feedforward controled system
