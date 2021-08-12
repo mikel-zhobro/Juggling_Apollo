@@ -104,6 +104,8 @@ T = 2 * Tb;                                         % [s] time for one iteration
 N = Simulation.steps_from_time(T, dt);              % number of steps for one iteration (mayve use floor)
 sim = Simulation('m_b', m_b, 'm_p', m_p, 'k_c', k_c, 'g', g);
 sys = DynamicSystem('m_b', m_b, 'm_p', m_p, 'k_c', k_c, 'g', g, 'dt', dt);
+[Ad, Bd, Cd, S, c] = sys.getSystemMarixesVeocityControl(dt);
+x0 = [0;0;0;0]; % [xb0; xp0; ub0; up0]
 desired_input_optimizer = OptimizationDesiredInput('Ad', Ad, 'Bd', Bd, ...
                                                    'Cd', Cd, 'S', S,   ...
                                                    'x0', x0, 'c', c, 'N', N);

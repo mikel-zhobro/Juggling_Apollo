@@ -18,7 +18,7 @@ classdef DynamicSystem < matlab.System
         setProperties(obj,nargin,varargin{:})
     end
         
-    function [Ad, Bd, Cd, S, x0, c] = getSystemMarixes(obj,dt)
+    function [Ad, Bd, Cd, S, c] = getSystemMarixesVeocityControl(obj,dt)
         %METHOD1 Summary of this method goes here
         %   Detailed explanation goes here
         mbp = 1/(obj.m_p+obj.m_b);
