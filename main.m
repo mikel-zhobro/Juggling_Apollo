@@ -87,7 +87,7 @@ u_des = myopt.calcDesiredInput(dup, y_des)
 % Design params
 h_b_max = 1;                % [m] maximal height the ball achievs
 M = 10;                     % number of ILC iteration
-
+force_conrolled = false;
 % Initialize disturbances
 d1 = 0;
 d2 = 0;
@@ -104,7 +104,11 @@ T = 2 * Tb;                                         % [s] time for one iteration
 N = Simulation.steps_from_time(T, dt);              % number of steps for one iteration (mayve use floor)
 sim = Simulation('m_b', m_b, 'm_p', m_p, 'k_c', k_c, 'g', g);
 sys = DynamicSystem('m_b', m_b, 'm_p', m_p, 'k_c', k_c, 'g', g, 'dt', dt);
-[Ad, Bd, Cd, S, c] = sys.getSystemMarixesVeocityControl(dt);
+if force_controlled
+    [Ad, Bd, Cd, S, c] = getSystemMarixesForceControl(dt);
+else
+    [Ad, Bd, Cd, S, c] = sys.getSystemMarixesVeocityControl(dt);
+end
 x0 = [0;0;0;0]; % [xb0; xp0; ub0; up0]
 desired_input_optimizer = OptimizationDesiredInput('Ad', Ad, 'Bd', Bd, ...
                                                    'Cd', Cd, 'S', S,   ...
@@ -122,7 +126,7 @@ for j = j:M
     [u_des] = desired_input_optimizer.calcDesiredInput(dup, y_des);
 
     % 3. Simulate the calculated inputs
-    [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec] = sim.simulate_one_iteration(dt, T, x_b0, x_p0, u_b0, u_b0, u, false);
+    [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec] = sim.simulate_one_iteration(dt, T, x_b0, x_p0, u_b0, u_b0, u, force_conrolled);
 
     % 4.Identify errors d1, d2, dp_j (kalman filter or optimization problem
     [d1, d2, dup] = filter_disturbances(x_b, u_b, x_p, u_p, d1, d2, dup);
