@@ -9,12 +9,12 @@ k_c = 10;   % [1/s]  time-constant of velocity controller
 m_b = 0.03; % [kg]
 m_p = 100;    % [kg]
 
+%% Simulation Example
 % Initial Conditions
-x_b0 = 0;   % [m]   starting ball position
-x_p0 = 0;   % [m]   starting plate position
-u_p0 = 0;  % [m/s] starting plate velocity
-u_b0 = u_p0;   % [m/s] starting ball velocity
-
+x_b0 = 0;       % [m]   starting ball position
+x_p0 = 0;       % [m]   starting plate position
+u_p0 = 0;       % [m/s] starting plate velocity
+u_b0 = u_p0;    % [m/s] starting ball velocity
 
 % Design params
 dt = 0.01;                    % [s] discretization timestep
@@ -22,7 +22,6 @@ h_b_max = 1;                  % [m] maximal height the ball achievs
 T = 2 * sqrt(8*h_b_max/g);    % [s] time for one iteration T = 2 T_b
 N = 5*ceil(T / dt);           % number of steps for one iteration (mayve use floor)
 
-%% Simulation Example
 % Input
 A = 0.3;                                    % [m] amplitude
 timesteps = dt * (0:N);                     % [s,s,..] timesteps
@@ -37,15 +36,15 @@ Simulation.plot_results(dt, F_p, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec)
 
 %% Desired Trajectory planning example
 % Initialize disturbances
-    d1 = 0;
-    d2 = 0;
+d1 = 0;         % disturbance1
+d2 = 0;         % disturbance2
 
 % Initialize throw and catch point
-    h_b_max = 1; % [m] maximal height the ball achievs
-    x_p0 = 0;
-    x_pTb = x_p0;
-    ap_0 = 0;
-    ap_T = 0;
+h_b_max = 1; % [m] maximal height the ball achievs
+x_p0 = 0;
+x_pTb = x_p0;
+ap_0 = 0;
+ap_T = 0;
 
 % A] Ball Height and Time
     [Tb, ub_0] = plan_ball_trajectory(h_b_max, d1, d2);
@@ -64,11 +63,30 @@ Simulation.plot_results(dt, F_p, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec)
     [xp_des, T] = MinJerkTrajectory.plan_plate_trajectory(Tb, x_p0, x_pTb, ub_0, -ub_0, ap_0, ap_T); 
     MinJerkTrajectory.plot_paths(xp_des, T, dt, 'Set start and end acceleration')
 
+%% Desired Input optimization example
+% Create Ad, Bd, Cd, S, c and x0
+N = 4;
+Ad = diag(1:3);
+Bd = [2;2;2];
+Cd = ones(2,3); Cd(1,1) = 0;
+S = ones(3,1);
+x0 = [0.1;0.1;0.1];
+c = [0.1;0.1;0.1];
+
+% Test initialization of matrixes
+myopt = OptimizationDesiredInput('Ad', Ad, 'Bd', Bd, 'Cd', Cd, 'S', S, 'x0', x0, 'c', c, 'N', N);
+
+%% Test solving the quadratic problem
+dup = zeros(N+1,1);
+y_des = ones(2*(N+1),1);
+u_des = myopt.calcDesiredInput(dup, y_des)
+
 %% Feedforward controled system
 % Design params
 h_b_max = 1;                  % [m] maximal height the ball achievs
 T = 2 * sqrt(8*h_b_max/g);    % [s] time for one iteration T = 2 T_b
 N = 5*ceil(T / dt);           % number of steps for one iteration (mayve use floor)
+M = 10;                       % number of ILC iteration
 
 % Initialize disturbances
 d1 = 0;
@@ -80,20 +98,20 @@ x_b0 = 0;
 x_p0 = x_b0;
 x_pTb = x_p0;
 
-for j = j:N
+for j = j:M
     % 0. Compute Ball Height and Time
     [Tb, ub_0] = plan_ball_trajectory(h_b_max, d1, d2);
     
     % 1. Plan desired Plate trajectory (min jerk trajectory)
-    [xp_des, T] = MinJerkTrajectory.plan_plate_trajectory(Tb, x_p0, x_pTb, ub_0, -ub_0);
-%     [xp_des, T] = MinJerkTrajectory.plan_plate_trajectory(Tb, x_p0, x_pTb, ub_0, -ub_0, ap_0);
-%     [xp_des, T] = MinJerkTrajectory.plan_plate_trajectory(Tb, x_p0, x_pTb, ub_0, -ub_0, ap_0, ap_T);
+    [xp_des, T] = MinJerkTrajectory.plan_plate_trajectory(Tb, x_p0, x_pTb, ub_0, -ub_0);                % free start and end acceleration
+%     [xp_des, T] = MinJerkTrajectory.plan_plate_trajectory(Tb, x_p0, x_pTb, ub_0, -ub_0, ap_0);          % free end acceleration
+%     [xp_des, T] = MinJerkTrajectory.plan_plate_trajectory(Tb, x_p0, x_pTb, ub_0, -ub_0, ap_0, ap_T);    % set start and end acceleration
 
     % 2. Compute optimal input velocities u_des
     [u_des] = compute_optimal_input_signal(xp_des, dup);
 
     % 3. Simulate the calculated inputs
-    [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec] = simulate_one_iteration(dt, N, x_b0, x_p0, u_b0, u_b0, u, false);
+    [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec] = Simulation.simulate_one_iteration(dt, N, x_b0, x_p0, u_b0, u_b0, u, false);
 
     % 4.Identify errors d1, d2, dp_j (kalman filter or optimization problem
     [d1, d2, dup] = filter_disturbances(x_b, u_b, x_p, u_p, d1, d2, dup);
@@ -110,13 +128,16 @@ end
 
 % 3. Calculate Optimal Input Signal
 function [u_des] = compute_optimal_input_signal(xp_des, dup)
+% Once we have the desired motion xp for the plate we can compute the
+% "optimal" feedforward v_des by solvingthe QP
+
 % xp_des
 % dup
 
     u_des = [];
 end
 
-% 4. Calculate Optimal Input Signal
+% 4. Estimate disturbances
 function [d1, d2, dup] = filter_disturbances(x_b, u_b, x_p, u_p, d1, d2, dup)
     d1 = [];
     d2 = [];
