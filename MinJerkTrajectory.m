@@ -7,7 +7,7 @@ classdef MinJerkTrajectory
     
    methods (Static)
     % X. Plate trajectory
-    function [xp_des, T] = plan_plate_trajectory(dt, Tb, x_p0, x_pTb, up_0, up_Tb, ap_0, ap_T)
+    function [xuaj_des, T] = plan_plate_trajectory(dt, Tb, x_p0, x_pTb, up_0, up_Tb, ap_0, ap_T)
         % Input:
         %   xb_0, ub_0: conditions at t=0
         %   xb_Tb, ub_T: conditions at t=Tb  [assumed 0]
@@ -17,9 +17,9 @@ classdef MinJerkTrajectory
         %   T is the total time for one cycle(i.e. throw and catch)
 
         % Get polynom parameters for different conditions
-        if nargin < 6
+        if nargin < 7
             [c1, c2, c3, x3_0, x2_0, x1_0] = MinJerkTrajectory.free_start_end_acceleration(Tb, up_0, up_Tb, x_p0, x_pTb);
-        elseif nargin < 7
+        elseif nargin < 8
             [c1, c2, c3, x3_0, x2_0, x1_0] = MinJerkTrajectory.free_end_acceleration(Tb, up_0, up_Tb, x_p0, x_pTb, ap_0);
         else
             [c1, c2, c3, x3_0, x2_0, x1_0] = MinJerkTrajectory.set_start_end_acceleration(Tb, up_0, up_Tb, x_p0, x_pTb, ap_0, ap_T);
@@ -28,18 +28,18 @@ classdef MinJerkTrajectory
         % Calculate desired plate trajectories
         % 1. 0->Tb
         t = 0:dt:Tb;
-        [u1, a_p1, u_p1, x_p1] = MinJerkTrajectory.get_trajectories(t, c1, c2, c3, x3_0, x2_0, x1_0);
+        [j1, a_p1, u_p1, x_p1] = MinJerkTrajectory.get_trajectories(t, c1, c2, c3, x3_0, x2_0, x1_0);
 
         % 2. Tb->2Tb
         % TODO: maybe better call plan_plate_trajectory() again for this one
         tt = t(end)+dt-Tb:dt:Tb;
         tt = tt(end:-1:1);
-        [u2, a_p2, u_p2, x_p2] = MinJerkTrajectory.get_trajectories(tt, c1, c2, c3, x3_0, x2_0, x1_0);
+        [j2, a_p2, u_p2, x_p2] = MinJerkTrajectory.get_trajectories(tt, c1, c2, c3, x3_0, x2_0, x1_0);
 
         % for t=Tb -> t=2Tb we just take the symmetric negative of the
         % corresponding trajectory in t=0 -> t=Tb
-        % xp_des = [x_p1, -x_p2; u_p1, u_p1(end)-u_p2; a_p1, a_p1(end)-a_p2; u1, u1(end)-u2];
-        xp_des = [x_p1, -x_p2; u_p1, u_p2; a_p1, -a_p2; u1, u2];
+        % xp_des = [x_p1, -x_p2; u_p1, u_p1(end)-u_p2; a_p1, a_p1(end)-a_p2; j1, j1(end)-j2];
+        xuaj_des = [x_p1, -x_p2; u_p1, u_p2; a_p1, -a_p2; j1, j2];
         T = tt(1) + Tb;
     end
 

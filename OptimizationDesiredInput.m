@@ -1,27 +1,27 @@
 classdef OptimizationDesiredInput < matlab.System
     %OPTIMIZATIONDESIREDINPUT Summary of this class goes here
     %   Detailed explanation goes here
-    
+
     properties
-        Ad; % [nx, nx] 
-        Bd; % [nx, nu]
-        Cd; % [ny, nx]
-        S;  % [nx, ndup]
-        x0; % initial state (xb0, xp0, ub0, up0)
-        c;  % constants from gravity ~ dt, g, mp mb
-        N;  % nr of steps
+        Ad; Ad_impact;  % [nx, nx]
+        Bd; Bd_impact;  % [nx, nu]
+        Cd;             % [ny, nx]
+        S;  S_impact;   % [nx, ndup]
+        x0;             % initial state (xb0, xp0, ub0, up0)
+        c;              % constants from gravity ~ dt, g, mp mb
+        N;              % nr of steps
     end
     properties (Access = private)
-       F;       % [nx*N, nu*N] 
-       G;       % [ny*N, nx*N] 
-       K;       % [nx*N, ndup*N] 
+       F;       % [nx*N, nu*N]
+       G;       % [ny*N, nx*N]
+       K;       % [nx*N, ndup*N]
        d0;      % [nx*N, 1]
-       GF;  % helper
+       GF;      % helper
        GFTGF_1; % ((G*F)^T * (G*F))^-1
        GK;      % G * k;
        Gd0;     % G * d0
     end
-    
+
     methods
         % Constructor
         function obj = OptimizationDesiredInput(varargin)
@@ -36,12 +36,13 @@ classdef OptimizationDesiredInput < matlab.System
             ny = size(obj.Cd,1);
             nu = size(obj.Bd,2);
             ndup =  size(obj.S,2);
-                      
+
             %% Pre-calculate powers of Ad using its eigenvalue decomposition
             % Calculate eigenvalues decomposition of Ad
             [V,D,W] = eig(obj.Ad);
+            [V_impact,D_impact,W_impact] = eig(obj.Ad_impact); % TODO: first timestep and second half of trajectory is with impact
             eigens = diag(D);
-            
+
             % Collect all powers of eigenvalues
             eigen_holder = cell(1, obj.N+1);
             eigen_holder{1} = ones(size(eigens));
@@ -51,7 +52,7 @@ classdef OptimizationDesiredInput < matlab.System
             end
             % collect all powers of Ad: Ad^n for n=1,..,N
             A_power_holder = cellfun(@(n){V * diag(n) * W}, eigen_holder);  % [I, A, A^2,..A^N] correct N+1
-                 
+
             %% Create lifted-space matrixes
             % Create matrixes F, K, G, d0
             obj.d0 = transpose(cell2mat(cellfun(@(A){transpose(A*obj.x0)}, A_power_holder(2:end))));
@@ -68,14 +69,14 @@ classdef OptimizationDesiredInput < matlab.System
                 end
             end
             obj.d0 = obj.d0 + M * repmat(obj.c,obj.N,1);
-            
+
             % Prepare matrixes needed for the quadratic problem
             obj.GF = obj.G*obj.F;
             obj.GFTGF_1 = (transpose(obj.GF) * (obj.GF))^-1;
             obj.GK = obj.G * obj.K;
             obj.Gd0 = obj.G * obj.d0;
         end
-       
+
         function u_des = calcDesiredInput(obj, dup, y_des)
             %CALCDESIREDINPUT Once we have the desired motion y_des for the
             %plate and have estimated disturbances we can compute the
