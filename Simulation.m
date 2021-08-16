@@ -16,9 +16,13 @@ classdef Simulation < matlab.System
         setProperties(obj,nargin,varargin{:})
     end
 
-    function [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec] = simulate_one_iteration(obj, dt, T, x_b0, x_p0, u_b0, u_p0, u)
+    function [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec] = simulate_one_iteration(obj, dt, T, x_b0, x_p0, u_b0, u_p0, u, repetations)
+        if nargin < 9
+            repetations = 1;
+        end
+        u = repmat(u,repetations,1);
         % Vectors to collect the history of the system states
-        N = Simulation.steps_from_time(T, dt);
+        N = Simulation.steps_from_time(T, dt)*repetations;
         x_b = zeros(1,N+1); x_b(1) = x_b0;
         u_b = zeros(1,N+1); u_b(1) = u_b0;
         x_p = zeros(1,N+1); x_p(1) = x_p0;
@@ -91,7 +95,7 @@ classdef Simulation < matlab.System
         % gN = x_b_1_2 - x_p_1_2;
         gN = x_b_i - x_p_i;
         gamma_n_i = u_b_i - u_p_i;
-        if gN <=1e-8
+        if gN <=1e-5
             dP_N = max(0,(-gamma_n_i + obj.g*dt + u_i*dt/obj.m_p)/ (obj.m_b^-1 + obj.m_p^-1));
             % dP_N = (-gamma_n_i + obj.g*dt + u_i*dt/obj.m_p)/ (obj.m_b^-1 + obj.m_p^-1);
         else
@@ -111,10 +115,10 @@ classdef Simulation < matlab.System
         gamma_n_i = u_b_i-u_p_i;
 
         if obj.input_is_force
-            contact_impact = (gN<=1e-8) && (((-gamma_n_i + obj.g*dt + u_i*dt/obj.m_p))>=0);
+            contact_impact = (gN<=1e-5) && (((-gamma_n_i + obj.g*dt + u_i*dt/obj.m_p))>=0);
             [Ad, Bd, ~, ~, c] = obj.sys.getSystemMarixesForceControl(dt, contact_impact);
         else
-            contact_impact = (gN<=1e-8) && (((-gamma_n_i + obj.g*dt + obj.force_from_velocity(u_i, u_p_i)*dt/obj.m_p))>0);
+            contact_impact = (gN<=1e-5) && (((-gamma_n_i + obj.g*dt + obj.force_from_velocity(u_i, u_p_i)*dt/obj.m_p))>0);
             [Ad, Bd, ~, ~, c] = obj.sys.getSystemMarixesVelocityControl(dt, contact_impact);
         end
 
@@ -149,18 +153,23 @@ classdef Simulation < matlab.System
         starts = [];
         ends = [];
         for i=indices(2:end)
-            if i-last>1 || i==indices(end)
+            if i-last>1
                 starts(end+1) = start;
                 ends(end+1) = last;
                 start = i;
             end
             last = i;
+            if i==indices(end)
+                starts(end+1) = start;
+                ends(end+1) = last;
+                start = i;
+            end
         end
         intervals = [starts; ends];
     end
 
     function plot_results(dt, u, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec)
-        intervals = Simulation.find_continuous_intervals(find(gN_vec<=1e-8));
+        intervals = Simulation.find_continuous_intervals(find(gN_vec<=1e-5));
 
         figure
         subplot(5,1,1)
