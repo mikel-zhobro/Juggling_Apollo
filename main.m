@@ -114,7 +114,7 @@ display(u_des);
 
 % Design params
 h_b_max = 1;                % [m] maximal height the ball achievs
-M = 1;                      % number of ILC iteration
+ILC_it = 1;                      % number of ILC iteration
 input_is_force = false;
 
 % Set up state space matrixes
@@ -142,10 +142,7 @@ ap_0 = -3*g;
 ap_T = 0;
 up_0 = ub_0;
 
-% Initialize disturbances
-d1 = 0;
-d2 = 0;
-dup = zeros(N,1);
+
 
 % Set up desired input optimizer
 x0 = [x_b0; x_p0; ub_0; up_0];
@@ -155,7 +152,21 @@ desired_input_optimizer = OptimizationDesiredInput('Ad', Ad, 'Bd', Bd,          
                                                    'Ad_impact', Ad_impact,      ...
                                                    'Bd_impact', Bd_impact,      ...
                                                    'c_impact', c_impact         );
-for j = 1:M
+% Set up Kalman Filter
+n_x = length(x0);
+n_y = size(Cd, 1);
+% Initialize disturbances
+d1 = 0;
+d2 = 0;
+dup = zeros(n_x*N,1);
+
+P0 = 2*ones(n_x*N,n_x*N); % initial disturbance covariance
+M = 0.1 * ones(n_y*N,n_y*N);
+epsilon = 0.3;
+
+ilc_kf = ILCKalmanFilter('dt', dt, 'd', dup, 'P', P0, 'epsilon', epsilon, 'M', M);
+
+for j = 1:ILC_it+1
     close all
     % 0. Compute Ball Height and Time
     [Tb, ub_0] = plan_ball_trajectory(h_b_max, d1, d2);
@@ -175,9 +186,7 @@ tic
     set_of_impact_timesteps = ones(1, Simulation.steps_from_time(T, dt));
     set_of_impact_timesteps(1:2) = 2;
     set_of_impact_timesteps(Simulation.steps_from_time(Tb, dt):end) = 2;
-%     [u_des] = desired_input_optimizer.calcDesiredInput(dup, transpose(xuaj_des(1,:)), set_of_impact_timesteps);
     [u_des] = desired_input_optimizer.calcDesiredInput(dup, r(:), set_of_impact_timesteps);
-
 toc
 
     % 3. Simulate the calculated inputs
@@ -190,7 +199,11 @@ toc
     intervals_expected = Simulation.find_continuous_intervals(find(set_of_impact_timesteps==2))
 
     % 4.Identify errors d1, d2, dp_j (kalman filter or optimization problem
-    [d1, d2, dup] = filter_disturbances(x_b, u_b, x_p, u_p, d1, d2, dup);
+    y = [x_p; u_p];
+    y = y(:);
+    ilc_kf.set_G_GF(desired_input_optimizer.G, desired_input_optimizer.GF);
+    dup = ilc_kf.updateStep(u_des, y);
+%     [d1, d2, dup] = filter_disturbances(x_b, u_b, x_p, u_p, d1, d2, dup);
 end
 
 

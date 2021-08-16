@@ -13,16 +13,16 @@ classdef OptimizationDesiredInput < matlab.System
         x0;             % initial state (xb0, xp0, ub0, up0)
         c;  c_impact;   % constants from gravity ~ dt, g, mp mb
     end
-%     properties (Access = private)
+    properties
 %        F;       % [nx*N, nu*N]
-%        G;       % [ny*N, nx*N]
+       G;       % [ny*N, nx*N]
 %        K;       % [nx*N, ndup*N]
 %        d0;      % [nx*N, 1]
-%        GF;      % helper
+       GF;      % helper
 %        GFTGF_1; % ((G*F)^T * (G*F))^-1
 %        GK;      % G * k;
 %        Gd0;     % G * d0
-%     end
+    end
 
     methods
         % Constructor
@@ -40,7 +40,6 @@ classdef OptimizationDesiredInput < matlab.System
             nx = size(obj.Ad,1);
             ny = size(obj.Cd,1);
             nu = size(obj.Bd,2);
-            ndup =  size(obj.S,2);
 
             % calculate I, A_1, A_2*A_1, .., A_N-1*A_N-2*..*A_1
             A_power_holder = cell(1, N);
@@ -58,12 +57,15 @@ classdef OptimizationDesiredInput < matlab.System
             %        ..         ..         ..
             %      AN-1..A1B0  AN-2..A1B0  .. B0]
             F = zeros(nx*N, nu*N);
+            % ---------- uncomment if dup is disturbance on dPN -----------
+            % ndup =  size(obj.S,2);
             % K = [S          0       0 .. 0
             %      A1S        S       0 .. 0
             %      A2A1S      A1S     S .. 0
             %        ..       ..        ..
             %      AN-1..A1S AN-2..A1S  .. S]
-            K = zeros(nx*N, ndup*N);
+            % K = zeros(nx*N, ndup*N);
+            % -------------------------------------------------------------
             % G = [Cd 0  .. .. 0
             %      0  Cd 0  .. 0
             %      .. .. .. .. ..
@@ -87,7 +89,9 @@ classdef OptimizationDesiredInput < matlab.System
                 for m=1:l
                     M((l-1)*nx+1:l*nx,(m-1)*nx+1:m*nx) = A_power_holder{l-m+1};
                     F((l-1)*nx+1:l*nx,(m-1)*nu+1:m*nu) = A_power_holder{l-m+1}*obj.Bd_Bd_impact{set_of_impact_timesteps(m)};  % F_lm
-                    K((l-1)*nx+1:l*nx,(m-1)*ndup+1:m*ndup) = A_power_holder{l-m+1}*obj.S;
+                    % ------ uncomment if dup is disturbance on dPN -------
+                    % K((l-1)*nx+1:l*nx,(m-1)*ndup+1:m*ndup) = A_power_holder{l-m+1}*obj.S;
+                    % -----------------------------------------------------
                 end
             end
             % Create d0 = L*x0_N-1 + M*c0_N-1
@@ -100,11 +104,15 @@ classdef OptimizationDesiredInput < matlab.System
 
             % Prepare matrixes needed for the quadratic problem
             GF = G*F;
-            % GFTGF = (transpose(GF) * (GF))^-1;
-            GK = G * K;
+            % ---------- uncomment if dup is disturbance on dPN -----------
+            % GK = G * K;
+            GK = G;
+            % -------------------------------------------------------------
             Gd0 = G * d0;
-
-
+            
+            % save matrixes
+            obj.G =G;
+            obj.GF = GF;
         end
 
         function u_des = calcDesiredInput(obj, dup, y_des, set_of_impact_timesteps)
