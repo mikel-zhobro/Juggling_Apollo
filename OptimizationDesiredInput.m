@@ -34,6 +34,7 @@ classdef OptimizationDesiredInput < matlab.System
         end
 
         function [GF, GK, Gd0] = calcQuadrProgMatrixes(obj, set_of_impact_timesteps)
+            % set_of_impact_timesteps{t} = 1 if no impact, = 2 if impact for the timesteps 0 -> N-1
             % sizes
             N = length(set_of_impact_timesteps);    % nr of steps
             nx = size(obj.Ad,1);
@@ -41,30 +42,61 @@ classdef OptimizationDesiredInput < matlab.System
             nu = size(obj.Bd,2);
             ndup =  size(obj.S,2);
 
-            % set_of_impact_timesteps{t} = 1 if no impact, = 2 if impact.
-            A_power_holder = cell(1, N+1);
-            A_power_holder{1} = ones(size(obj.Ad));
-            for i=1:N
-                A_power_holder{i+1} = obj.Ad_Ad_impact{set_of_impact_timesteps(i)} * A_power_holder{i};
+            % calculate I, A_1, A_2*A_1, .., A_N-1*A_N-2*..*A_1
+            A_power_holder = cell(1, N);
+            A_power_holder{1} = eye(size(obj.Ad));
+            for i=1:N-1
+                A_power_holder{i+1} = obj.Ad_Ad_impact{set_of_impact_timesteps(i+1)} * A_power_holder{i};
             end
 
             % Create lifted-space matrixes
-            % Create matrixes F, K, G, d0
-            d0 = transpose(cell2mat(cellfun(@(A){transpose(A*obj.x0)}, A_power_holder(2:end))));
-            c_vec = transpose(cell2mat(arrayfun(@(ii){transpose(obj.c_c_impact{ii})}, set_of_impact_timesteps)));
+            % Create matrixes F, K, G, M: x = Fu + Kdu_p + d0, y = Gx, 
+            % where the constant part d0 = L*x0_N-1 + M*c0_N-1
+            % F = [B0          0        0  .. 0
+            %      A1B0        B1       0  .. 0
+            %      A2A1B0      A1B0     B0 .. 0
+            %        ..         ..         ..
+            %      AN-1..A1B0  AN-2..A1B0  .. B0]
             F = zeros(nx*N, nu*N);
+            % K = [S          0       0 .. 0
+            %      A1S        S       0 .. 0
+            %      A2A1S      A1S     S .. 0
+            %        ..       ..        ..
+            %      AN-1..A1S AN-2..A1S  .. S]
             K = zeros(nx*N, ndup*N);
+            % G = [Cd 0  .. .. 0
+            %      0  Cd 0  .. 0
+            %      .. .. .. .. ..
+            %      0  0  0  .. Cd]
             G = zeros(ny*N, nx*N);
+            % M = [I         0      0 .. 0
+            %      A1        I      0 .. 0
+            %      A2A1      A1     I .. 0
+            %       ..       ..       ..
+            %      AN-1..A1 AN-2..A1  .. I]
             M = zeros(nx*N, nx*N);
+            % L = [A0 0     ..        0
+            %      0  A1A0  ..        0
+            %      ..  ..   ..       ...
+            %      0   0    ..   AN-1AN-2..A0]
+            L = zeros(nx*N, nx*N);
+            A_0 = obj.Ad_Ad_impact{set_of_impact_timesteps(1)};
             for l=1:N
                 G((l-1)*ny+1:l*ny,(l-1)*nx+1:l*nx) = obj.Cd;
+                L((l-1)*nx+1:l*nx,(l-1)*nx+1:l*nx) = A_power_holder{l}*A_0;
                 for m=1:l
                     M((l-1)*nx+1:l*nx,(m-1)*nx+1:m*nx) = A_power_holder{l-m+1};
                     F((l-1)*nx+1:l*nx,(m-1)*nu+1:m*nu) = A_power_holder{l-m+1}*obj.Bd_Bd_impact{set_of_impact_timesteps(m)};  % F_lm
                     K((l-1)*nx+1:l*nx,(m-1)*ndup+1:m*ndup) = A_power_holder{l-m+1}*obj.S;
                 end
             end
-            d0 = d0 + M * c_vec;
+            % Create d0 = L*x0_N-1 + M*c0_N-1
+            % d0 = sum_{n=0_N-1}(prod_{i=0_n} A_i*x0  , i.e  A_0*x0 + A_1*A_0*x0 ... A_{N-1}*..*A_0*x0 <- the x0 depending part of d0
+%             A_0 = obj.Ad_Ad_impact{set_of_impact_timesteps(1)};
+%             d0 = transpose(cell2mat(cellfun(@(A_n){transpose(A_n*A_0*obj.x0)}, A_power_holder)));
+%             d0 = d0 + M * c_vec;
+            c_vec = transpose(cell2mat(arrayfun(@(ii){transpose(obj.c_c_impact{ii})}, set_of_impact_timesteps)));
+            d0 = L * repmat(obj.x0, [N,1]) + M * c_vec;
 
             % Prepare matrixes needed for the quadratic problem
             GF = G*F;
@@ -77,7 +109,10 @@ classdef OptimizationDesiredInput < matlab.System
 
         function u_des = calcDesiredInput(obj, dup, y_des, set_of_impact_timesteps)
             [GF, GK, Gd0] = obj.calcQuadrProgMatrixes(set_of_impact_timesteps);
-            u_des = linsolve((transpose(GF) * GF), transpose(GF)*(GK*dup + Gd0 - y_des));
+%             u_des = linsolve(GF, -transpose(GF)*(GK*dup + Gd0 - y_des));
+            u_des = quadprog((transpose(GF) * GF), transpose(GF)*(GK*dup + Gd0 - y_des));
+            %% check
+%             norm( (transpose(GF) * GF)* u_des + transpose(GF)*(GK*dup + Gd0 - y_des) )
         end
 
         function u_des = calcDesiredInput2(obj, dup, y_des) % give as input Tb, or N_Tb(from which index Tb starts)
