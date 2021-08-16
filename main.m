@@ -2,7 +2,7 @@
 %% Parameters
 % Constants
 g = 9.80665;    % [m/s^2]
-dt = 0.01;      % [s] discretization time step size
+dt = 0.004;      % [s] discretization time step size
 
 % Params
 m_b = 0.03;     % [kg]
@@ -37,17 +37,20 @@ sim = Simulation('m_b', m_b, 'm_p', m_p, 'k_c', k_c, 'g', g, 'input_is_force', i
 % Plotting for Simulation Example
 % close all
 Simulation.plot_results(dt, F_vec, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec)
-
+sgtitle("Simulation in direct form")
 Simulation.plot_results(dt, F_vec2, x_b2, u_b2, x_p2, u_p2, dP_N_vec2, gN_vec2)
+sgtitle("Simulation with matrixes")
 Simulation.plot_results(dt, F_vec-F_vec2, x_b-x_b2, u_b-u_b2, x_p-x_p2, u_p-u_p2, dP_N_vec-dP_N_vec2, gN_vec-gN_vec2)
+sgtitle("Differences between simulation with matrixes and direct form")
 
-display(["norm(x_b-x_b2): ", norm(x_b-x_b2)]);
-display(["norm(u_b-u_b2): ", norm(u_b-u_b2)]);
-display(["norm(x_p-x_p2): ", norm(x_p-x_p2)]);
-display(["norm(u_p-u_p2): ", norm(u_p-u_p2)]);
-display(["norm(dP_N_vec-dP_N_vec2): ", norm(dP_N_vec-dP_N_vec2)]);
-display(["norm(gN_vec-gN_vec2): ", norm(gN_vec-gN_vec2)]);
-display(["norm(F_vec-F_vec2): ", norm(F_vec-F_vec2)]);
+% display(["norm(x_b-x_b2): ", norm(x_b-x_b2)]);
+% display(["norm(u_b-u_b2): ", norm(u_b-u_b2)]);
+% display(["norm(x_p-x_p2): ", norm(x_p-x_p2)]);
+% display(["norm(u_p-u_p2): ", norm(u_p-u_p2)]);
+% display(["norm(dP_N_vec-dP_N_vec2): ", norm(dP_N_vec-dP_N_vec2)]);
+% display(["norm(gN_vec-gN_vec2): ", norm(gN_vec-gN_vec2)]);
+% display(["norm(F_vec-F_vec2): ", norm(F_vec-F_vec2)]);
+
 %% Desired Trajectory planning example
 % Initialize disturbances
 d1 = 0;         % disturbance1
@@ -58,24 +61,25 @@ h_b_max = 1; % [m] maximal height the ball achievs
 x_p0 = 0;
 x_pTb = x_p0;
 ap_0 = 0;
-ap_T = 0;
+ap_T = -g;
 
 % A] Ball Height and Time
     [Tb, ub_0] = plan_ball_trajectory(h_b_max, d1, d2);
+    ub_T = 0;
 
 % B] Plate Trajectory
     close all
     % 1) Free start and end acceleration
-    [xp_des, T] = MinJerkTrajectory.plan_plate_trajectory(dt, Tb, x_p0, x_pTb, ub_0, -ub_0);
-    MinJerkTrajectory.plot_paths(xp_des, T, dt, 'Free start and end acceleration')
+    [xp_des] = MinJerkTrajectory.plan_plate_trajectory(dt, Tb, x_p0, x_pTb, ub_0, ub_T);
+    MinJerkTrajectory.plot_paths(xp_des, dt, 'Free start and end acceleration')
 
     % 2) Free end acceleration
-    [xp_des, T] = MinJerkTrajectory.plan_plate_trajectory(dt, Tb, x_p0, x_pTb, ub_0, -ub_0, ap_0);
-    MinJerkTrajectory.plot_paths(xp_des, T, dt, 'Free end acceleration')
+    [xp_des] = MinJerkTrajectory.plan_plate_trajectory(dt, Tb, x_p0, x_pTb, ub_0, ub_T, ap_0);
+    MinJerkTrajectory.plot_paths(xp_des, dt, 'Free end acceleration')
 
     % 3) Set start and end acceleration
-    [xp_des, T] = MinJerkTrajectory.plan_plate_trajectory(dt, Tb, x_p0, x_pTb, ub_0, -ub_0, ap_0, ap_T);
-    MinJerkTrajectory.plot_paths(xp_des, T, dt, 'Set start and end acceleration')
+    [xp_des] = MinJerkTrajectory.plan_plate_trajectory(dt, Tb, x_p0, x_pTb, ub_0, ub_T, ap_0, ap_T);
+    MinJerkTrajectory.plot_paths(xp_des, dt, 'Set start and end acceleration')
 
 %% Desired Input optimization example
 % Create Ad, Bd, Cd, S, c and x0
@@ -111,13 +115,14 @@ display(u_des);
 % Design params
 h_b_max = 1;                % [m] maximal height the ball achievs
 M = 1;                      % number of ILC iteration
-input_is_force = true;
+input_is_force = false;
 
 % Set up state space matrixes
 sys = DynamicSystem('m_b', m_b, 'm_p', m_p, 'k_c', k_c, 'g', g, 'dt', dt);
 if input_is_force
     [Ad, Bd, Cd, S, c] = sys.getSystemMarixesForceControl(dt, false);
     [Ad_impact, Bd_impact, ~, ~, c_impact] = sys.getSystemMarixesForceControl(dt, true);
+
 else
     [Ad, Bd, Cd, S, c] = sys.getSystemMarixesVelocityControl(dt, false);
     [Ad_impact, Bd_impact, ~, ~, c_impact] = sys.getSystemMarixesVelocityControl(dt, true);
@@ -133,8 +138,8 @@ sim = Simulation('m_b', m_b, 'm_p', m_p, 'k_c', k_c, 'g', g, 'input_is_force', i
 x_b0 = 0;
 x_p0 = x_b0;
 x_pTb = x_p0;
-ap_0 = 0;
-ap_T=0;
+ap_0 = -3*g;
+ap_T = 0;
 up_0 = ub_0;
 
 % Initialize disturbances
@@ -154,24 +159,35 @@ for j = 1:M
     close all
     % 0. Compute Ball Height and Time
     [Tb, ub_0] = plan_ball_trajectory(h_b_max, d1, d2);
+    ub_T = -ub_0/4;
 
     % 1. Plan desired Plate trajectory (min jerk trajectory)
-    % [xuaj_des, T] = MinJerkTrajectory.plan_plate_trajectory(dt, Tb, x_p0, x_pTb, ub_0, -ub_0);              % free start and end acceleration
-    % [xuaj_des, T] = MinJerkTrajectory.plan_plate_trajectory(dt, Tb, x_p0, x_pTb, ub_0, -ub_0, ap_0);        % free end acceleration
-    [xuaj_des, T] = MinJerkTrajectory.plan_plate_trajectory(dt, Tb, x_p0, x_pTb, ub_0, -ub_0, ap_0, ap_T);    % set start and end acceleration
-%     MinJerkTrajectory.plot_paths(xuaj_des, T, dt, 'Planned')
+%     [xuaj_des] = MinJerkTrajectory.plan_plate_trajectory(dt, Tb, x_p0, x_pTb, ub_T, ub_0);              % free start and end acceleration
+%     [xuaj_des] = MinJerkTrajectory.plan_plate_trajectory(dt, Tb, x_p0, x_pTb, ub_0, ub_T, ap_0);        % free end acceleration
+    [xuaj_des] = MinJerkTrajectory.plan_plate_trajectory(dt, Tb, x_p0, x_pTb, ub_0, ub_T, ap_0, ap_T);    % set start and end acceleration
+%     MinJerkTrajectory.plot_paths(xuaj_des, dt, 'Planned')
+    Cd = [1 0 0 0; ...
+          0 1 0 0];
+    r = Cd*xuaj_des;
 
+tic
     % 2. Compute optimal input signal
     set_of_impact_timesteps = ones(1, Simulation.steps_from_time(T, dt));
-    set_of_impact_timesteps(1) = 2;
+    set_of_impact_timesteps(1:2) = 2;
     set_of_impact_timesteps(Simulation.steps_from_time(Tb, dt):end) = 2;
-    [u_des] = desired_input_optimizer.calcDesiredInput(dup, transpose(xuaj_des(1,:)), set_of_impact_timesteps);
+%     [u_des] = desired_input_optimizer.calcDesiredInput(dup, transpose(xuaj_des(1,:)), set_of_impact_timesteps);
+    [u_des] = desired_input_optimizer.calcDesiredInput(dup, r(:), set_of_impact_timesteps);
+
+toc
 
     % 3. Simulate the calculated inputs
-    [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec] = sim.simulate_one_iteration2(dt, T, x_b0, x_p0, ub_0, ub_0, u_des);
+    repetations = 1;
+    [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec] = sim.simulate_one_iteration(dt, T, x_b0, x_p0, ub_0, ub_0, u_des, repetations);
 
     % Plotting for Simulation Example
     Simulation.plot_results(dt, u_vec, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec)
+    intervals = Simulation.find_continuous_intervals(find(gN_vec<=1e-5))
+    intervals_expected = Simulation.find_continuous_intervals(find(set_of_impact_timesteps==2))
 
     % 4.Identify errors d1, d2, dp_j (kalman filter or optimization problem
     [d1, d2, dup] = filter_disturbances(x_b, u_b, x_p, u_p, d1, d2, dup);
@@ -180,10 +196,15 @@ end
 
 %% Components
 % 1. Ball Trajectory
-function [Tb, ub_0] = plan_ball_trajectory(hb, d1, d2)
+% PROBLEM: does not consider impuls
+function [Tb, ub_0] = plan_ball_trajectory(hb, d1, d2, mp, mb, g, dt, Fp)
     g = 9.80665;    % [m/s^2]
     ub_0 = sqrt(2*g*(hb - d1));  % velocity of ball at throw point
     Tb = 2*ub_0/g + d2; % flying time of the ball
+    if nargin > 3
+        dPN = mb*mp/(mb+mp) * (g*dt +Fp*dt/mp);
+        ub_0 = ub_0 - dPN;
+    end
 end
 
 % 4. Estimate disturbances
