@@ -7,7 +7,7 @@ classdef MinJerkTrajectory
     
    methods (Static)
     % X. Plate trajectory
-    function [xuaj_des, T] = plan_plate_trajectory(dt, Tb, x_p0, x_pTb, up_0, up_Tb, ap_0, ap_T)
+    function [xuaj_des] = plan_plate_trajectory(dt, Tb, x_p0, x_pTb, up_0, up_Tb, ap_0, ap_T)
         % Input:
         %   xb_0, ub_0: conditions at t=0
         %   xb_Tb, ub_T: conditions at t=Tb  [assumed 0]
@@ -27,20 +27,19 @@ classdef MinJerkTrajectory
 
         % Calculate desired plate trajectories
         % 1. 0->Tb
-        t = 0:dt:Tb;
+        t = 0:dt:Tb; %  length(t) == floor(Tb)+1
         [j1, a_p1, u_p1, x_p1] = MinJerkTrajectory.get_trajectories(t, c1, c2, c3, x3_0, x2_0, x1_0);
 
         % 2. Tb->2Tb
         % TODO: maybe better call plan_plate_trajectory() again for this one
-        tt = t(end)+dt-Tb:dt:Tb;
-        tt = tt(end:-1:1);
+        dd = floor(2*Tb/dt) + 1 - 2*length(t);
+        tt = t(end+dd:-1:1); %  length(tt) == floor(Tb)  % make sure that tt(end) == t(1)
         [j2, a_p2, u_p2, x_p2] = MinJerkTrajectory.get_trajectories(tt, c1, c2, c3, x3_0, x2_0, x1_0);
 
         % for t=Tb -> t=2Tb we just take the symmetric negative of the
         % corresponding trajectory in t=0 -> t=Tb
-        % xp_des = [x_p1, -x_p2; u_p1, u_p1(end)-u_p2; a_p1, a_p1(end)-a_p2; j1, j1(end)-j2];
         xuaj_des = [x_p1, -x_p2; u_p1, u_p2; a_p1, -a_p2; j1, j2];
-        T = tt(1) + Tb;
+
     end
 
     % Get function values from polynom parameters
@@ -88,7 +87,7 @@ classdef MinJerkTrajectory
         c1 = c(1);
         c2 = c(2);
         c3 = c(3);
-        x3_0 = 0;
+        x3_0 = ap_0;
         x2_0 = ub_0;
         x1_0 = x_p0;
     end
@@ -114,9 +113,9 @@ classdef MinJerkTrajectory
         x1_0 = x_p0;
     end
 
-    function plot_paths(xp_des, T, dt, Title)
+    function plot_paths(xp_des, dt, Title)
         figure
-        timesteps = 0:dt:T;
+        timesteps = (1:size(xp_des,2))*dt;
         subplot(4,1,1)
         plot(timesteps, xp_des(1,:))
         legend("Plate position")
