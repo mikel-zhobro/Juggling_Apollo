@@ -21,7 +21,7 @@ classdef OptimizationDesiredInput < matlab.System
        GF;      % helper
 %        GFTGF_1; % ((G*F)^T * (G*F))^-1
 %        GK;      % G * k;
-%        Gd0;     % G * d0
+       Gd0;     % G * d0
     end
 
     methods
@@ -106,13 +106,15 @@ classdef OptimizationDesiredInput < matlab.System
             GF = G*F;
             % ---------- uncomment if dup is disturbance on dPN -----------
             % GK = G * K;
-            GK = G;
+%             GK = G; % if dup is disturbance on the state trajectory
+            GK = 1; % if dup is disturbance on the output trajectory
             % -------------------------------------------------------------
             Gd0 = G * d0;
             
             % save matrixes
             obj.G =G;
             obj.GF = GF;
+            obj.Gd0 = Gd0;
         end
 
         function u_des = calcDesiredInput(obj, dup, y_des, set_of_impact_timesteps)
