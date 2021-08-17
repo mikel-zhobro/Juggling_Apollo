@@ -16,24 +16,24 @@ classdef Simulation < matlab.System
         setProperties(obj,nargin,varargin{:})
     end
 
-    function [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec] = simulate_one_iteration(obj, dt, T, x_b0, x_p0, u_b0, u_p0, u, repetations)
+    function [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec] = simulate_one_iteration(obj, dt, T, x_b0, x_p0, u_b0, u_p0, u, repetitions)
         if nargin < 9
-            repetations = 1;
+            repetitions = 1;
         end
-        u = repmat(u,repetations,1);
+        u = repmat(u,repetitions,1);
         % Vectors to collect the history of the system states
-        N = Simulation.steps_from_time(T, dt)*repetations;
-        x_b = zeros(1,N+1); x_b(1) = x_b0;
-        u_b = zeros(1,N+1); u_b(1) = u_b0;
-        x_p = zeros(1,N+1); x_p(1) = x_p0;
-        u_p = zeros(1,N+1); u_p(1) = u_p0;
+        N = Simulation.steps_from_time(T, dt)*repetitions;
+        x_b = zeros(1,N); x_b(1) = x_b0;
+        u_b = zeros(1,N); u_b(1) = u_b0;
+        x_p = zeros(1,N); x_p(1) = x_p0;
+        u_p = zeros(1,N); u_p(1) = u_p0;
         % Vector to collect extra info for debugging
-        dP_N_vec = zeros(1,N+1);
-        gN_vec = zeros(1,N+1);
-        u_vec = zeros(1,N+1);
+        dP_N_vec = zeros(1,N);
+        gN_vec = zeros(1,N);
+        u_vec = zeros(1,N);
 
         % Simulation
-        for i = (1:N)
+        for i = (1:N-1)
             % one step simulation
             [x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, u_i] = obj.simulate_one_step(dt, u(i), x_b(i), x_p(i), u_b(i), u_p(i));
             % collect state of the system
@@ -51,17 +51,17 @@ classdef Simulation < matlab.System
     function [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec] = simulate_one_iteration2(obj, dt, T, x_b0, x_p0, u_b0, u_p0, u)
         % Vectors to collect the history of the system states
         N = Simulation.steps_from_time(T, dt);
-        x_b = zeros(1,N+1); x_b(1) = x_b0;
-        u_b = zeros(1,N+1); u_b(1) = u_b0;
-        x_p = zeros(1,N+1); x_p(1) = x_p0;
-        u_p = zeros(1,N+1); u_p(1) = u_p0;
+        x_b = zeros(1,N); x_b(1) = x_b0;
+        u_b = zeros(1,N); u_b(1) = u_b0;
+        x_p = zeros(1,N); x_p(1) = x_p0;
+        u_p = zeros(1,N); u_p(1) = u_p0;
         % Vector to collect extra info for debugging
-        dP_N_vec = zeros(1,N+1);
-        gN_vec = zeros(1,N+1);
-        u_vec = zeros(1,N+1);
+        dP_N_vec = zeros(1,N);
+        gN_vec = zeros(1,N);
+        u_vec = zeros(1,N);
 
         % Simulation
-        for i = (1:N)
+        for i = (1:N-1)
             % Simlate using matrixes
             [x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, u_i] = obj.state_space_one_step(dt, u(i), x_b(i), x_p(i), u_b(i), u_p(i));
             % collect states
