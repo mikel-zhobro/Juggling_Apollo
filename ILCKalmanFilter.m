@@ -23,10 +23,7 @@ classdef ILCKalmanFilter < matlab.System
     
     % set every iteration
     properties
-        G;
-        GK;
-        GF;
-        Gd0;
+        lss;
     end
 
     methods
@@ -43,48 +40,14 @@ classdef ILCKalmanFilter < matlab.System
             obj.Omega = eye(obj.n_d) * obj.epsilon0;
             obj.epsilon = obj.epsilon0;
         end
-
-        function set_G_GF_Gd0(obj, G, GF, Gd0, GK)
-            obj.G = G;
-            obj.GF = GF;
-            obj.Gd0 = Gd0;
-            obj.GK = GK;
-        end
-
-        % Disturbance is on the state trajectory
+        
         function d = updateStep(obj, u, y)
-            % In this case y = Fu + Gd0  + [Gd] + mu
+            % In this case y = Fu + Gd0  + [GKd] + mu
             P1_0 = obj.P + obj.Omega;
-            Theta = obj.G*P1_0*transpose(obj.G) + obj.M;
-            K = P1_0*transpose(obj.G)*Theta^-1;
-            obj.P = (obj.I - K*obj.G)* P1_0;
-            obj.d = obj.d + K * ( y - obj.Gd0 - obj.G*obj.d - obj.GF*u);
-            
-            % update epsilon
-            obj.epsilon = obj.epsilon*0.9;
-            d = obj.d;
-        end
-        
-        % Disturbance is on the output trajectory
-        function d = updateStep2(obj, u, y)
-            % In this case y = Fu + Gd0  + [d] + mu, so G=I
-            P1_0 = obj.P + obj.Omega;                               % Predicted a priori covariance estimate
-            Theta = P1_0 + obj.M;                                   % Inovation covariance
-            K = P1_0*Theta^-1;                                      % Optimal Kalman Gain
-            obj.P = (obj.I - K)* P1_0;                              % Update a posteriori covariance estimate
-            obj.d = obj.d + K * ( y - obj.Gd0 - obj.d - obj.GF*u);  % Update a posteriori satte estimate
-            d = obj.d;
-            % update epsilon
-            obj.epsilon = obj.epsilon*0.8;
-        end
-        
-        function d = updateStep3(obj, u, y)
-            % In this case y = Fu + Gd0  + [Gd] + mu
-            P1_0 = obj.P + obj.Omega;
-            Theta = obj.GK*P1_0*transpose(obj.GK) + obj.M;
-            K = P1_0*transpose(obj.GK)*Theta^-1;
-            obj.P = (obj.I - K*obj.GK)* P1_0;
-            obj.d = obj.d + K * ( y - obj.Gd0 - obj.GK*obj.d - obj.GF*u);
+            Theta = obj.lss.GK * P1_0 * transpose( obj.lss.GK ) + obj.M;
+            K = P1_0 * transpose( obj.lss.GK ) * Theta^-1;
+            obj.P = ( obj.I - K*obj.lss.GK ) * P1_0;
+            obj.d = obj.d + K * ( y - obj.lss.Gd0 - obj.lss.GK*obj.d - obj.lss.GF*u );
             
             % update epsilon
             obj.epsilon = obj.epsilon*0.9;
