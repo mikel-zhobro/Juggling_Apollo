@@ -147,25 +147,28 @@ classdef Simulation < matlab.System
     end
 
     function intervals = find_continuous_intervals(indices)
-        % Find intervals where gN<=0
-        last = indices(1);
-        start = last;
-        starts = [];
-        ends = [];
-        for i=indices(2:end)
-            if i-last>1
-                starts(end+1) = start;
-                ends(end+1) = last;
-                start = i;
+        intervals = [];
+        if length(indices)>0
+            % Find intervals where gN<=0
+            last = indices(1);
+            start = last;
+            starts = [];
+            ends = [];
+            for i=indices(2:end)
+                if i-last>1
+                    starts(end+1) = start;
+                    ends(end+1) = last;
+                    start = i;
+                end
+                last = i;
+                if i==indices(end)
+                    starts(end+1) = start;
+                    ends(end+1) = last;
+                    start = i;
+                end
             end
-            last = i;
-            if i==indices(end)
-                starts(end+1) = start;
-                ends(end+1) = last;
-                start = i;
-            end
+            intervals = [starts; ends];
         end
-        intervals = [starts; ends];
     end
 
     function plot_results(dt, u, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec)

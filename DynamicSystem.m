@@ -19,6 +19,8 @@ classdef DynamicSystem < matlab.System
         end
 
         function [Ad, Bd, Cd, S, c] = getSystemMarixesVelocityControl(obj,dt,contact_impact)
+            % x_k = Ad*x_k-1 + Bd*u_k-1 + S*d_k
+            % y_k = Cd*x_k
             if nargin<3
                 contact_impact=false;
             end
@@ -45,9 +47,9 @@ classdef DynamicSystem < matlab.System
                  -dt*obj.g*(1-obj.m_p*mbp)      ; ...
                  -dt*obj.g*obj.m_b*mbp          ];
 
-%             Cd = [0 1 0 0];
-            Cd = [0 1 0 0; ...
-                  0 0 0 1];
+            Cd = [0 1 0 0];
+%             Cd = [0 1 0 0; ...
+%                   0 0 0 1];
 
             S =  [-dt_2/obj.m_b ; ...
                   dt_2/obj.m_p  ; ...
@@ -56,6 +58,8 @@ classdef DynamicSystem < matlab.System
         end
 
         function [Ad, Bd, Cd, S, c] = getSystemMarixesForceControl(obj,dt,contact_impact)
+            % x_k = Ad*x_k-1 + Bd*u_k-1 + S*d_k
+            % y_k = Cd*x_k
             if nargin<3
                 contact_impact=false;
             end
@@ -83,9 +87,9 @@ classdef DynamicSystem < matlab.System
                  -dt*obj.g*(1-obj.m_p*mbp)      ; ...
                  -dt*obj.g*obj.m_b*mbp          ];
 
-%             Cd = [0 1 0 0];
-            Cd = [0 1 0 0; ...
-                  0 0 0 1];
+            Cd = [0 1 0 0];
+%             Cd = [0 1 0 0; ...
+%                   0 0 0 1];
 
             S =  [-dt_2/obj.m_b ; ...
                   dt_2/obj.m_p  ; ...

@@ -24,6 +24,7 @@ classdef ILCKalmanFilter < matlab.System
     % set every iteration
     properties
         G;
+        GK;
         GF;
         Gd0;
     end
@@ -43,10 +44,11 @@ classdef ILCKalmanFilter < matlab.System
             obj.epsilon = obj.epsilon0;
         end
 
-        function set_G_GF_Gd0(obj, G, GF, Gd0)
+        function set_G_GF_Gd0(obj, G, GF, Gd0, GK)
             obj.G = G;
             obj.GF = GF;
             obj.Gd0 = Gd0;
+            obj.GK = GK;
         end
 
         % Disturbance is on the state trajectory
@@ -74,6 +76,19 @@ classdef ILCKalmanFilter < matlab.System
             d = obj.d;
             % update epsilon
             obj.epsilon = obj.epsilon*0.8;
+        end
+        
+        function d = updateStep3(obj, u, y)
+            % In this case y = Fu + Gd0  + [Gd] + mu
+            P1_0 = obj.P + obj.Omega;
+            Theta = obj.GK*P1_0*transpose(obj.GK) + obj.M;
+            K = P1_0*transpose(obj.GK)*Theta^-1;
+            obj.P = (obj.I - K*obj.GK)* P1_0;
+            obj.d = obj.d + K * ( y - obj.Gd0 - obj.GK*obj.d - obj.GF*u);
+            
+            % update epsilon
+            obj.epsilon = obj.epsilon*0.9;
+            d = obj.d;
         end
     end
 end
