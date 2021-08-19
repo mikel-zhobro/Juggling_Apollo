@@ -27,7 +27,7 @@ N = Simulation.steps_from_time(Tsim, dt);           % number of steps for one it
 A = 0.3;                                            % [m] amplitude
 timesteps = dt * (0:N);                             % [s,s,..] timesteps
 F_p = 100 * m_p * A*sin(pi/Tb *timesteps);          % [N] input force on the plate
-input_is_force = false;
+input_is_force = true;
 % Simulation for N steps
 sys = DynamicSystem('m_b', m_b, 'm_p', m_p, 'k_c', k_c, 'g', g, 'dt', dt);
 sim = Simulation('m_b', m_b, 'm_p', m_p, 'k_c', k_c, 'g', g, 'input_is_force', input_is_force, 'sys', sys);
@@ -36,13 +36,12 @@ sim = Simulation('m_b', m_b, 'm_p', m_p, 'k_c', k_c, 'g', g, 'input_is_force', i
 [x_b2, u_b2, x_p2, u_p2, dP_N_vec2, gN_vec2, F_vec2] = sim.simulate_one_iteration2(dt, Tsim, x_b0, x_p0, u_b0, u_p0, F_p);
 % Plotting for Simulation Example
 % close all
+Simulation.plot_results(dt, F_vec-F_vec2, x_b-x_b2, u_b-u_b2, x_p-x_p2, u_p-u_p2, dP_N_vec-dP_N_vec2, gN_vec-gN_vec2)
+sgtitle("Differences between simulation with matrixes and direct form")
 Simulation.plot_results(dt, F_vec, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec)
 sgtitle("Simulation in direct form")
 Simulation.plot_results(dt, F_vec2, x_b2, u_b2, x_p2, u_p2, dP_N_vec2, gN_vec2)
 sgtitle("Simulation with matrixes")
-Simulation.plot_results(dt, F_vec-F_vec2, x_b-x_b2, u_b-u_b2, x_p-x_p2, u_p-u_p2, dP_N_vec-dP_N_vec2, gN_vec-gN_vec2)
-sgtitle("Differences between simulation with matrixes and direct form")
-
 % display(["norm(x_b-x_b2): ", norm(x_b-x_b2)]);
 % display(["norm(u_b-u_b2): ", norm(u_b-u_b2)]);
 % display(["norm(x_p-x_p2): ", norm(x_p-x_p2)]);
@@ -92,18 +91,21 @@ x0 = [0.1;0.1;0.1];
 c = [0.1;0.1;0.1];
 
 % Test initialization of matrixes
-myopt = OptimizationDesiredInput('Ad', Ad, 'Bd', Bd,        ...
-                                 'Cd', Cd, 'S', S,          ...
-                                 'x0', x0, 'c', c,          ...
-                                 'Ad_impact', Ad,           ...
-                                 'Bd_impact', Bd,           ...
-                                 'c_impact', c              );
-% Test solving the quadratic problem
-dup = zeros(3*N,1);
-y_des = ones(2*N,1);
+lifted_state_space = LiftedStateSpace('Ad', Ad, 'Bd', Bd,        ...
+                                      'Cd', Cd, 'S', S,          ...
+                                      'x0', x0, 'c', c,          ...
+                                      'Ad_impact', Ad,    ...
+                                      'Bd_impact', Bd,    ...
+                                      'c_impact', c       );
 set_of_impact_timesteps = ones(1,N);
+lifted_state_space.updateQuadrProgMatrixes(set_of_impact_timesteps);
 
-u_des = myopt.calcDesiredInput(dup, y_des, set_of_impact_timesteps);
+myopt = OptimizationDesiredInput(lifted_state_space);
+
+% Test solving the quadratic problem
+dup = zeros(N,1);
+y_des = ones(2*N,1);
+u_des = myopt.calcDesiredInput(dup, y_des);
 display(u_des);
 
 %% Ball Trajectory
