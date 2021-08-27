@@ -138,15 +138,19 @@ for j = 1:ILC_it
 %     lifted_state_space.updateQuadrProgMatrixes(impact_timesteps); % updates automatically the matrixes in ILC and input optimizer
 % toc
 
-    % 4.Identify errors d1, d2, dup (kalman filter or optimization problem)
+    % 4. Estimate disturbances
     disp("KF update step")
-    d1_meas = intervals(1,2)*dt - 0.5*ub_0^2/g; % = hb_meas - ub0^2/(2g)
+    
+    % Estimate height and fly time disturbances d1, d2
+    d1_meas = max(x_b) - 0.5*ub_0^2/g; % = hb_meas - ub0^2/(2g)
     d2_meas = intervals(1,2)*dt - 2*ub_0/g; % = Tb_meas - 2ub0/g
     d1d2 = ilc_kf_d1d2.updateStep(0, [d1_meas; d2_meas]);
-    dup = ilc_kf_dpn.updateStep(u_des, transpose(x_p(2:end)));
     disp("The estimated d1d2"); disp(d1d2);
+    
+    % Estimate impact force disturbances Wdup (kalman filter or optimization problem)
+    dup = ilc_kf_dpn.updateStep(u_des, transpose(x_p(2:end)));
 
-    % collect data for plotting
+    % 5. Collect data for plotting
     dup_vec(j,:) =  dup;
     x_p_vec(j,:) =  x_p;
     x_b_vec(j,:) =  x_b;
