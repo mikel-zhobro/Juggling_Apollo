@@ -42,7 +42,7 @@ classdef ILCKalmanFilter < matlab.System
         end
         
         function d = updateStep(obj, u, y)
-            % In this case y = Fu + Gd0  + [GKd] + mu
+            % In this case y = Fu + Gd0  + ((( GKd ))) + mu
             P1_0 = obj.P + obj.Omega;
             Theta = obj.lss.GK * P1_0 * transpose( obj.lss.GK ) + obj.M;
             K = P1_0 * transpose( obj.lss.GK ) * Theta^-1;

@@ -42,9 +42,9 @@ classdef Simulation < matlab.System
             u_b(i+1) = u_b_new;
             u_p(i+1) = u_p_new;
             % collect helpers
-            dP_N_vec(i+1) = dP_N;
-            gN_vec(i+1) = gN;
-            u_vec(i+1) = u_i;
+            dP_N_vec(i) = dP_N;
+            gN_vec(i) = gN;
+            u_vec(i) = u_i;
         end
     end
 
@@ -70,9 +70,9 @@ classdef Simulation < matlab.System
             u_b(i+1) = u_b_new;
             u_p(i+1) = u_p_new;
             % collect helpers
-            dP_N_vec(i+1) = dP_N;
-            gN_vec(i+1) = gN;
-            u_vec(i+1) = u_i;
+            dP_N_vec(i) = dP_N;
+            gN_vec(i) = gN;
+            u_vec(i) = u_i;
         end
     end
 
@@ -82,11 +82,12 @@ classdef Simulation < matlab.System
         F_p  = obj.m_p * obj.k_c * (u_des_p-u_p);
     end
 
-    function [x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, u_i] = simulate_one_step(obj, dt, u_i, x_b_i, x_p_i, u_b_i, u_p_i)
+    function [x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, F_i] = simulate_one_step(obj, dt, u_i, x_b_i, x_p_i, u_b_i, u_p_i)
         % this works only with force as input
         % so if we get speed we transform it to force.
+        F_i = u_i;
         if ~obj.input_is_force % did we get speed?
-            u_i = obj.force_from_velocity(u_i, u_p_i);
+            F_i = obj.force_from_velocity(u_i, u_p_i);
         end
 
         x_b_1_2 = x_b_i + 0.5*dt*u_b_i;
@@ -96,14 +97,14 @@ classdef Simulation < matlab.System
         gN = x_b_i - x_p_i;
         gamma_n_i = u_b_i - u_p_i;
         if gN <=1e-5
-            dP_N = max(0,(-gamma_n_i + obj.g*dt + u_i*dt/obj.m_p)/ (obj.m_b^-1 + obj.m_p^-1));
+            dP_N = max(0,(-gamma_n_i + obj.g*dt + F_i*dt/obj.m_p)/ (obj.m_b^-1 + obj.m_p^-1));
             % dP_N = (-gamma_n_i + obj.g*dt + u_i*dt/obj.m_p)/ (obj.m_b^-1 + obj.m_p^-1);
         else
             dP_N = 0;
         end
 
         u_b_new = u_b_i - obj.g*dt + dP_N/obj.m_b;
-        u_p_new = u_p_i + u_i*dt/obj.m_p - dP_N/obj.m_p;
+        u_p_new = u_p_i + F_i*dt/obj.m_p - dP_N/obj.m_p;
 
         x_b_new = x_b_1_2 + 0.5*dt*u_b_new;
         x_p_new = x_p_1_2 + 0.5*dt*u_p_new;

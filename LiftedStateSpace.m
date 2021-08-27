@@ -47,9 +47,12 @@ classdef LiftedStateSpace < matlab.System
                 A_power_holder{i+1} = obj.Ad_Ad_impact{set_of_impact_timesteps(i+1)} * A_power_holder{i};
             end
 
-            % Create lifted-space matrixes
-            % Create matrixes F, K, G, M: x = Fu + Kdu_p + d0, y = Gx, 
-            % where the constant part d0 = L*x0_N-1 + M*c0_N-1
+            % Create lifted-space matrixes F, K, G, M: 
+            %    x = Fu + Kdu_p + d0, 
+            %    y = Gx, 
+            % where the constant part 
+            %    d0 = L*x0_N-1 + M*c0_N-1
+            
             % F = [B0          0        0  .. 0
             %      A1B0        B1       0  .. 0
             %      A2A1B0      A1B0     B0 .. 0

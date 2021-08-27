@@ -13,7 +13,7 @@ classdef OptimizationDesiredInput < matlab.System
 %             u_des = linsolve(GF, -transpose(GF)*(GK*dup + Gd0 - y_des));
             u_des = quadprog((transpose(obj.lss.GF) * obj.lss.GF), transpose(obj.lss.GF)*(obj.lss.GK*dup + obj.lss.Gd0 - y_des));
             %% check
-%             norm( (transpose(GF) * GF)* u_des + transpose(GF)*(GK*dup + Gd0 - y_des) )
+%             norm( (transpose(obj.lss.GF) * obj.lss.GF)* u_des + transpose(obj.lss.GF)*(obj.lss.GK*dup + obj.lss.Gd0 - y_des) )
         end
     end
 end
