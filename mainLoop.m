@@ -63,7 +63,7 @@ lifted_state_space = LiftedStateSpace('Ad', Ad, 'Bd', Bd,        ...
                                       'c_impact', c_impact       );
 
 % IV. SIMULATION
-sim = Simulation('m_b', m_b, 'm_p', m_p, 'k_c', k_c, 'g', g, 'input_is_force', input_is_force, 'sys', sys);
+sim = Simulation('m_b', m_b, 'm_p', m_p, 'k_c', k_c, 'g', g, 'input_is_force', input_is_force, 'sys', sys, 'air_Drag', true);
 
 % V. DESIRED INPUT OPTIMIZER
 desired_input_optimizer = OptimizationDesiredInput(lifted_state_space);
@@ -77,7 +77,7 @@ ilc_kf = ILCKalmanFilter('lss', lifted_state_space,             ...
                          'dt', dt, 'd0', dup, 'epsilon0', 0.3   );
 
 %% Iteration
-ILC_it = 30; % number of ILC iteration
+ILC_it = 1; % number of ILC iteration
 
 % collect: dup, x_p, x_b, u_p
 dup_vec = zeros(ILC_it, n_dup*N_1, n_dup);

@@ -8,6 +8,7 @@ classdef Simulation < matlab.System
         g;                  % gravitational acceleration constant
         input_is_force;     % true if input is force, false if input is velocity
         sys;                % dynamic sys used to get state space matrixes of system
+        air_Drag;      % bool
     end
 
    methods
@@ -16,7 +17,7 @@ classdef Simulation < matlab.System
         setProperties(obj,nargin,varargin{:})
     end
 
-    function [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec] = simulate_one_iteration(obj, dt, T, x_b0, x_p0, u_b0, u_p0, u, repetitions)
+    function [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec] = simulate_one_iteration2(obj, dt, T, x_b0, x_p0, u_b0, u_p0, u, repetitions)
         if nargin < 9
             repetitions = 1;
         end
@@ -48,9 +49,13 @@ classdef Simulation < matlab.System
         end
     end
 
-    function [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec] = simulate_one_iteration2(obj, dt, T, x_b0, x_p0, u_b0, u_p0, u)
+    function [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec] = simulate_one_iteration(obj, dt, T, x_b0, x_p0, u_b0, u_p0, u, repetitions)
+        if nargin < 9
+            repetitions = 1;
+        end
+        u = repmat(u,repetitions,1);
         % Vectors to collect the history of the system states
-        N = Simulation.steps_from_time(T, dt);
+        N = Simulation.steps_from_time(T, dt)*repetitions;
         x_b = zeros(1,N); x_b(1) = x_b0;
         u_b = zeros(1,N); u_b(1) = u_b0;
         x_p = zeros(1,N); x_p(1) = x_p0;
@@ -102,12 +107,15 @@ classdef Simulation < matlab.System
         else
             dP_N = 0;
         end
-
-        u_b_new = u_b_i - obj.g*dt + dP_N/obj.m_b;
-        u_p_new = u_p_i + F_i*dt/obj.m_p - dP_N/obj.m_p;
-
-        x_b_new = x_b_1_2 + 0.5*dt*u_b_new;
-        x_p_new = x_p_1_2 + 0.5*dt*u_p_new;
+        
+        state_friction = zeros(1,4);
+        if obj.air_Drag
+            state_friction = obj.get_state_friction([x_b_i; x_p_i; u_b_i; u_p_i], dt);
+        end
+        u_b_new = u_b_i - obj.g*dt + dP_N/obj.m_b           + state_friction(1);
+        u_p_new = u_p_i + F_i*dt/obj.m_p - dP_N/obj.m_p     + state_friction(2);
+        x_b_new = x_b_1_2 + 0.5*dt*u_b_new                  + state_friction(3);
+        x_p_new = x_p_1_2 + 0.5*dt*u_p_new                  + state_friction(4);
     end
 
     function [x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, u_ii] = state_space_one_step(obj, dt, u_i, x_b_i, x_p_i, u_b_i, u_p_i)
@@ -123,7 +131,11 @@ classdef Simulation < matlab.System
             [Ad, Bd, ~, ~, c] = obj.sys.getSystemMarixesVelocityControl(dt, contact_impact);
         end
 
-        state_new = Ad*[x_b_i; x_p_i; u_b_i; u_p_i] + Bd*u_i + c;
+        state_friction = zeros(1,4);
+        if obj.air_Drag
+            state_friction = obj.get_state_friction([x_b_i; x_p_i; u_b_i; u_p_i], dt);
+        end
+        state_new = Ad*[x_b_i; x_p_i; u_b_i; u_p_i] + Bd*u_i + c + state_friction;
 
         x_b_new = state_new(1);
         x_p_new = state_new(2);
@@ -139,10 +151,28 @@ classdef Simulation < matlab.System
             dP_N = max(0,(-gamma_n_i + obj.g*dt + u_ii*dt/obj.m_p)/ (obj.m_b^-1 + obj.m_p^-1));
         end
     end
-   end
 
+    function state_friction=get_state_friction(obj, x0, dt)
+        % x = x + F_D*dt where F_D is force caused by air drag
+        F_D = Simulation.friction(x0(3));
+        du = -F_D*dt/obj.m_b;
+        state_friction = zeros(size(x0));
+        state_friction(1) = du*dt;
+        state_friction(3) = du;
+    end
+   end   
+   
    %% Static Helpers
    methods (Static)
+    function f_drag=friction(v)
+        % D is the diameter of the ball
+        % c = 1/4*p*A = pi/16*p*D^2
+        D = 0.2; % ball has diameter of 5cm
+        p = 1.225; % [kg/m]  air density
+        c = pi/16*p*D^2;
+        f_drag = c*v^2;
+    end
+         
     function N = steps_from_time(T, dt)
         N = floor(T/dt)+1;
     end
