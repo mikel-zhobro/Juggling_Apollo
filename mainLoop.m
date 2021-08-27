@@ -68,17 +68,25 @@ sim = Simulation('m_b', m_b, 'm_p', m_p, 'k_c', k_c, 'g', g, 'input_is_force', i
 % V. DESIRED INPUT OPTIMIZER
 desired_input_optimizer = OptimizationDesiredInput(lifted_state_space);
 
-% VI. KALMAN FILTER
-% Init disturbances
-d1 = 0; d2 = 0; dup = zeros(n_dup*N_1,1);
-ilc_kf = ILCKalmanFilter('lss', lifted_state_space,             ...
-                         'M' , 0.1 * eye(n_y*N_1, n_y*N_1),         ...
-                         'P0', 1e-2*eye(n_dup*N_1, n_dup*N_1),      ...
-                         'dt', dt, 'd0', dup, 'epsilon0', 0.3   );
+% VI. KALMAN FILTERS
+% d1, d2
+d1d2 = [0;0];
+n_d1d2 = 2;
+s.GK = eye(n_d1d2); s.Gd0 = [0; 0]; s.GF = [0;0];
+ilc_kf_d1d2 = ILCKalmanFilter('lss', s, 'dt', dt, 'd0', d1d2,   ...
+                              'M' , 0.1 * eye(n_d1d2, n_d1d2),  ...
+                              'P0', 1e-2*eye(n_d1d2, n_d1d2),   ...
+                              'epsilon0', 0.3                   );
+% dpn
+dup = zeros(n_dup*N_1,1);
+ilc_kf_dpn = ILCKalmanFilter('lss', lifted_state_space,                 ...
+                             'M' , 0.1 * eye(n_y*N_1, n_y*N_1),         ...
+                             'P0', 1e-2*eye(n_dup*N_1, n_dup*N_1),      ...
+                             'dt', dt, 'd0', dup, 'epsilon0', 0.3       );
 
 %% Iteration
-ILC_it = 1; % number of ILC iteration
-
+ILC_it = 10; % number of ILC iteration
+ 
 % collect: dup, x_p, x_b, u_p
 dup_vec = zeros(ILC_it, n_dup*N_1, n_dup);
 x_p_vec = zeros(ILC_it, N);
@@ -87,7 +95,8 @@ u_p_vec = zeros(ILC_it, N);
 u_des_vec = zeros(ILC_it, N_1);
 
 % ILC
-ilc_kf.resetKF()
+ilc_kf_d1d2.resetKF()
+ilc_kf_dpn.resetKF()
 close all
 
 % Initialize lifted state space
@@ -96,7 +105,6 @@ impact_timesteps(1) = 2;
 impact_timesteps(Simulation.steps_from_time(Tb, dt):end) = 2;
 lifted_state_space.updateQuadrProgMatrixes(impact_timesteps)
 %% ILC Loop
-MinJerkTrajectory.plot_paths(xuaj_des, dt, "free start and end acceleration")
 for j = 1:ILC_it
     display("ITERATION: " + num2str(j))
 
@@ -132,7 +140,11 @@ for j = 1:ILC_it
 
     % 4.Identify errors d1, d2, dup (kalman filter or optimization problem)
     disp("KF update step")
-    dup = ilc_kf.updateStep(u_des, transpose(x_p(2:end)));
+    d1_meas = intervals(1,2)*dt - 0.5*ub_0^2/g; % = hb_meas - ub0^2/(2g)
+    d2_meas = intervals(1,2)*dt - 2*ub_0/g; % = Tb_meas - 2ub0/g
+    d1d2 = ilc_kf_d1d2.updateStep(0, [d1_meas; d2_meas]);
+    dup = ilc_kf_dpn.updateStep(u_des, transpose(x_p(2:end)));
+    disp("The estimated d1d2"); disp(d1d2);
 
     % collect data for plotting
     dup_vec(j,:) =  dup;
