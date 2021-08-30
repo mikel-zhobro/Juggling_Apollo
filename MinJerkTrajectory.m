@@ -4,7 +4,7 @@ classdef MinJerkTrajectory
     % the equations stay the same and only the coefficients change.
     % This allows us to call get_trajectories() to create paths of
     % different constraints.
-    
+
    methods (Static)
     % X. Plate trajectory
     function [xuaj_des] = plan_plate_trajectory(dt, Tb, x_p0, x_pTb, up_0, up_Tb, ap_0, ap_T)
@@ -12,7 +12,7 @@ classdef MinJerkTrajectory
         %   xb_0, ub_0: conditions at t=0
         %   xb_Tb, ub_T: conditions at t=Tb  [assumed 0]
         % Output:
-        %   xp_des(t) = [x_p(t);     u_p(t);       a_p(t);   u_(t)] 
+        %   xp_des(t) = [x_p(t);     u_p(t);       a_p(t);   u_(t)]
         %             = [position; velocity; acceleration;    jerk]
         %   T is the total time for one cycle(i.e. throw and catch)
 
@@ -78,8 +78,8 @@ classdef MinJerkTrajectory
                     4/(3*Tb),  36/Tb^3, -100/Tb^4;
                        -1/6,  -6/Tb^2,   20/Tb^3];
 
-        v = [0; 
-             up_Tb-ub_0 - Tb*ap_0; 
+        v = [0;
+             up_Tb-ub_0 - Tb*ap_0;
              x_pTb-x_p0 - ub_0*Tb - Tb^2*ap_0/2];
 
         c = C_cv * v;
@@ -100,7 +100,7 @@ classdef MinJerkTrajectory
                   30/Tb^3,  -12/Tb^2, 3/(2*Tb)];
 
         v = [x_pTb-x_p0 - up_0*Tb - Tb^2*ap_0/2;
-             up_Tb-up_0 - Tb*ap_0; 
+             up_Tb-up_0 - Tb*ap_0;
              ap_Tb-ap_0]; % assume ap_t=ap_0
 
         c = C_cv * v;
@@ -133,7 +133,7 @@ classdef MinJerkTrajectory
         legend("Plate jerk")
         sgtitle(Title)
     end
-    
+
    end
 end
 

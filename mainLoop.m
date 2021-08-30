@@ -53,7 +53,7 @@ end
 n_x = size(Ad, 1);
 n_y = size(Cd, 1);
 n_dup = size(S, 2);
-N_1 = N -1;  % important since input cannot influence the first state
+N_1 = N - 1;  % important since input cannot influence the first state
 % III. LIFTED STATE SPACE
 lifted_state_space = LiftedStateSpace('Ad', Ad, 'Bd', Bd,        ...
                                       'Cd', Cd, 'S', S,          ...

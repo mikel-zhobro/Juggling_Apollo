@@ -17,7 +17,7 @@ classdef Simulation < matlab.System
         setProperties(obj,nargin,varargin{:})
     end
 
-    function [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec] = simulate_one_iteration2(obj, dt, T, x_b0, x_p0, u_b0, u_p0, u, repetitions)
+    function [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec] = simulate_one_iteration(obj, dt, T, x_b0, x_p0, u_b0, u_p0, u, repetitions)
         if nargin < 9
             repetitions = 1;
         end
@@ -49,7 +49,7 @@ classdef Simulation < matlab.System
         end
     end
 
-    function [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec] = simulate_one_iteration(obj, dt, T, x_b0, x_p0, u_b0, u_p0, u, repetitions)
+    function [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec] = simulate_one_iteration_ss(obj, dt, T, x_b0, x_p0, u_b0, u_p0, u, repetitions)
         if nargin < 9
             repetitions = 1;
         end
