@@ -8,7 +8,8 @@ classdef Simulation < matlab.System
         g;                  % gravitational acceleration constant
         input_is_force;     % true if input is force, false if input is velocity
         sys;                % dynamic sys used to get state space matrixes of system
-        air_Drag;      % bool
+        air_drag;           % bool whether we should add air drag to the ball
+        plate_cos_dis       % bool whether we should add some cosinus form disturbance on the plate trajectory
     end
 
    methods
@@ -87,7 +88,7 @@ classdef Simulation < matlab.System
         F_p  = obj.m_p * obj.k_c * (u_des_p-u_p);
     end
 
-    function [x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, F_i] = simulate_one_step(obj, dt, u_i, x_b_i, x_p_i, u_b_i, u_p_i)
+    function [x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, F_i] = simulate_one_step(obj, dt, u_i, x_b_i, x_p_i, u_b_i, u_p_i, di)
         % this works only with force as input
         % so if we get speed we transform it to force.
         F_i = u_i;
@@ -101,21 +102,29 @@ classdef Simulation < matlab.System
         % gN = x_b_1_2 - x_p_1_2;
         gN = x_b_i - x_p_i;
         gamma_n_i = u_b_i - u_p_i;
+        state_disturbance = zeros(1,4);
         if gN <=1e-5
             dP_N = max(0,(-gamma_n_i + obj.g*dt + F_i*dt/obj.m_p)/ (obj.m_b^-1 + obj.m_p^-1));
             % dP_N = (-gamma_n_i + obj.g*dt + u_i*dt/obj.m_p)/ (obj.m_b^-1 + obj.m_p^-1);
+            if obj.plate_cos_dis
+                state_disturbance(1) = di
+                state_disturbance(2) = di
+            end
         else
             dP_N = 0;
+            if obj.plate_cos_dis
+                state_disturbance(2) = di
+            end
         end
-        
+
         state_friction = zeros(1,4);
-        if obj.air_Drag
+        if obj.air_drag
             state_friction = obj.get_state_friction([x_b_i; x_p_i; u_b_i; u_p_i], dt);
         end
-        u_b_new = u_b_i - obj.g*dt + dP_N/obj.m_b           + state_friction(1);
-        u_p_new = u_p_i + F_i*dt/obj.m_p - dP_N/obj.m_p     + state_friction(2);
-        x_b_new = x_b_1_2 + 0.5*dt*u_b_new                  + state_friction(3);
-        x_p_new = x_p_1_2 + 0.5*dt*u_p_new                  + state_friction(4);
+        u_b_new = u_b_i - obj.g*dt + dP_N/obj.m_b           + state_friction(3) + state_disturbance(3);
+        u_p_new = u_p_i + F_i*dt/obj.m_p - dP_N/obj.m_p     + state_friction(4) + state_disturbance(4);
+        x_b_new = x_b_1_2 + 0.5*dt*u_b_new                  + state_friction(1) + state_disturbance(1);
+        x_p_new = x_p_1_2 + 0.5*dt*u_p_new                  + state_friction(2) + state_disturbance(2);
     end
 
     function [x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, u_ii] = state_space_one_step(obj, dt, u_i, x_b_i, x_p_i, u_b_i, u_p_i)
@@ -132,7 +141,7 @@ classdef Simulation < matlab.System
         end
 
         state_friction = zeros(1,4);
-        if obj.air_Drag
+        if obj.air_drag
             state_friction = obj.get_state_friction([x_b_i; x_p_i; u_b_i; u_p_i], dt);
         end
         state_new = Ad*[x_b_i; x_p_i; u_b_i; u_p_i] + Bd*u_i + c + state_friction;
@@ -160,8 +169,8 @@ classdef Simulation < matlab.System
         state_friction(1) = du*dt;
         state_friction(3) = du;
     end
-   end   
-   
+   end
+
    %% Static Helpers
    methods (Static)
     function f_drag=friction(v)
@@ -172,7 +181,7 @@ classdef Simulation < matlab.System
         c = pi/16*p*D^2;
         f_drag = c*v^2;
     end
-         
+
     function N = steps_from_time(T, dt)
         N = floor(T/dt)+1;
     end
