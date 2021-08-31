@@ -27,13 +27,14 @@ N = Simulation.steps_from_time(Tsim, dt);           % number of steps for one it
 A = 0.3;                                            % [m] amplitude
 timesteps = dt * (0:N);                             % [s,s,..] timesteps
 F_p = 100 * m_p * A*sin(pi/Tb *timesteps);          % [N] input force on the plate
+dist = 0.1 * sin(timesteps);
 input_is_force = true;
 % Simulation for N steps
 sys = DynamicSystem('m_b', m_b, 'm_p', m_p, 'k_c', k_c, 'g', g, 'dt', dt);
 sim = Simulation('m_b', m_b, 'm_p', m_p, 'k_c', k_c, 'g', g, 'input_is_force', input_is_force, 'sys', sys);
-[x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, F_vec] = sim.simulate_one_iteration(dt, Tsim, x_b0, x_p0, u_b0, u_p0, F_p);
+[x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, F_vec] = sim.simulate_one_iteration(dt, Tsim, x_b0, x_p0, u_b0, u_p0, F_p, 1, dist);
 
-[x_b2, u_b2, x_p2, u_p2, dP_N_vec2, gN_vec2, F_vec2] = sim.simulate_one_iteration2(dt, Tsim, x_b0, x_p0, u_b0, u_p0, F_p);
+[x_b2, u_b2, x_p2, u_p2, dP_N_vec2, gN_vec2, F_vec2] = sim.simulate_one_iteration_ss(dt, Tsim, x_b0, x_p0, u_b0, u_p0, F_p, 1, dist);
 % Plotting for Simulation Example
 % close all
 Simulation.plot_results(dt, F_vec-F_vec2, x_b-x_b2, u_b-u_b2, x_p-x_p2, u_p-u_p2, dP_N_vec-dP_N_vec2, gN_vec-gN_vec2)

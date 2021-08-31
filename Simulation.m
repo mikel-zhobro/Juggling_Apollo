@@ -18,11 +18,15 @@ classdef Simulation < matlab.System
         setProperties(obj,nargin,varargin{:})
     end
 
-    function [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec] = simulate_one_iteration(obj, dt, T, x_b0, x_p0, u_b0, u_p0, u, repetitions)
+    function [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec] = simulate_one_iteration(obj, dt, T, x_b0, x_p0, u_b0, u_p0, u, repetitions, d)
         if nargin < 9
             repetitions = 1;
         end
+        if nargin < 10
+            d = zeros(size(u)); % disturbance
+        end
         u = repmat(u,repetitions,1);
+        d = repmat(d,repetitions,1);
         % Vectors to collect the history of the system states
         N = Simulation.steps_from_time(T, dt)*repetitions;
         x_b = zeros(1,N); x_b(1) = x_b0;
@@ -37,7 +41,7 @@ classdef Simulation < matlab.System
         % Simulation
         for i = (1:N-1)
             % one step simulation
-            [x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, u_i] = obj.simulate_one_step(dt, u(i), x_b(i), x_p(i), u_b(i), u_p(i));
+            [x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, u_i] = obj.simulate_one_step(dt, u(i), x_b(i), x_p(i), u_b(i), u_p(i), d(i));
             % collect state of the system
             x_b(i+1) = x_b_new;
             x_p(i+1) = x_p_new;
@@ -50,11 +54,15 @@ classdef Simulation < matlab.System
         end
     end
 
-    function [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec] = simulate_one_iteration_ss(obj, dt, T, x_b0, x_p0, u_b0, u_p0, u, repetitions)
+    function [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec] = simulate_one_iteration_ss(obj, dt, T, x_b0, x_p0, u_b0, u_p0, u, repetitions, d)
         if nargin < 9
             repetitions = 1;
         end
+        if nargin < 10
+            d = zeros(size(u)); % disturbance
+        end
         u = repmat(u,repetitions,1);
+        d = repmat(d,repetitions,1);
         % Vectors to collect the history of the system states
         N = Simulation.steps_from_time(T, dt)*repetitions;
         x_b = zeros(1,N); x_b(1) = x_b0;
@@ -69,7 +77,7 @@ classdef Simulation < matlab.System
         % Simulation
         for i = (1:N-1)
             % Simlate using matrixes
-            [x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, u_i] = obj.state_space_one_step(dt, u(i), x_b(i), x_p(i), u_b(i), u_p(i));
+            [x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, u_i] = obj.state_space_one_step(dt, u(i), x_b(i), x_p(i), u_b(i), u_p(i), d(i));
             % collect states
             x_b(i+1) = x_b_new;
             x_p(i+1) = x_p_new;
@@ -102,19 +110,14 @@ classdef Simulation < matlab.System
         % gN = x_b_1_2 - x_p_1_2;
         gN = x_b_i - x_p_i;
         gamma_n_i = u_b_i - u_p_i;
-        state_disturbance = zeros(1,4);
-        if gN <=1e-5
+        state_disturbance = [0;di;0;0];
+        if gN <=1e-5 && (((-gamma_n_i + obj.g*dt + u_i*dt/obj.m_p))>=0)
             dP_N = max(0,(-gamma_n_i + obj.g*dt + F_i*dt/obj.m_p)/ (obj.m_b^-1 + obj.m_p^-1));
             % dP_N = (-gamma_n_i + obj.g*dt + u_i*dt/obj.m_p)/ (obj.m_b^-1 + obj.m_p^-1);
-            if obj.plate_cos_dis
-                state_disturbance(1) = di
-                state_disturbance(2) = di
-            end
+            state_disturbance(1) = di;
+
         else
             dP_N = 0;
-            if obj.plate_cos_dis
-                state_disturbance(2) = di
-            end
         end
 
         state_friction = zeros(1,4);
@@ -127,7 +130,7 @@ classdef Simulation < matlab.System
         x_p_new = x_p_1_2 + 0.5*dt*u_p_new                  + state_friction(2) + state_disturbance(2);
     end
 
-    function [x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, u_ii] = state_space_one_step(obj, dt, u_i, x_b_i, x_p_i, u_b_i, u_p_i)
+    function [x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, u_ii] = state_space_one_step(obj, dt, u_i, x_b_i, x_p_i, u_b_i, u_p_i, di)
         % gN = x_b_i + 0.5*dt*u_b_i - (x_p_i + 0.5*dt*u_p_i);
         gN = x_b_i - x_p_i;
         gamma_n_i = u_b_i-u_p_i;
@@ -141,10 +144,14 @@ classdef Simulation < matlab.System
         end
 
         state_friction = zeros(1,4);
+        state_disturbance = [0;di;0;0];
         if obj.air_drag
             state_friction = obj.get_state_friction([x_b_i; x_p_i; u_b_i; u_p_i], dt);
         end
-        state_new = Ad*[x_b_i; x_p_i; u_b_i; u_p_i] + Bd*u_i + c + state_friction;
+        if contact_impact
+            state_disturbance(1) = di;
+        end
+        state_new = Ad*[x_b_i; x_p_i; u_b_i; u_p_i] + Bd*u_i + c + state_friction + state_disturbance;
 
         x_b_new = state_new(1);
         x_p_new = state_new(2);
