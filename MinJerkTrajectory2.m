@@ -97,23 +97,31 @@ classdef MinJerkTrajectory2
         c6 = x0;
     end
 
-    function plot_paths(x, v, a, j, dt, Title)
+    function plot_paths(x, v, a, j, dt, Title, intervals, colors)
+        if nargin < 8
+            colors = [];
+        end
         figure
         timesteps = (1:length(x))*dt;
         subplot(4,1,1)
         plot(timesteps, x)
+        Simulation.plot_intervals(intervals, dt, colors)
+        
         legend("Plate position")
 
         subplot(4,1,2)
         plot(timesteps, v)
+        Simulation.plot_intervals(intervals, dt, colors)
         legend("Plate velocity")
 
         subplot(4,1,3)
         plot(timesteps, a)
+        Simulation.plot_intervals(intervals, dt, colors)
         legend("Plate acceleration")
 
         subplot(4,1,4)
         plot(timesteps, j)
+        Simulation.plot_intervals(intervals, dt, colors)
         legend("Plate jerk")
         sgtitle(Title)
     end

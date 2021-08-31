@@ -21,6 +21,8 @@ classdef ILC < matlab.System
     
     % design params
     properties
+        kf_d1d2_params
+        kf_dpn_params
         x_ruhe % starting position of the plate
         % t_f is calculated depending on the below params
         %     based on the formula n_b/n_a = (t_h+t_f)/(t_h+t_e)
@@ -81,32 +83,34 @@ classdef ILC < matlab.System
                                        'c_impact', c_impact       );
 
             % V. DESIRED INPUT OPTIMIZER
-            ilc.quad_input_optim = OptimizationDesiredInput(ilc.lss);
-
+            ilc.quad_input_optim = OptimizationDesiredInput(ilc.lss);                                    
+                                     
             % VI. KALMAN FILTERS
             % d1, d2
             d1d2 = [0;0];
             n_d1d2 = 2;
             s.GK = eye(n_d1d2); s.Gd0 = [0; 0]; s.GF = [0;0];
-            ilc.kf_d1d2 = ILCKalmanFilter('lss', s, 'dt', ilc.dt, 'd0', d1d2,   ...
-                                          'M' , 0.1 * eye(n_d1d2, n_d1d2),  ...
-                                          'P0', 1e-2*eye(n_d1d2, n_d1d2),   ...
-                                          'epsilon0', 0.3                   );
+            ilc.kf_d1d2 = ILCKalmanFilter('lss', s, 'dt', ilc.dt, 'd0', d1d2,                                   ...
+                                          'M' , ilc.kf_d1d2_params.M_diag * eye(n_d1d2, n_d1d2),                ...
+                                          'P0', ilc.kf_d1d2_params.P0_diag*eye(n_d1d2, n_d1d2),                 ...
+                                          'epsilon0', ilc.kf_d1d2_params.epsilon0,                              ...
+                                          'epsilon_decrease_rate', ilc.kf_d1d2_params.epsilon_decrease_rate)    ;
             % dpn
             ilc.N_1= Simulation.steps_from_time(ilc.t_h/2, ilc.dt) - 1;  % important since input cannot influence the first state
             dup = zeros(n_dup*ilc.N_1,1);
-            ilc.kf_dpn = ILCKalmanFilter('lss', ilc.lss,                 ...
-                                         'M' , 0.1 * eye(n_y*ilc.N_1, n_y*ilc.N_1),         ...
-                                         'P0', 1e-2*eye(n_dup*ilc.N_1, n_dup*ilc.N_1),      ...
-                                         'dt', ilc.dt, 'd0', dup, 'epsilon0', 0.3       );
+            ilc.kf_dpn = ILCKalmanFilter('lss', ilc.lss, 'dt', ilc.dt, 'd0', dup,                           ...
+                                         'M' , ilc.kf_dpn_params.M_diag * eye(n_y*ilc.N_1, n_y*ilc.N_1),    ...
+                                         'P0', ilc.kf_dpn_params.P0_diag*eye(n_dup*ilc.N_1, n_dup*ilc.N_1), ...
+                                         'epsilon0', ilc.kf_dpn_params.epsilon0,                            ...          
+                                         'epsilon_decrease_rate', ilc.kf_dpn_params.epsilon_decrease_rate)  ;
         end
         
         function resetILC(ilc, impact_timesteps)
             % reset LSS
-            if nargin>1
-                ilc.lifted_state_space.updateQuadrProgMatrixes(impact_timesteps)
+            if nargin > 1
+                ilc.lss.updateQuadrProgMatrixes(impact_timesteps)
             end
-
+            
             % reset KFs
             ilc.kf_d1d2.resetKF()
             ilc.kf_dpn.resetKF()
@@ -116,35 +120,36 @@ classdef ILC < matlab.System
             u_des = ilc.quad_input_optim.calcDesiredInput(ilc.kf_dpn.d, y_des);
         end
         
-        function [y_des,u_des] = learnThrowStep(ilc, u_des, y_meas, hb_meas, fly_time_meas)
-            if nargin > 1 % the first time we call it like: learnThrowStep(ilc)
+        function [y_des,u_ff_new, ub_0] = learnThrowStep(ilc, ub_0, u_ff_old, y_meas, hb_meas, fly_time_meas)
+            if nargin > 2 % the first time we call it like: learnThrowStep(ilc)
                 % calc d1d2 disturbances
-                d1_meas = hb_meas - 0.5*ilc.ub_0^2/ilc.g; % = hb_meas - ub0^2/(2g)
+                d1_meas = hb_meas - 0.5*ub_0^2/ilc.g; % = hb_meas - ub0^2/(2g)
                 d2_meas = fly_time_meas - ilc.t_f; % = Tb_meas - 2ub0/g
                 ilc.kf_d1d2.updateStep(0, [d1_meas; d2_meas]);
 
                 % calc dpn disturbance
-                ilc.kf_dpn.updateStep(u_des, y_meas);
+                ilc.kf_dpn.updateStep(u_ff_old, y_meas);
             else
-                ilc.lss.updateQuadrProgMatrixes(2*ones(1, ilc.N_1))
+                ilc.resetILC(2*ones(1, ilc.N_1))
             end
             
             % calc new ub_0
-%             ilc.ub_0 = 0.5*ilc.g*( ilc.t_f - ilc.kf_d1d2.d(2));
-            ilc.ub_0 = ilc.ub_0 - 0.7*ilc.kf_d1d2.d(2); % move in oposite direction of error
+%             ub_0 = 0.5*ilc.g*( ilc.t_f - ilc.kf_d1d2.d(2));
+            ub_0 = ub_0 - 0.3*0.5*ilc.g*ilc.kf_d1d2.d(2); % move in oposite direction of error
+%             ub_0 = ub_0 - 0.7*ilc.kf_d1d2.d(2); % move in oposite direction of error
 
             % new MinJerk
-            [y_des, v_des, a_des, j_des] = MinJerkTrajectory2.get_min_jerk_trajectory(ilc.dt, 0, ilc.t_h/2, ilc.x_ruhe, 0, 0, ilc.ub_0);
+            [y_des, v_des, a_des, j_des] = MinJerkTrajectory2.get_min_jerk_trajectory(ilc.dt, 0, ilc.t_h/2, ilc.x_ruhe, 0, 0, ub_0);
 %             MinJerkTrajectory2.plot_paths(y_des, v_des, a_des, j_des, ilc.dt, 'MinJerk Free start-end acceleration')
             
             % calc desired input
-            u_des = ilc.getDesiredInput(transpose(y_des(2:end)));
+            u_ff_new = ilc.getDesiredInput(transpose(y_des(2:end)));
         end
         
         function [Tb, ub_0] = plan_ball_trajectory(ilc, hb, Fp)
             ub_0 = sqrt(2*ilc.g*(hb - ilc.kf_d1d2.d(1)));  % velocity of ball at throw point
             Tb = 2*ub_0/ilc.g + ilc.kf_d1d2.d(2); % flying time of the ball
-            if nargin > 3 % consider impuls
+            if nargin > 3 % TODO: consider impuls
                 dPN = ilc.m_b*ilc.m_p/(ilc.m_b+ilc.m_p) * (ilc.g*ilc.dt + Fp*ilc.dt/ilc.m_p);
                 ub_0 = ub_0 - dPN;
             end

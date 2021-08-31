@@ -18,6 +18,10 @@ classdef Simulation < matlab.System
         setProperties(obj,nargin,varargin{:})
     end
 
+    function F_p = force_from_velocity(obj, u_des_p, u_p)
+        F_p  = obj.m_p * obj.k_c * (u_des_p-u_p);
+    end
+
     function [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec] = simulate_one_iteration(obj, dt, T, x_b0, x_p0, u_b0, u_p0, u, repetitions, d)
         if nargin < 9
             repetitions = 1;
@@ -54,6 +58,40 @@ classdef Simulation < matlab.System
         end
     end
 
+    function [x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, F_i] = simulate_one_step(obj, dt, u_i, x_b_i, x_p_i, u_b_i, u_p_i, di)
+        % this works only with force as input
+        % so if we get speed we transform it to force.
+        F_i = u_i;
+        if ~obj.input_is_force % did we get speed?
+            F_i = obj.force_from_velocity(u_i, u_p_i);
+        end
+
+        x_b_1_2 = x_b_i + 0.5*dt*u_b_i;
+        x_p_1_2 = x_p_i + 0.5*dt*u_p_i;
+
+        % gN = x_b_1_2 - x_p_1_2;
+        gN = x_b_i - x_p_i;
+        gamma_n_i = u_b_i - u_p_i;
+        state_disturbance = [0;di;0;0];
+        if gN <=1e-5 && (((-gamma_n_i + obj.g*dt + u_i*dt/obj.m_p))>=0)
+            dP_N = max(0,(-gamma_n_i + obj.g*dt + F_i*dt/obj.m_p)/ (obj.m_b^-1 + obj.m_p^-1));
+            % dP_N = (-gamma_n_i + obj.g*dt + u_i*dt/obj.m_p)/ (obj.m_b^-1 + obj.m_p^-1);
+            state_disturbance(1) = di;
+
+        else
+            dP_N = 0;
+        end
+
+        state_friction = zeros(1,4);
+        if obj.air_drag
+            state_friction = obj.get_state_friction([x_b_i; x_p_i; u_b_i; u_p_i], dt);
+        end
+        u_b_new = u_b_i - obj.g*dt + dP_N/obj.m_b           + state_friction(3) + state_disturbance(3);
+        u_p_new = u_p_i + F_i*dt/obj.m_p - dP_N/obj.m_p     + state_friction(4) + state_disturbance(4);
+        x_b_new = x_b_1_2 + 0.5*dt*u_b_new                  + state_friction(1) + state_disturbance(1);
+        x_p_new = x_p_1_2 + 0.5*dt*u_p_new                  + state_friction(2) + state_disturbance(2);
+    end
+
     function [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec] = simulate_one_iteration_ss(obj, dt, T, x_b0, x_p0, u_b0, u_p0, u, repetitions, d)
         if nargin < 9
             repetitions = 1;
@@ -88,46 +126,6 @@ classdef Simulation < matlab.System
             gN_vec(i) = gN;
             u_vec(i) = u_i;
         end
-    end
-
-
-
-    function F_p = force_from_velocity(obj, u_des_p, u_p)
-        F_p  = obj.m_p * obj.k_c * (u_des_p-u_p);
-    end
-
-    function [x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, F_i] = simulate_one_step(obj, dt, u_i, x_b_i, x_p_i, u_b_i, u_p_i, di)
-        % this works only with force as input
-        % so if we get speed we transform it to force.
-        F_i = u_i;
-        if ~obj.input_is_force % did we get speed?
-            F_i = obj.force_from_velocity(u_i, u_p_i);
-        end
-
-        x_b_1_2 = x_b_i + 0.5*dt*u_b_i;
-        x_p_1_2 = x_p_i + 0.5*dt*u_p_i;
-
-        % gN = x_b_1_2 - x_p_1_2;
-        gN = x_b_i - x_p_i;
-        gamma_n_i = u_b_i - u_p_i;
-        state_disturbance = [0;di;0;0];
-        if gN <=1e-5 && (((-gamma_n_i + obj.g*dt + u_i*dt/obj.m_p))>=0)
-            dP_N = max(0,(-gamma_n_i + obj.g*dt + F_i*dt/obj.m_p)/ (obj.m_b^-1 + obj.m_p^-1));
-            % dP_N = (-gamma_n_i + obj.g*dt + u_i*dt/obj.m_p)/ (obj.m_b^-1 + obj.m_p^-1);
-            state_disturbance(1) = di;
-
-        else
-            dP_N = 0;
-        end
-
-        state_friction = zeros(1,4);
-        if obj.air_drag
-            state_friction = obj.get_state_friction([x_b_i; x_p_i; u_b_i; u_p_i], dt);
-        end
-        u_b_new = u_b_i - obj.g*dt + dP_N/obj.m_b           + state_friction(3) + state_disturbance(3);
-        u_p_new = u_p_i + F_i*dt/obj.m_p - dP_N/obj.m_p     + state_friction(4) + state_disturbance(4);
-        x_b_new = x_b_1_2 + 0.5*dt*u_b_new                  + state_friction(1) + state_disturbance(1);
-        x_p_new = x_p_1_2 + 0.5*dt*u_p_new                  + state_friction(2) + state_disturbance(2);
     end
 
     function [x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, u_ii] = state_space_one_step(obj, dt, u_i, x_b_i, x_p_i, u_b_i, u_p_i, di)
@@ -173,7 +171,7 @@ classdef Simulation < matlab.System
         F_D = Simulation.friction(x0(3));
         du = -F_D*dt/obj.m_b;
         state_friction = zeros(size(x0));
-        state_friction(1) = du*dt;
+        state_friction(1) = 0.5*du*dt;
         state_friction(3) = du;
     end
    end
@@ -183,10 +181,10 @@ classdef Simulation < matlab.System
     function f_drag=friction(v)
         % D is the diameter of the ball
         % c = 1/4*p*A = pi/16*p*D^2
-        D = 0.2; % ball has diameter of 5cm
+        D = 0.4; % ball has diameter of 5cm
         p = 1.225; % [kg/m]  air density
         c = pi/16*p*D^2;
-        f_drag = c*v^2;
+        f_drag = sign(v)*c*v^2;
     end
 
     function N = steps_from_time(T, dt)
@@ -249,9 +247,15 @@ classdef Simulation < matlab.System
         legend("F [N]")
     end
 
-    function plot_intervals(intervals, dt)
+    function plot_intervals(intervals, dt, colors)
+        if nargin<3 || length(colors) ~= 3
+%             colors=[91, 207, 244]/255;
+            colors = {'blue', 'blue', 'blue'};
+        end
+        j = 1;
         for i = intervals
-            patch(dt*[i(1) i(1), i(2) i(2)], [min(ylim) max(ylim) max(ylim) min(ylim)], [91, 207, 244]/255, 'LineStyle', 'none', 'FaceAlpha', 0.3 )
+            patch(dt*[i(1) i(1), i(2) i(2)], [min(ylim) max(ylim) max(ylim) min(ylim)], colors{j}, 'LineStyle', 'none', 'FaceAlpha', 0.3 )
+            j=j+1;
         end
     end
    end

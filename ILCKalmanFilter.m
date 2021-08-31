@@ -5,6 +5,7 @@ classdef ILCKalmanFilter < matlab.System
         n_d;
         I;
         M;
+        epsilon_decrease_rate;
     end
 
     % initial values
@@ -18,39 +19,38 @@ classdef ILCKalmanFilter < matlab.System
     properties
         d;
         P;
-        Omega; epsilon;
+        epsilon; % Omega;
     end
-    
+
     % set every iteration
     properties
         lss;
     end
 
     methods
-        
+
         function obj = ILCKalmanFilter(varargin)
             setProperties(obj,nargin,varargin{:})
             obj.n_d = length(obj.d0);
             obj.I = eye(obj.n_d);
         end
-        
+
         function resetKF(obj)
             obj.d = obj.d0;
             obj.P = obj.P0;
-            obj.Omega = eye(obj.n_d) * obj.epsilon0;
             obj.epsilon = obj.epsilon0;
         end
-        
+
         function d = updateStep(obj, u, y)
             % In this case y = Fu + Gd0  + ((( GKd ))) + mu
-            P1_0 = obj.P + obj.Omega;
+            P1_0 = obj.P + eye(obj.n_d) * obj.epsilon;
             Theta = obj.lss.GK * P1_0 * transpose( obj.lss.GK ) + obj.M;
             K = P1_0 * transpose( obj.lss.GK ) * Theta^-1;
             obj.P = ( obj.I - K*obj.lss.GK ) * P1_0;
             obj.d = obj.d + K * ( y - obj.lss.Gd0 - obj.lss.GK*obj.d - obj.lss.GF*u );
-            
+
             % update epsilon
-            obj.epsilon = obj.epsilon*0.9;
+            obj.epsilon = obj.epsilon*obj.epsilon_decrease_rate;
             d = obj.d;
         end
     end
