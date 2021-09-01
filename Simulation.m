@@ -1,6 +1,5 @@
 classdef Simulation < matlab.System
-    %SIMULATION Summary of this class goes here
-    %   Detailed explanation goes here
+
     properties
         m_b;                % mass of ball
         m_p;                % mass of plate
@@ -72,7 +71,7 @@ classdef Simulation < matlab.System
         % gN = x_b_1_2 - x_p_1_2;
         gN = x_b_i - x_p_i;
         gamma_n_i = u_b_i - u_p_i;
-        contact_impact = gN <=1e-5 && (((-gamma_n_i + obj.g*dt + u_i*dt/obj.m_p))>=0);
+        contact_impact = gN <=1e-5; % && (((-gamma_n_i + obj.g*dt + u_i*dt/obj.m_p))>=0);
         if contact_impact
             dP_N = max(0,(-gamma_n_i + obj.g*dt + F_i*dt/obj.m_p)/ (obj.m_b^-1 + obj.m_p^-1));
             % dP_N = (-gamma_n_i + obj.g*dt + u_i*dt/obj.m_p)/ (obj.m_b^-1 + obj.m_p^-1);
@@ -111,9 +110,9 @@ classdef Simulation < matlab.System
 
         % Simulation
         for i = (1:N-1)
-            % Simlate using matrixes
+            % one step simulation
             [x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, u_i] = obj.state_space_one_step(dt, u(i), x_b(i), x_p(i), u_b(i), u_p(i), d(i));
-            % collect states
+            % collect state of the system
             x_b(i+1) = x_b_new;
             x_p(i+1) = x_p_new;
             u_b(i+1) = u_b_new;
@@ -126,6 +125,7 @@ classdef Simulation < matlab.System
     end
 
     function [x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, u_ii] = state_space_one_step(obj, dt, u_i, x_b_i, x_p_i, u_b_i, u_p_i, di)
+        % TODO: DOesnt work
         % gN = x_b_i + 0.5*dt*u_b_i - (x_p_i + 0.5*dt*u_p_i);
         gN = x_b_i - x_p_i;
         gamma_n_i = u_b_i-u_p_i;
