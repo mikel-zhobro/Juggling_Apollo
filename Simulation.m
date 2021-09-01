@@ -197,7 +197,7 @@ classdef Simulation < matlab.System
 
     function intervals = find_continuous_intervals(indices)
         intervals = [];
-        if length(indices)>0
+        if ~isempty(indices)
             % Find intervals where gN<=0
             last = indices(1);
             start = last;
@@ -205,13 +205,13 @@ classdef Simulation < matlab.System
             ends = [];
             for i=indices(2:end)
                 if i-last>1
-                    starts(end+1) = start;
+                    starts(end+1) = start-1;
                     ends(end+1) = last;
                     start = i;
                 end
                 last = i;
                 if i==indices(end)
-                    starts(end+1) = start;
+                    starts(end+1) = start-1;
                     ends(end+1) = last;
                     start = i;
                 end
@@ -225,7 +225,7 @@ classdef Simulation < matlab.System
 
         figure
         subplot(5,1,1)
-        timesteps = (1:size(x_b,2))*dt;
+        timesteps = (0:size(x_b,2)-1)*dt;
         plot(timesteps, x_b, 'r', timesteps, x_p, 'b')
         Simulation.plot_intervals(intervals, dt)
         legend("Ball position [m]", "Plate position [m]")
@@ -253,7 +253,7 @@ classdef Simulation < matlab.System
 
     function plot_intervals(intervals, dt, colors)
         if nargin<3 || length(colors) ~= size(intervals,2)
-            colors = repelem({'blue'},size(intervals,2));
+            colors = repelem({[91, 207, 244]/255},size(intervals,2));
         end
         j = 1;
         for i = intervals
