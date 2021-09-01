@@ -142,16 +142,24 @@ classdef ILC < matlab.System
             % calc desired input
             u_ff_new = ilc.quad_input_optim.calcDesiredInput(ilc.kf_dpn.d, transpose(y_des(2:end)));
         end
-        
-        function [Tb, ub_0] = plan_ball_trajectory(ilc, hb, Fp)
-            ub_0 = sqrt(2*ilc.g*(hb - ilc.kf_d1d2.d(1)));  % velocity of ball at throw point
-            Tb = 2*ub_0/ilc.g + ilc.kf_d1d2.d(2); % flying time of the ball
-            if nargin > 3 % TODO: consider impuls
-                dPN = ilc.m_b*ilc.m_p/(ilc.m_b+ilc.m_p) * (ilc.g*ilc.dt + Fp*ilc.dt/ilc.m_p);
-                ub_0 = ub_0 - dPN;
+
+        %% 2. Plate Free Motion
+        function [u_ff_new] = learnPlateMotionStep(ilc, y_des, u_ff_old, y_meas)
+            if nargin >2 % the first time we call it like: learnPlateMotionStep(ilc)
+                % estimate dpn disturbance
+                ilc.kf_dpn.updateStep(u_ff_old, y_meas);
+            else
+                ilc.N_1 = Simulation.steps_from_time(ilc.t_f, ilc.dt) - 1;  % important since input cannot influence the first state
+                ilc.initILC()
+                impact_timesteps = ones(1, ilc.N_1);
+                impact_timesteps([1,end]) = 2;
+                ilc.resetILC(impact_timesteps);
             end
+
+            % calc desired input
+            u_ff_new = ilc.quad_input_optim.calcDesiredInput(ilc.kf_dpn.d, transpose(y_des(2:end)));
         end
-        
+
     end
 end
 
