@@ -19,10 +19,10 @@ classdef ILCKalmanFilter < matlab.System
     properties
         d;
         P;
-        epsilon; % Omega;
+        epsilon; % di= di_0 + ni with ni~N(0,Omega) <- Omega = epsilon*eye(N)
     end
 
-    % set every iteration
+    % pointer to the lifted space (can be changed from outside)
     properties
         lss;
     end
@@ -41,13 +41,13 @@ classdef ILCKalmanFilter < matlab.System
             obj.epsilon = obj.epsilon0;
         end
 
-        function d = updateStep(obj, u, y)
+        function d = updateStep(obj, u, y_meas)
             % In this case y = Fu + Gd0  + ((( GKd ))) + mu
             P1_0 = obj.P + eye(obj.n_d) * obj.epsilon;
             Theta = obj.lss.GK * P1_0 * transpose( obj.lss.GK ) + obj.M;
             K = P1_0 * transpose( obj.lss.GK ) * Theta^-1;
             obj.P = ( obj.I - K*obj.lss.GK ) * P1_0;
-            obj.d = obj.d + K * ( y - obj.lss.Gd0 - obj.lss.GK*obj.d - obj.lss.GF*u );
+            obj.d = obj.d + K * ( y_meas - obj.lss.Gd0 - obj.lss.GK*obj.d - obj.lss.GF*u );
 
             % update epsilon
             obj.epsilon = obj.epsilon*obj.epsilon_decrease_rate;

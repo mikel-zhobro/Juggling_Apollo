@@ -8,7 +8,7 @@ classdef ILC < matlab.System
         kf_d1d2
         kf_dpn
     end
-    
+
     % constant properties
     properties
         m_b
@@ -18,7 +18,7 @@ classdef ILC < matlab.System
         dt
         sys
     end
-    
+
     % design params
     properties
         kf_d1d2_params
@@ -31,9 +31,9 @@ classdef ILC < matlab.System
         t_e % TODO: time that hand is empty
         n_h % number of hands (1 or 2)
         n_b % number of balls (1,2,3..)
-        N_1
+        N_1 % time steps
     end
-    
+
     %state
     properties
         ub_0
@@ -43,20 +43,19 @@ classdef ILC < matlab.System
         function ilc = ILC(varargin)
             setProperties(ilc,nargin,varargin{:})
             ilc.initTimes()
-            ilc.initILC()
         end
-        
+
         function initTimes(ilc)
             % TODO
             % ilc.t_f = ilc.n_b/ilc.n_h *(ilc.t_h+ilc.t_e)-ilc.t_h;
             ilc.t_h = ilc.t_f/2;
         end
-        
-        function initILC(ilc)
+
+        function initILC(ilc, N_1)
             % Here we want to set some convention to avoid missunderstandins later on.
             % 1. the state is [xb, xp, ub, up]^T
             % 2. the system can have as input either velocity u_des or the force F_p
-            
+
             % II. SYSTEM DYNAMICS
             input_is_force = false;
             ilc.sys = DynamicSystem('m_b', ilc.m_b, 'm_p', ilc.m_p, 'k_c', ilc.k_c, 'g', ilc.g, 'dt', ilc.dt);
@@ -72,7 +71,7 @@ classdef ILC < matlab.System
             n_x = size(Ad, 1);
             n_y = size(Cd, 1);
             n_dup = size(S, 2);
-            
+
             % III. LIFTED STATE SPACE
             ilc.lss = LiftedStateSpace('Ad', Ad, 'Bd', Bd,        ...
                                        'Cd', Cd, 'S', S,          ...
@@ -83,8 +82,8 @@ classdef ILC < matlab.System
                                        'c_impact', c_impact       );
 
             % V. DESIRED INPUT OPTIMIZER
-            ilc.quad_input_optim = OptimizationDesiredInput(ilc.lss);                                    
-                                     
+            ilc.quad_input_optim = OptimizationDesiredInput(ilc.lss);
+
             % VI. KALMAN FILTERS
             % d1, d2
             d1d2 = [0;0];
@@ -96,43 +95,41 @@ classdef ILC < matlab.System
                                           'epsilon0', ilc.kf_d1d2_params.epsilon0,                              ...
                                           'epsilon_decrease_rate', ilc.kf_d1d2_params.epsilon_decrease_rate)    ;
             % dpn
-            ilc.N_1= Simulation.steps_from_time(ilc.t_h/2, ilc.dt) - 1;  % important since input cannot influence the first state
             dup = zeros(n_dup*ilc.N_1,1);
             ilc.kf_dpn = ILCKalmanFilter('lss', ilc.lss, 'dt', ilc.dt, 'd0', dup,                           ...
                                          'M' , ilc.kf_dpn_params.M_diag * eye(n_y*ilc.N_1, n_y*ilc.N_1),    ...
                                          'P0', ilc.kf_dpn_params.P0_diag*eye(n_dup*ilc.N_1, n_dup*ilc.N_1), ...
-                                         'epsilon0', ilc.kf_dpn_params.epsilon0,                            ...          
+                                         'epsilon0', ilc.kf_dpn_params.epsilon0,                            ...
                                          'epsilon_decrease_rate', ilc.kf_dpn_params.epsilon_decrease_rate)  ;
         end
-        
+
         function resetILC(ilc, impact_timesteps)
             % reset LSS
             if nargin > 1
                 ilc.lss.updateQuadrProgMatrixes(impact_timesteps)
             end
-            
+
             % reset KFs
             ilc.kf_d1d2.resetKF()
             ilc.kf_dpn.resetKF()
         end
-        
-        function u_des = getDesiredInput(ilc, y_des)
-            u_des = ilc.quad_input_optim.calcDesiredInput(ilc.kf_dpn.d, y_des);
-        end
-        
+
+        %% 1. Throw
         function [y_des,u_ff_new, ub_0] = learnThrowStep(ilc, ub_0, u_ff_old, y_meas, hb_meas, fly_time_meas)
             if nargin > 2 % the first time we call it like: learnThrowStep(ilc)
-                % calc d1d2 disturbances
+                % estimate d1d2 disturbances
                 d1_meas = hb_meas - 0.5*ub_0^2/ilc.g; % = hb_meas - ub0^2/(2g)
                 d2_meas = fly_time_meas - ilc.t_f; % = Tb_meas - 2ub0/g
                 ilc.kf_d1d2.updateStep(0, [d1_meas; d2_meas]);
 
-                % calc dpn disturbance
+                % estimate dpn disturbance
                 ilc.kf_dpn.updateStep(u_ff_old, y_meas);
             else
+                ilc.N_1 = Simulation.steps_from_time(ilc.t_h/2, ilc.dt) - 1;  % important since input cannot influence the first state
+                ilc.initILC()
                 ilc.resetILC(2*ones(1, ilc.N_1))
             end
-            
+
             % calc new ub_0
 %             ub_0 = 0.5*ilc.g*( ilc.t_f - ilc.kf_d1d2.d(2));
             ub_0 = ub_0 - 0.3*0.5*ilc.g*ilc.kf_d1d2.d(2); % move in oposite direction of error
@@ -141,9 +138,9 @@ classdef ILC < matlab.System
             % new MinJerk
             [y_des, v_des, a_des, j_des] = MinJerkTrajectory2.get_min_jerk_trajectory(ilc.dt, 0, ilc.t_h/2, ilc.x_ruhe, 0, 0, ub_0);
 %             MinJerkTrajectory2.plot_paths(y_des, v_des, a_des, j_des, ilc.dt, 'MinJerk Free start-end acceleration')
-            
+
             % calc desired input
-            u_ff_new = ilc.getDesiredInput(transpose(y_des(2:end)));
+            u_ff_new = ilc.quad_input_optim.calcDesiredInput(ilc.kf_dpn.d, transpose(y_des(2:end)));
         end
         
         function [Tb, ub_0] = plan_ball_trajectory(ilc, hb, Fp)

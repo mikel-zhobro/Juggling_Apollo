@@ -73,17 +73,16 @@ kf_dpn_params.epsilon_decrease_rate = 0.9;
 my_ilc = ILC('m_b', m_b, 'm_p', m_p, 'k_c', k_c, 'g', g, 'dt', dt,              ...
              'x_ruhe', x_ruhe, 't_f', Tb, 'ub_0', ub_00,                         ...
              'kf_d1d2_params', kf_d1d2_params, 'kf_dpn_params', kf_dpn_params)  ;
-
-
+% reset ilc
+[y_des,u_ff] = my_ilc.learnThrowStep(ub_00);
+% my_ilc.resetILC()
 
 % Iteration params
-sim = Simulation('m_b', m_b, 'm_p', m_p, 'k_c', k_c, 'g', g, 'input_is_force', input_is_force, 'sys', my_ilc.sys, 'air_drag', true);
+sim = Simulation('m_b', m_b, 'm_p', m_p, 'k_c', k_c, 'g', g, 'input_is_force', input_is_force, 'sys', my_ilc.sys, 'air_drag', false);
 % ----------------------------------------------------------------------- %
 
 %% Learn Throw
 ILC_it = 125; % number of ILC iteration
-
-% reset ilc
 ub_0 = ub_00;
 my_ilc.resetILC()
 
@@ -101,9 +100,9 @@ u_b0_vec = zeros(ILC_it, 1);
 u_d2_vec = zeros(ILC_it, 1);
 u_Tb_vec = zeros(ILC_it, 1);
 % ILC Loop
-close all
+% close all
 x0 = {x_ruhe; x_ruhe; 0; 0}; % the plate and ball in ruhe
-[y_des,u_ff] = my_ilc.learnThrowStep(ub_0);
+
 for j = 1:ILC_it
     display("ITERATION: " + num2str(j))
     
@@ -145,23 +144,6 @@ plotIterations(x_b_vec, "x_b through iterations", dt, 1)
 % plotIterations(x_p_vec, "x_p through iterations", dt, 1)
 % plotIterations(u_p_vec, "u_p through iterations", dt, 4)
 % plotIterations(u_des_vec - u_des_vec(1,:), "u_{des} through iterations", dt, 4)
-
-%% TODO: Free move plate to catch
-% Init State
-% ub_throw = ub_0;
-% x_b0 = 0;
-% x_p0 = 0;       up_0 = ub_throw;      % acc.ta = -3*g;
-% x_pTb = 0;      ub_T = -ub_0/6;       % acc.tb = 0;
-%               %----important----%
-% 
-% x0 = [x_b0; x_p0; ub_0; up_0];
-
-% Initialize lifted state space
-% N_1= Simulation.steps_from_time(my_ilc.t_f, dt) - 1;
-% impact_timesteps = ones(1, N_1);
-% impact_timesteps([1,end]) = 2;
-% ilc.resetILC(impact_timesteps)
-
 %% Components
 % Ball Trajectory
 % PROBLEM: does not consider impuls

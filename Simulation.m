@@ -72,20 +72,17 @@ classdef Simulation < matlab.System
         % gN = x_b_1_2 - x_p_1_2;
         gN = x_b_i - x_p_i;
         gamma_n_i = u_b_i - u_p_i;
-        state_disturbance = [0;di;0;0];
-        if gN <=1e-5 && (((-gamma_n_i + obj.g*dt + u_i*dt/obj.m_p))>=0)
+        contact_impact = gN <=1e-5 && (((-gamma_n_i + obj.g*dt + u_i*dt/obj.m_p))>=0);
+        if contact_impact
             dP_N = max(0,(-gamma_n_i + obj.g*dt + F_i*dt/obj.m_p)/ (obj.m_b^-1 + obj.m_p^-1));
             % dP_N = (-gamma_n_i + obj.g*dt + u_i*dt/obj.m_p)/ (obj.m_b^-1 + obj.m_p^-1);
-            state_disturbance(1) = di;
-
         else
             dP_N = 0;
         end
 
-        state_friction = zeros(1,4);
-        if obj.air_drag
-            state_friction = obj.get_state_friction([x_b_i; x_p_i; u_b_i; u_p_i], dt);
-        end
+        state_friction = obj.get_state_friction([x_b_i; x_p_i; u_b_i; u_p_i], dt);
+        state_disturbance = Simulation.get_state_disturbance(contact_impact, di);
+        
         u_b_new = u_b_i - obj.g*dt + dP_N/obj.m_b           + state_friction(3) + state_disturbance(3);
         u_p_new = u_p_i + F_i*dt/obj.m_p - dP_N/obj.m_p     + state_friction(4) + state_disturbance(4);
         x_b_new = x_b_1_2 + 0.5*dt*u_b_new                  + state_friction(1) + state_disturbance(1);
@@ -141,14 +138,9 @@ classdef Simulation < matlab.System
             [Ad, Bd, ~, ~, c] = obj.sys.getSystemMarixesVelocityControl(dt, contact_impact);
         end
 
-        state_friction = zeros(1,4);
-        state_disturbance = [0;di;0;0];
-        if obj.air_drag
-            state_friction = obj.get_state_friction([x_b_i; x_p_i; u_b_i; u_p_i], dt);
-        end
-        if contact_impact
-            state_disturbance(1) = di;
-        end
+        state_disturbance = Simulation.get_state_disturbance(contact_impact, di);
+        state_friction = obj.get_state_friction([x_b_i; x_p_i; u_b_i; u_p_i], dt);
+
         state_new = Ad*[x_b_i; x_p_i; u_b_i; u_p_i] + Bd*u_i + c + state_friction + state_disturbance;
 
         x_b_new = state_new(1);
@@ -167,17 +159,29 @@ classdef Simulation < matlab.System
     end
 
     function state_friction=get_state_friction(obj, x0, dt)
-        % x = x + F_D*dt where F_D is force caused by air drag
-        F_D = Simulation.friction(x0(3));
-        du = -F_D*dt/obj.m_b;
+        % F_D is force caused by air drag
         state_friction = zeros(size(x0));
-        state_friction(1) = 0.5*du*dt;
-        state_friction(3) = du;
+        if obj.air_drag
+            F_D = Simulation.friction(x0(3));
+            du = -F_D*dt/obj.m_b;
+            state_friction(1) = 0.5*du*dt;
+            state_friction(3) = du;
+        end
     end
+    
+
    end
 
    %% Static Helpers
    methods (Static)
+    function state_disturbance=get_state_disturbance(contact_impact, di)
+        % F_D is force caused by air drag
+        state_disturbance = [0;di;0;0];
+        if contact_impact
+            state_disturbance(1) = di;
+        end
+    end
+    
     function f_drag=friction(v)
         % D is the diameter of the ball
         % c = 1/4*p*A = pi/16*p*D^2
@@ -248,9 +252,8 @@ classdef Simulation < matlab.System
     end
 
     function plot_intervals(intervals, dt, colors)
-        if nargin<3 || length(colors) ~= 3
-%             colors=[91, 207, 244]/255;
-            colors = {'blue', 'blue', 'blue'};
+        if nargin<3 || length(colors) ~= size(intervals,2)
+            colors = repelem({'blue'},size(intervals,2));
         end
         j = 1;
         for i = intervals

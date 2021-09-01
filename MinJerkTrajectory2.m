@@ -1,5 +1,5 @@
 classdef MinJerkTrajectory2
-    %MINJERKTRAJECTORY2 Used to do min-jerk trajectory computation
+    %MINJERKTRAJECTORY Used to do min-jerk trajectory computation
     % Since any free start- or end-state puts a constraint on the constate
     % the equations stay the same and only the coefficients change.
     % This allows us to call get_trajectories() to create paths of
@@ -105,23 +105,30 @@ classdef MinJerkTrajectory2
         timesteps = (1:length(x))*dt;
         subplot(4,1,1)
         plot(timesteps, x)
-        Simulation.plot_intervals(intervals, dt, colors)
-        
+        if nargin > 6
+            Simulation.plot_intervals(intervals, dt, colors)
+        end
         legend("Plate position")
 
         subplot(4,1,2)
         plot(timesteps, v)
-        Simulation.plot_intervals(intervals, dt, colors)
+        if nargin > 6
+            Simulation.plot_intervals(intervals, dt, colors)
+        end
         legend("Plate velocity")
 
         subplot(4,1,3)
         plot(timesteps, a)
-        Simulation.plot_intervals(intervals, dt, colors)
+        if nargin > 6
+            Simulation.plot_intervals(intervals, dt, colors)
+        end
         legend("Plate acceleration")
 
         subplot(4,1,4)
         plot(timesteps, j)
-        Simulation.plot_intervals(intervals, dt, colors)
+        if nargin > 6
+            Simulation.plot_intervals(intervals, dt, colors)
+        end
         legend("Plate jerk")
         sgtitle(Title)
     end

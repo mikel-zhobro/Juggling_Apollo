@@ -1,6 +1,4 @@
 classdef DynamicSystem < matlab.System
-    %DYNAMICSYSEM Summary of this class goes here
-    %   Detailed explanation goes here
 
     properties
         m_b; % mass of ball
@@ -13,8 +11,6 @@ classdef DynamicSystem < matlab.System
     methods
         % Constructor
         function obj = DynamicSystem(varargin)
-            %OPTIMIZATIONDESIREDINPUT Construct an instance of this class
-            %   Support name-value pair arguments when constructing object
             setProperties(obj,nargin,varargin{:})
         end
 
