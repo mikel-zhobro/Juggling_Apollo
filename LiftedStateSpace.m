@@ -55,9 +55,9 @@ classdef LiftedStateSpace < matlab.System
             
             % F = [B0          0        0  .. 0
             %      A1B0        B1       0  .. 0
-            %      A2A1B0      A1B0     B0 .. 0
+            %      A2A1B0      A1B1     B2 .. 0
             %        ..         ..         ..
-            %      AN-1..A1B0  AN-2..A1B0  .. B0]
+            %      AN-1..A1B0  AN-2..A1B1  .. B0N-1]
             F = zeros(nx*N, nu*N);
             % ---------- uncomment if dup is disturbance on dPN -----------
             % ndup =  size(obj.S,2);
