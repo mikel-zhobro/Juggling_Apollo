@@ -36,6 +36,7 @@ MinJerkTrajectory2.plot_paths([x1,x2,x3], [v1,v2,v3], [a1,a2,a3], [j1,j2,j3], dt
 
 %% Parameters
 % Constants
+clear all
 g = 9.80665;    % [m/s^2]
 dt = 0.004;      % [s] discretization time step size
 
@@ -103,11 +104,13 @@ u_Tb_vec = zeros(ILC_it, 1);
 % close all
 x0 = {x_ruhe; x_ruhe; 0; 0}; % the plate and ball in ruhe
 
+period = 0.3/dt;
+disturbance = 0.1*sin(2*pi/period*[0:Simulation.steps_from_time(my_ilc.t_h/2, dt)-2]);
 for j = 1:ILC_it
     display("ITERATION: " + num2str(j))
     
     % Main Simulation
-    [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, F_vec] = sim.simulate_one_iteration_ss(dt, my_ilc.t_h/2, x0{:}, u_ff, 1);
+    [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, F_vec] = sim.simulate_one_iteration_ss(dt, my_ilc.t_h/2, x0{:}, u_ff, 1, disturbance);
     
     % Measurments for height and fly-time-to-zero
     % Extra simulation to measure time of flight
@@ -139,9 +142,10 @@ figure; plot(iter_steps(tt:end),[u_b0_vec(tt:end)-u_b0_vec(end),u_d2_vec(tt:end)
 % Simulation.plot_results(dt, F_vec_extra, x_b_extra, u_b_extra, x_p_extra, u_p_extra, dP_N_vec_extra, gN_vec_extra)
 %% Plot trajectories over ILC iterations
 close all
-% plotIterations(dup_vec, "d_{P_N} through iterations", dt, 14)
-plotIterations(x_b_vec, "x_b through iterations", dt, 1)
-% plotIterations(x_p_vec, "x_p through iterations", dt, 1)
+plotIterations(0.5*dt/m_p*dup_vec, "d_{P_N} through iterations", dt, 14)
+plotIterations(disturbance, "real disturbance", dt)
+% plotIterations(x_b_vec, "x_b through iterations", dt, 1)
+% plotIterations(x_p_vec, "x_p through iterations", dt, 14)
 % plotIterations(u_p_vec, "u_p through iterations", dt, 4)
 % plotIterations(u_des_vec - u_des_vec(1,:), "u_{des} through iterations", dt, 4)
 %% Components
