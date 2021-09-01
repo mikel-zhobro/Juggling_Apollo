@@ -1,5 +1,5 @@
 classdef ILC < matlab.System
-    % ILC('m_b', m_b, 'm_p', m_p, 'k_c', k_c, 'g', g, 'dt', dt, 'x_ruhe', x_ruhe, 't_f', t_f)
+    % ILC('m_b', m_b, 'm_p', m_p, 'k_c', k_c, 'g', g, 'dt', dt, 'x_0', x_0, 't_f', t_f)
 
     % objects with methods to be called
     properties
@@ -23,7 +23,7 @@ classdef ILC < matlab.System
     properties
         kf_d1d2_params
         kf_dpn_params
-        x_ruhe % starting position of the plate
+        x_0 % starting position of the plate
         % t_f is calculated depending on the below params
         %     based on the formula n_b/n_a = (t_h+t_f)/(t_h+t_e)
         t_f % flying time of the ball
@@ -32,11 +32,6 @@ classdef ILC < matlab.System
         n_h % number of hands (1 or 2)
         n_b % number of balls (1,2,3..)
         N_1 % time steps
-    end
-
-    %state
-    properties
-        ub_0
     end
 
     methods
@@ -51,7 +46,7 @@ classdef ILC < matlab.System
             ilc.t_h = ilc.t_f/2;
         end
 
-        function initILC(ilc, N_1)
+        function initILC(ilc)
             % Here we want to set some convention to avoid missunderstandins later on.
             % 1. the state is [xb, xp, ub, up]^T
             % 2. the system can have as input either velocity u_des or the force F_p
@@ -73,13 +68,13 @@ classdef ILC < matlab.System
             n_dup = size(S, 2);
 
             % III. LIFTED STATE SPACE
-            ilc.lss = LiftedStateSpace('Ad', Ad, 'Bd', Bd,        ...
-                                       'Cd', Cd, 'S', S,          ...
-                                       'x0', [ilc.x_ruhe; ilc.x_ruhe; 0; 0], ...
-                                       'c', c,  ...
-                                       'Ad_impact', Ad_impact,    ...
-                                       'Bd_impact', Bd_impact,    ...
-                                       'c_impact', c_impact       );
+            ilc.lss = LiftedStateSpace('Ad', Ad, 'Bd', Bd,      ...
+                                       'Cd', Cd, 'S', S,        ...
+                                       'x0', ilc.x_0,           ...
+                                       'c', c,                  ...
+                                       'Ad_impact', Ad_impact,  ...
+                                       'Bd_impact', Bd_impact,  ...
+                                       'c_impact', c_impact     );
 
             % V. DESIRED INPUT OPTIMIZER
             ilc.quad_input_optim = OptimizationDesiredInput(ilc.lss);
@@ -136,7 +131,7 @@ classdef ILC < matlab.System
 %             ub_0 = ub_0 - 0.7*ilc.kf_d1d2.d(2); % move in oposite direction of error
 
             % new MinJerk
-            [y_des, v_des, a_des, j_des] = MinJerkTrajectory2.get_min_jerk_trajectory(ilc.dt, 0, ilc.t_h/2, ilc.x_ruhe, 0, 0, ub_0);
+            [y_des, v_des, a_des, j_des] = MinJerkTrajectory2.get_min_jerk_trajectory(ilc.dt, 0, ilc.t_h/2, ilc.x_0(1), 0, 0, ub_0);
 %             MinJerkTrajectory2.plot_paths(y_des, v_des, a_des, j_des, ilc.dt, 'MinJerk Free start-end acceleration')
 
             % calc desired input
@@ -157,7 +152,7 @@ classdef ILC < matlab.System
             end
 
             % calc desired input
-            u_ff_new = ilc.quad_input_optim.calcDesiredInput(ilc.kf_dpn.d, transpose(y_des(2:end)));
+            u_ff_new = ilc.quad_input_optim.calcDesiredInput(ilc.kf_dpn.d, transpose(y_des));
         end
 
     end
