@@ -64,7 +64,7 @@ sim = Simulation('m_b', m_b, 'm_p', m_p, 'k_c', k_c, 'g', g, 'input_is_force', i
 
 %% Learn Plate Motion
 % close all
-ILC_it = 25; % number of ILC iteration
+ILC_it = 45; % number of ILC iteration
 
 % reset ilc
 my_ilc.resetILC() %% resets the kalman filters
@@ -78,8 +78,8 @@ u_des_vec = zeros(ILC_it, my_ilc.N_1);
 
 % ILC Loop
 % disturbance to be learned
-period = 0.3/dt;
-disturbance = 0.02*sin(2*pi/period*(0:my_ilc.N_1-1)); % disturbance on the plate position
+period = 0.1/dt;
+disturbance = 200*sin(2*pi/period*(0:my_ilc.N_1-1)); % disturbance on the plate position
 for j = 1:ILC_it
     display("ITERATION: " + num2str(j))
     
@@ -100,13 +100,13 @@ for j = 1:ILC_it
 end
 
 Simulation.plot_results(dt, F_vec, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec)
-plotIterations(T_plate_dist*dup_vec - disturbance, "d_{P_N} - d_{real} through iterations", dt, 1)
+% plotIterations(T_plate_dist*dup_vec - disturbance, "d_{P_N} - d_{real} through iterations", dt, 1)
 %% Plot trajectories over ILC iterations
 close all
 % plotIterations(T_plate_dist*dup_vec, "d_{P} through iterations", dt, 1)
 % plot((0:my_ilc.N_1-1)*dt, disturbance, 'x');
 % plotIterations(x_b_vec, "x_b through iterations", dt, 1)
-% plotIterations(x_p_vec, "x_p through iterations", dt, 1)
+plotIterations(x_p_vec, "x_p through iterations", dt, 1)
 % plotIterations(u_p_vec, "u_p through iterations", dt, 4)
 plotIterations(u_des_vec, "u_{ff} through iterations", dt, 3)
 
