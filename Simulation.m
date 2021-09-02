@@ -57,13 +57,17 @@ classdef Simulation < matlab.System
         end
     end
 
-    function [x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, F_i] = simulate_one_step(obj, dt, u_i, x_b_i, x_p_i, u_b_i, u_p_i, di)
+    function [x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, F_i] = simulate_one_step(obj, dt, u_i, x_b_i, x_p_i, u_b_i, u_p_i, plate_force_disturbance)
         % this works only with force as input
         % so if we get speed we transform it to force.
         F_i = u_i;
         if ~obj.input_is_force % did we get speed?
             F_i = obj.force_from_velocity(u_i, u_p_i);
         end
+        % disturbances
+        ball_friction_force_disturbance = obj.get_ball_force_friction(u_b_i);
+        gravity_force = dt*(obj.g + ball_friction_force_disturbance/obj.m_b);
+        F_i = F_i + plate_force_disturbance;
 
         x_b_1_2 = x_b_i + 0.5*dt*u_b_i;
         x_p_1_2 = x_p_i + 0.5*dt*u_p_i;
@@ -73,19 +77,16 @@ classdef Simulation < matlab.System
         gamma_n_i = u_b_i - u_p_i;
         contact_impact = gN <=1e-5; % && (((-gamma_n_i + obj.g*dt + u_i*dt/obj.m_p))>=0);
         if contact_impact
-            dP_N = max(0,(-gamma_n_i + obj.g*dt + F_i*dt/obj.m_p)/ (obj.m_b^-1 + obj.m_p^-1));
+            dP_N = max(0,(-gamma_n_i + gravity_force + F_i*dt/obj.m_p)/ (obj.m_b^-1 + obj.m_p^-1));
             % dP_N = (-gamma_n_i + obj.g*dt + u_i*dt/obj.m_p)/ (obj.m_b^-1 + obj.m_p^-1);
         else
             dP_N = 0;
         end
 
-        state_friction = obj.get_state_friction([x_b_i; x_p_i; u_b_i; u_p_i], dt);
-        state_disturbance = Simulation.get_state_disturbance(contact_impact, di);
-        
-        u_b_new = u_b_i - obj.g*dt + dP_N/obj.m_b           + state_friction(3) + state_disturbance(3);
-        u_p_new = u_p_i + F_i*dt/obj.m_p - dP_N/obj.m_p     + state_friction(4) + state_disturbance(4);
-        x_b_new = x_b_1_2 + 0.5*dt*u_b_new                  + state_friction(1) + state_disturbance(1);
-        x_p_new = x_p_1_2 + 0.5*dt*u_p_new                  + state_friction(2) + state_disturbance(2);
+        u_b_new = u_b_i - gravity_force + dP_N/obj.m_b;
+        u_p_new = u_p_i + F_i*dt/obj.m_p - dP_N/obj.m_p;
+        x_b_new = x_b_1_2 + 0.5*dt*u_b_new;
+        x_p_new = x_p_1_2 + 0.5*dt*u_p_new;
     end
 
     function [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec] = simulate_one_iteration_ss(obj, dt, T, x_b0, x_p0, u_b0, u_p0, u, repetitions, d)
@@ -126,6 +127,7 @@ classdef Simulation < matlab.System
 
     function [x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, u_ii] = state_space_one_step(obj, dt, u_i, x_b_i, x_p_i, u_b_i, u_p_i, di)
         % TODO: DOesnt work
+        % TODO2: Not possible to include disturbances(or too complicated)
         % gN = x_b_i + 0.5*dt*u_b_i - (x_p_i + 0.5*dt*u_p_i);
         gN = x_b_i - x_p_i;
         gamma_n_i = u_b_i-u_p_i;
@@ -138,10 +140,7 @@ classdef Simulation < matlab.System
             [Ad, Bd, ~, ~, c] = obj.sys.getSystemMarixesVelocityControl(dt, contact_impact);
         end
 
-        state_disturbance = Simulation.get_state_disturbance(contact_impact, di);
-        state_friction = obj.get_state_friction([x_b_i; x_p_i; u_b_i; u_p_i], dt);
-
-        state_new = Ad*[x_b_i; x_p_i; u_b_i; u_p_i] + Bd*u_i + c + state_friction + state_disturbance;
+        state_new = Ad*[x_b_i; x_p_i; u_b_i; u_p_i] + Bd*u_i + c;
 
         x_b_new = state_new(1);
         x_p_new = state_new(2);
@@ -157,39 +156,23 @@ classdef Simulation < matlab.System
             dP_N = max(0,(-gamma_n_i + obj.g*dt + u_ii*dt/obj.m_p)/ (obj.m_b^-1 + obj.m_p^-1));
         end
     end
-
-    function state_friction=get_state_friction(obj, x0, dt)
-        % F_D is force caused by air drag
-        state_friction = zeros(size(x0));
+    function f_drag=get_ball_force_friction(obj, v)
+        % D is the diameter of the ball
+        % c = 1/4*p*A = pi/16*p*D^2
+        f_drag = 0;
         if obj.air_drag
-            F_D = Simulation.friction(x0(3));
-            du = -F_D*dt/obj.m_b;
-            state_friction(1) = 0.5*du*dt;
-            state_friction(3) = du;
+            D = 0.4; % ball has diameter of 5cm
+            p = 1.225; % [kg/m]  air density
+            c = pi/16*p*D^2;
+            f_drag = sign(v)*c*v^2;
         end
     end
-    
 
    end
 
    %% Static Helpers
    methods (Static)
-    function state_disturbance=get_state_disturbance(contact_impact, di)
-        % F_D is force caused by air drag
-        state_disturbance = [0;di;0;0];
-        if contact_impact
-            state_disturbance(1) = di;
-        end
-    end
-    
-    function f_drag=friction(v)
-        % D is the diameter of the ball
-        % c = 1/4*p*A = pi/16*p*D^2
-        D = 0.4; % ball has diameter of 5cm
-        p = 1.225; % [kg/m]  air density
-        c = pi/16*p*D^2;
-        f_drag = sign(v)*c*v^2;
-    end
+
 
     function N = steps_from_time(T, dt)
         N = floor(T/dt)+1;
