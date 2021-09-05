@@ -141,35 +141,3 @@ def plotMinJerkTraj(x, v, a, j, dt, title, intervals=None, colors=None):
       ax = plot_intervals(ax, intervals, dt, colors)
   fig.suptitle(title)
   plt.show()
-
-
-def main():
-  dt = 0.002
-  ta = 0; tb = 0.9032/2
-  x_ta=-0.425; x_tb=0; u_ta=0; u_tb=4.4287; a_ta=None; a_tb=None
-
-  x1, v1, a1, j1 = get_min_jerk_trajectory(dt, ta, tb, x_ta, x_tb, u_ta, u_tb)
-  # plotMinJerkTraj(x1, v1, a1, j1, dt, 'probe')
-
-  tb2=tb+0.9032
-  x_ta=0; x_tb=0; u_ta=4.4287; u_tb=-u_ta/99
-  a_ta = a1[-1]
-  x2, v2, a2, j2 = get_min_jerk_trajectory(dt, tb, tb2, x_ta, x_tb, u_ta, u_tb, a_ta)
-
-  tb3=tb2+0.9032/2
-  x_ta=0; x_tb=-0.4
-  u_ta=u_tb; u_tb=0
-  a_ta = a2[-1]
-  a_tb = 0
-  x3, v3, a3, j3 = get_min_jerk_trajectory(dt, tb2, tb3, x_ta, x_tb, u_ta, u_tb, a_ta, a_tb)
-
-  intervals = {(ta/dt, tb/dt), (tb/dt, tb2/dt), (tb2/dt, tb3/dt)}
-  colors = ('gray', 'gray', 'red')
-  plotMinJerkTraj(np.concatenate((x1, x2, x3)),
-                  np.concatenate((v1, v2, v3)),
-                  np.concatenate((a1, a2, a3)),
-                  np.concatenate((j1, j2, j3)), dt, "Plate Free Motion", intervals, colors)
-
-
-if __name__ == "__main__":
-  main()
