@@ -76,9 +76,10 @@ class Simulation:
             F_i = self.force_from_velocity(u_i, u_p_i)
 
         # disturbances
+        plate_friction_force_disturbance = self.get_plate_force_friction(u_p_i)
         ball_friction_force_disturbance = self.get_ball_force_friction(u_b_i)
         gravity_force = dt*(g + ball_friction_force_disturbance/m_b)
-        F_i = F_i + plate_force_disturbance
+        F_i = F_i + plate_force_disturbance - plate_friction_force_disturbance
 
         x_b_1_2 = x_b_i + 0.5*dt*u_b_i
         x_p_1_2 = x_p_i + 0.5*dt*u_p_i
@@ -107,6 +108,13 @@ class Simulation:
             D = 0.4  # ball has diameter of 5cm
             p = 1.225  # [kg/m]  air density
             c = np.pi/16*p* (D**2)  # c = 1/4*p*A = pi/16*p*D**2
+            f_drag = np.sign(v)*c* (v**2)
+        return f_drag
+
+    def get_plate_force_friction(self, v):
+        f_drag = 0
+        if self.plate_friction:
+            c = 2
             f_drag = np.sign(v)*c* (v**2)
         return f_drag
 
