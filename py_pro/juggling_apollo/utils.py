@@ -1,8 +1,8 @@
-import matplotlib as mpl
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 from .settings import g
 import numpy as np
-mpl.use('TkAgg')
+# mpl.use('TkAgg')
 
 
 class DotDict(dict):
@@ -63,3 +63,17 @@ def plot_intervals(ax, intervals, dt, colors=None):
     for i, col in zip(intervals, colors):
         ax.axvspan(dt * i[0], dt * i[1], facecolor=col, alpha=0.3)
     return ax
+
+
+def plotIterations(y, title, dt=1, every_n=1):
+  n_x = y.shape[0]
+  n_i = y.shape[1]
+  print(n_x, n_i)
+  # legend_vec = arrayfun(@(i)("iteration "+ num2str(i)),(1:every_n:n_i));
+  timesteps = np.arange(n_x)*dt
+
+  for i in np.arange(0, n_i, every_n):
+    plt.plot(timesteps, y[:, i], label="iteration "+str(i+1))
+  plt.legend()
+  plt.title(title)
+  plt.show()

@@ -1,10 +1,9 @@
 # %%
 # #!/usr/bin/env python2
 import numpy as np
-from juggling_apollo.utils import plan_ball_trajectory, steps_from_time
+from juggling_apollo.utils import plan_ball_trajectory, steps_from_time, plotIterations
 from juggling_apollo.Simulation import Simulation, plot_simulation
-from juggling_apollo.MinJerk import get_min_jerk_trajectory, plotMinJerkTraj
-from juggling_apollo.settings import g, dt, m_b, m_p, k_c
+from juggling_apollo.settings import dt
 from juggling_apollo.ILC import ILC
 
 # %%
@@ -37,10 +36,10 @@ kf_dpn_params = {
 
 my_ilc = ILC(dt, kf_d1d2_params=kf_d1d2_params, kf_dpn_params=kf_dpn_params, x_0=x0, t_f=Tb, t_h=Th)
 
-sim = Simulation(input_is_force=False, air_drag=True, plate_friction=False)
+sim = Simulation(input_is_force=False, air_drag=True, plate_friction=True)
 
 # Learn Throw
-ILC_it = 2 # number of ILC iteration
+ILC_it = 25  # number of ILC iteration
 ub_0 = ub_00
 # reset ilc
 my_ilc.initILC(N_1=N_1, impact_timesteps=[True]*N_1)
@@ -96,9 +95,19 @@ for j in range(ILC_it):
   u_d2_vec[j] = my_ilc.kf_d1d2.d[1]  # ub_0
   u_b0_vec[j] = ub_0
   u_Tb_vec[j] = fly_time_meas
-  print("Fly time: " + str(fly_time_meas))
-  print("ITERATION: " + str(j+1), "Error on fly time: " + str(d2_meas))
+  print("ITERATION: " + str(j+1)  # noqa
+        + ", Fly time: " + str(fly_time_meas)  # flake8: W503
+        + ", Error on fly time: " + str(d2_meas))  # noqa: W503
 
 plot_simulation(dt, F_vec, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec)
 plot_simulation(dt, F_vec_extra, x_b_extra, u_b_extra, x_p_extra, u_p_extra, dP_N_vec_extra, gN_vec_extra)
 
+
+# %%
+# Plot the stuff
+plotIterations(dup_vec.T, "dup", dt, every_n=3)
+plotIterations(x_p_vec.T, "x_p", dt, every_n=3)
+plotIterations(x_b_vec.T, "x_b", dt, every_n=3)
+plotIterations(u_Tb_vec, "Tb", every_n=3)
+plotIterations(u_b0_vec, "ub0", every_n=3)
+plotIterations(u_d2_vec, "d2", every_n=3)
