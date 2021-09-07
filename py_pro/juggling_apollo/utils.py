@@ -28,7 +28,7 @@ def steps_from_time(T, dt):
     Returns:
         int: Number of timesteps in T
     """
-    return int(np.floor(T / dt) + 1)
+    return int(np.ceil(T / dt))  # np.arange(0,T,dt)
 
 
 def find_continuous_intervals(indices):
@@ -41,7 +41,7 @@ def find_continuous_intervals(indices):
         set: A 2xN set where N is nr of intevals found and 2 represents start and end indexes.
     """
 
-    intervals = set()
+    intervals = tuple()
     indices = np.squeeze(indices)
     if indices.size != 0:
         # Find intervals where gN<=0
@@ -50,7 +50,7 @@ def find_continuous_intervals(indices):
 
         for i in indices:
             if i - last > 1 or i == indices[-1]:
-                intervals.add((start - 1, last))
+                intervals = intervals + ([start - 1, last],)
                 start = i
             last = i
     return intervals
@@ -68,10 +68,7 @@ def plot_intervals(ax, intervals, dt, colors=None):
 def plotIterations(y, title, dt=1, every_n=1):
   n_x = y.shape[0]
   n_i = y.shape[1]
-  print(n_x, n_i)
-  # legend_vec = arrayfun(@(i)("iteration "+ num2str(i)),(1:every_n:n_i));
   timesteps = np.arange(n_x)*dt
-
   for i in np.arange(0, n_i, every_n):
     plt.plot(timesteps, y[:, i], label="iteration "+str(i+1))
   plt.legend()
