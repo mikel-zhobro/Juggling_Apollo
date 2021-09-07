@@ -14,7 +14,7 @@ classdef OptimizationDesiredInput < matlab.System
             % H = GF^T GF,  f = GF^T*(GK*dup + Gd0 - ydes)
             % x = pinv(H)*f
 %             aa = -inv(transpose(obj.lss.GF) * obj.lss.GF)*transpose(obj.lss.GF)*(obj.lss.GK*dup + obj.lss.Gd0 - y_des);
-            u_des = linsolve(transpose(obj.lss.GF) * obj.lss.GF, -transpose(obj.lss.GF)*(obj.lss.GK*dup + obj.lss.Gd0 - y_des));
+            u_des = linsolve(transpose(obj.lss.GF) * obj.lss.GF + 0.001*eye(size(obj.lss.GF,2)), -transpose(obj.lss.GF)*(obj.lss.GK*dup + obj.lss.Gd0 - y_des));
             % Add penalty on the input
 %             cc = quadprog((transpose(obj.lss.GF) * obj.lss.GF), transpose(obj.lss.GF)*(obj.lss.GK*dup + obj.lss.Gd0 - y_des));
             %% check
