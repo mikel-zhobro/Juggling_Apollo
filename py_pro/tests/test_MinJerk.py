@@ -1,7 +1,7 @@
 import path_setter
 import numpy as np
 from juggling_apollo.utils import plan_ball_trajectory, steps_from_time
-from juggling_apollo.MinJerk import get_min_jerk_trajectory, plotMinJerkTraj
+from juggling_apollo.MinJerk import get_min_jerk_trajectory, plotMinJerkTraj, get_minjerk_trajectory
 from juggling_apollo.settings import dt, g
 
 
@@ -44,14 +44,14 @@ def test2():
 
   tb2=tb+0.9032
   x_ta=0; x_tb=0; u_ta=4.4287; u_tb=-u_ta/99
-  a_ta = a1[-1]
+  # a_ta = a1[-1]
   x2, v2, a2, j2 = get_min_jerk_trajectory(dt, tb, tb2, x_ta, x_tb, u_ta, u_tb, a_ta)
 
   tb3=tb2+0.9032/2
   x_ta=0; x_tb=-0.4
   u_ta=u_tb; u_tb=0
-  a_ta = a2[-1]
-  a_tb = 0
+  # a_ta = a2[-1]
+  # a_tb = 0
   x3, v3, a3, j3 = get_min_jerk_trajectory(dt, tb2, tb3, x_ta, x_tb, u_ta, u_tb, a_ta, a_tb)
 
   intervals = {(ta/dt, tb/dt), (tb/dt, tb2/dt), (tb2/dt, tb3/dt)}
@@ -62,9 +62,29 @@ def test2():
                   np.concatenate((j1, j2, j3)), dt, "Plate Free Motion", intervals, colors)
 
 
+def test3():
+  dt = 0.007
+  x_0 = [-0.425, -0.425, 0, 0]
+  t_f = 0.904
+  t_h = t_f/2
+  ub_0 = 4.4287
+  N_1 = steps_from_time(t_h+t_f, dt)
+  # new MinJerk
+  t0 = 0;      t1 = t_h/2; t2 = t1 + t_f; t3 = t_f + t_h
+  x0 = x_0[0]; x1 = 0;     x2 = 0;        x3 = x0
+  u0 = x_0[2]; u1 = ub_0;  u2 = -ub_0/6;  u3 = u0
+
+  x, v, a, j = get_minjerk_trajectory(dt, ta=[t0, t1, t2], tb=[t1, t2, t3],
+                                      x_ta=[x0, x1, x2], x_tb=[x1, x2, x3],
+                                      u_ta=[u0, u1, u2], u_tb=[u1, u2, u3])
+  assert x.size == N_1, "SIZE NO MATCH: " + str(N_1) + " != " + str(x.size)
+  plotMinJerkTraj(x, v, a, j, dt, "Plate Free Motion")
+
+
 def test_all():
   test1()
   test2()
+  test3()
 
 
 if __name__ == "__main__":
