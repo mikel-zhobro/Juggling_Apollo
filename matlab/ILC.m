@@ -3,6 +3,7 @@ classdef ILC < matlab.System
 
     % objects with methods to be called
     properties
+        input_is_force
         lss % lifted_state_space
         quad_input_optim
         kf_d1d2
@@ -32,6 +33,7 @@ classdef ILC < matlab.System
         n_h % number of hands (1 or 2)
         n_b % number of balls (1,2,3..)
         N_1 % time steps
+        y_des
     end
 
     methods
@@ -153,6 +155,55 @@ classdef ILC < matlab.System
 
             % calc desired input
             u_ff_new = ilc.quad_input_optim.calcDesiredInput(ilc.kf_dpn.d, transpose(y_des));
+        end
+
+        %% 3. Whole
+        function [y_des,u_ff_new, ub_0] = learnWhole(ilc, ub_0, u_ff_old, y_meas, hb_meas, fly_time_meas)
+            if nargin > 2 % the first time we call it like: learnThrowStep(ilc)
+                % estimate d1d2 disturbances
+                d1_meas = hb_meas - 0.5*ub_0^2/ilc.g; % = hb_meas - ub0^2/(2g)
+                d2_meas = fly_time_meas - ilc.t_f; % = Tb_meas - 2ub0/g
+                ilc.kf_d1d2.updateStep(0, [d1_meas; d2_meas]);
+
+                % estimate dpn disturbance
+                ilc.kf_dpn.updateStep(u_ff_old, y_meas);
+            else
+                ilc.N_1 = Simulation.steps_from_time(ilc.t_h + ilc.t_f, ilc.dt) - 1;  % important since input cannot influence the first state
+                ilc.initILC()
+                ilc.resetILC(2*ones(1, ilc.N_1))
+%                 timesteps_impact = 2*ones(1, ilc.N_1);
+%                 timesteps_impact(round(ilc.N_1/4):round(3*ilc.N_1/4)) = 1;
+%                 ilc.resetILC(timesteps_impact)
+            end
+
+            % calc new ub_0
+%             ub_0 = 0.5*ilc.g*( ilc.t_f - ilc.kf_d1d2.d(2));
+            ub_0 = ub_0 - 0.1*0.5*ilc.g*ilc.kf_d1d2.d(2); % move in oposite direction of error
+%             ub_0 = ub_0 - 0.7*ilc.kf_d1d2.d(2); % move in oposite direction of error
+
+            % new MinJerk
+            % new MinJerk
+            t0 = 0;            t1 = ilc.t_h/2;   t2 = t1 + ilc.t_f;    t3 = ilc.t_f + ilc.t_h;
+            x0 = ilc.x_0(1);   x1 = 0;           x2 = 0;               x3 = x0;
+            u0 = ilc.x_0(3);   u1 = ub_0;        u2 = -ub_0/6;         u3 = u0;
+            [y1, v1, a1, j1] = MinJerkTrajectory2.get_min_jerk_trajectory(ilc.dt, t0, t1, x0, x1, u0, u1);
+            t1 = (length(y1))*ilc.dt;
+            x1 = y1(end);
+            u1 = v1(end);
+            [y2, v2, a2, j2] = MinJerkTrajectory2.get_min_jerk_trajectory(ilc.dt, t1, t2, x1, x2, u1, u2);
+            t2 = t1 +(length(y2))*ilc.dt;
+            x2 = y2(end);
+            u2 = v2(end);
+            [y3, v3, a3, j3] = MinJerkTrajectory2.get_min_jerk_trajectory(ilc.dt, t2, t3, x2, x3, u2, u3);
+%
+            ilc.y_des = [y1, y2, y3];
+            y_des = ilc.y_des;
+%             v_des = [v1, v2, v3];
+%             a_des = [a1, a2, a3];
+%             j_des = [j1, j2, j3];
+%             MinJerkTrajectory2.plot_paths(y_des, v_des, a_des, j_des, ilc.dt, 'MinJerk Free start-end acceleration')
+            % calc desired input
+            u_ff_new = ilc.quad_input_optim.calcDesiredInput(ilc.kf_dpn.d, transpose(y_des(2:end)));
         end
 
     end
