@@ -76,23 +76,23 @@ kf_dpn_params.epsilon0 = 0.1;
 kf_dpn_params.epsilon_decrease_rate = 0.9;
 
 my_ilc = ILC('m_b', m_b, 'm_p', m_p, 'k_c', k_c, 'g', g, 'dt', dt,              ...
-             'x_0', cell2mat(x0), 't_f', Tb,                      ...
+             'x_0', cell2mat(x0), 't_f', Tb, 'input_is_force', input_is_force,  ...
              'kf_d1d2_params', kf_d1d2_params, 'kf_dpn_params', kf_dpn_params)  ;
 
 % my_ilc.resetILC()
 
 % Iteration params
-sim = Simulation('m_b', m_b, 'm_p', m_p, 'k_c', k_c, 'g', g, 'input_is_force', input_is_force, 'sys', my_ilc.sys, 'air_drag', true);
+sim = Simulation('m_b', m_b, 'm_p', m_p, 'k_c', k_c, 'g', g, 'input_is_force', input_is_force, 'sys', my_ilc.sys, 'air_drag', false);
 % ----------------------------------------------------------------------- %
 
 %% Learn Throw
 close all
-ILC_it = 1; % number of ILC iteration
+ILC_it = 2; % number of ILC iteration
 ub_0 = ub_00;
 % reset ilc
 [y_des,u_ff] = my_ilc.learnThrowStep(ub_00);
 my_ilc.resetILC()
-
+% plot(u_ff)
 % Extra simulation to measure time of flight
 T_sim_extra = 2*Tb;
 N_sim_extra = Simulation.steps_from_time(T_sim_extra, dt);
@@ -116,7 +116,7 @@ for j = 1:ILC_it
     display("ITERATION: " + num2str(j))
 
     % Main Simulation
-    [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, F_vec] = sim.simulate_one_iteration(dt, my_ilc.t_h/2, x0{:}, u_ff, 1,disturbance);
+    [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, F_vec] = sim.simulate_one_iteration(dt, my_ilc.t_h/2, x0{:}, u_ff, 1, disturbance);
 
     % Measurments for height and fly-time-to-zero
     % Extra simulation to measure time of flight
@@ -155,8 +155,8 @@ close all
 % plotIterations(dup_vec, "d_{p} through iterations", dt, 3)
 % plotIterations(disturbance, "real disturbance", dt)
 % plotIterations(x_b_vec, "x_b through iterations", dt, 3)
-plotIterations(x_p_vec, "x_p through iterations", dt, 3)
-plotIterations(u_p_vec, "u_p through iterations", dt, 2)
+plotIterations(x_p_vec-y_des, "x_p through iterations", dt, 5)
+% plotIterations(u_p_vec, "u_p through iterations", dt, 2)
 % plotIterations(u_des_vec, "u_{ff} through iterations", dt, 2)
 %% Components
 % Ball Trajectory

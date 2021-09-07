@@ -53,7 +53,7 @@ kf_d1d2_params.M_diag = 0.1;
 
 % ILC
 my_ilc = ILC('m_b', m_b, 'm_p', m_p, 'k_c', k_c, 'g', g, 'dt', dt,              ...
-             'x_0', cell2mat(x0), 't_f', Tb,                        ...
+             'x_0', cell2mat(x0), 't_f', Tb, 'input_is_force', input_is_force,  ...
              'kf_d1d2_params', kf_d1d2_params, 'kf_dpn_params', kf_dpn_params)  ;
 y_des = y_des(2:end);
 [u_ff] = my_ilc.learnPlateMotionStep(y_des); %% resets impact_timesteps for the liftest state space
@@ -82,7 +82,7 @@ period = 0.1/dt;
 disturbance = 200*sin(2*pi/period*(0:my_ilc.N_1-1)); % disturbance on the plate position
 for j = 1:ILC_it
     display("ITERATION: " + num2str(j))
-    
+
     % Main Simulation
     [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, F_vec] = sim.simulate_one_iteration(dt, my_ilc.t_f, x0{:}, u_ff, 1, disturbance);
 
@@ -106,9 +106,9 @@ close all
 % plotIterations(T_plate_dist*dup_vec, "d_{P} through iterations", dt, 1)
 % plot((0:my_ilc.N_1-1)*dt, disturbance, 'x');
 % plotIterations(x_b_vec, "x_b through iterations", dt, 1)
-plotIterations(x_p_vec, "x_p through iterations", dt, 1)
+plotIterations([x_p_vec(end,2:end)- y_des; dup_vec(end,:)], "x_p through iterations", dt, 1)
 % plotIterations(u_p_vec, "u_p through iterations", dt, 4)
-plotIterations(u_des_vec, "u_{ff} through iterations", dt, 3)
+% plotIterations(u_des_vec, "u_{ff} through iterations", dt, 3)
 
 %%
 
