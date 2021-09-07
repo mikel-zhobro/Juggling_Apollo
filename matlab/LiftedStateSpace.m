@@ -34,7 +34,7 @@ classdef LiftedStateSpace < matlab.System
         function updateQuadrProgMatrixes(obj, set_of_impact_timesteps)
             % set_of_impact_timesteps{t} = 1 if no impact, = 2 if impact for the timesteps 0 -> N-1
             % sizes
-            N = length(set_of_impact_timesteps);    % nr of steps
+            N = length(set_of_impact_timesteps);  % nr of steps
             nx = size(obj.Ad,1);
             ny = size(obj.Cd,1);
             nu = size(obj.Bd,2);
