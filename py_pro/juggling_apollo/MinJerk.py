@@ -1,12 +1,44 @@
-import numpy as np
-from utils import plot_intervals, plt
-
-
 # MINJERKTRAJECTORY Used to do min-jerk trajectory computation
 # Since any free start- or end-state puts a constraint on the constate
 # the equations stay the same and only the coefficients change.
 # This allows us to call get_trajectories() to create paths of
 # different constraints.
+
+import numpy as np
+from utils import plot_intervals, plt, steps_from_time
+
+
+def get_minjerk_trajectory(dt, ta, tb, x_ta, x_tb, u_ta, u_tb, a_ta=None, a_tb=None):
+  # Initialization
+  T_whole = tb[-1] - ta[0]
+  N_Whole = steps_from_time(T_whole, dt)
+  x_ret = np.zeros(N_Whole, dtype='double')
+  v_ret = np.zeros(N_Whole, dtype='double')
+  a_ret = np.zeros(N_Whole, dtype='double')
+  j_ret = np.zeros(N_Whole, dtype='double')
+
+  N = len(ta)
+
+  t_last = ta[0]  # last end-time
+  n_last = 0  # last end-index
+  for i in range(N):
+    t0 = t_last;  t1 = tb[i]
+    x0 = x_ta[i]; x1 = x_tb[i]
+    u0 = u_ta[i]; u1 = u_tb[i]
+    x, v, a, j = get_min_jerk_trajectory(dt, t0, t1, x0, x1, u0, u1)
+
+    len_x = len(x)
+    x_ret[n_last: n_last+len_x] = x
+    v_ret[n_last: n_last+len_x] = v
+    a_ret[n_last: n_last+len_x] = a
+    j_ret[n_last: n_last+len_x] = j
+
+    t_last = t0 + (len_x-1)*dt
+    n_last += len_x-1  # (since last end-value == new first-value we overlay them and take only 1)
+
+  return x_ret, v_ret, a_ret, j_ret
+
+
 def get_min_jerk_trajectory(dt, ta, tb, x_ta, x_tb, u_ta, u_tb, a_ta=None, a_tb=None):
   # Input:
   #   x_ta, u_ta, (optional: a.ta): conditions at t=ta
@@ -36,7 +68,7 @@ def get_min_jerk_trajectory(dt, ta, tb, x_ta, x_tb, u_ta, u_tb, a_ta=None, a_tb=
       c1, c2, c3, c4, c5, c6 = free_start_acceleration(T, x_ta, x_tb, u_ta, u_tb)
 
   # Trajectory values ta->tb
-  t = np.arange(0, T, dt)  # 0:dt:T
+  t = np.arange(0, T, dt)  # 0:dt:T ceil((stop - start)/step)
   j, a, v, x = get_trajectories(t, c1, c2, c3, c4, c5, c6)
   return x, v, a, j
 
@@ -132,12 +164,15 @@ def plotMinJerkTraj(x, v, a, j, dt, title, intervals=None, colors=None):
   timesteps = np.arange(0, x.size) * dt  # (1:length(x))*dt
 
   axs[0].plot(timesteps, x, 'b', label='Plate position')
+  axs[0].legend(loc=1)
   axs[1].plot(timesteps, v, 'b', label='Plate velocity')
+  axs[1].legend(loc=1)
   axs[2].plot(timesteps, a, 'b', label='Plate acceleration')
+  axs[2].legend(loc=1)
   axs[3].plot(timesteps, j, 'b', label='Plate jerk')
+  axs[3].legend(loc=1)
   if intervals is not None:
     for ax in axs:
-      ax.legend(loc=1)
       ax = plot_intervals(ax, intervals, dt, colors)
   fig.suptitle(title)
   plt.show()
