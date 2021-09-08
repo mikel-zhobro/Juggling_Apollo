@@ -114,7 +114,7 @@ class Simulation:
   def get_plate_force_friction(self, v):
       f_drag = 0
       if self.plate_friction:
-        c = 2
+        c = 20
         f_drag = np.sign(v)*c* (v**2)
       return f_drag
 
@@ -122,7 +122,7 @@ class Simulation:
 def plot_simulation(dt, u, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec):
   # Everything are column vectors
   intervals = find_continuous_intervals(1 + np.argwhere(np.squeeze(gN_vec) <= 1e-5))
-  print("INTERVALS: ", np.array(intervals[0])*dt)
+  # print("INTERVALS: ", np.array(intervals[0])*dt, np.array(intervals[1])*dt)
   fig, axs = plt.subplots(5, 1)
 
   timesteps = np.arange(u_p.size) * dt

@@ -65,13 +65,14 @@ class ILC:
       self.kf_d1d2.updateStep(0, np.array([d1_meas, d2_meas], dtype='float').reshape(-1, 1))  # estimate d1d2 disturbances
       self.kf_dpn.updateStep(u_ff_old, y_meas)  # estimate dpn disturbance
 
-      # calc new ub_0
-      # ub_0 = 0.5*self.g*( self.t_f - self.kf_d1d2.d(2))
-      ub_0 = ub_0 - 0.3*0.5*g*self.kf_d1d2.d[1]  # move in oposite direction of error
-      # ub_0 = ub_0 - 0.7*self.kf_d1d2.d(2) # move in oposite direction of error
+    # calc new ub_0
+    # ub_0 = 0.5*self.g*( self.t_f - self.kf_d1d2.d(2))
+    ub_0 = ub_0 - 0.3*0.5*g*self.kf_d1d2.d[1]  # move in oposite direction of error
+    # ub_0 = ub_0 - 0.7*self.kf_d1d2.d(2) # move in oposite direction of error
 
     # new MinJerk
-    y_des, _, _, _ = get_min_jerk_trajectory(dt=self.dt, ta=0, tb=self.t_h/2, x_ta=self.x_0[0], x_tb=0, u_ta=self.x_0[2], u_tb=ub_0)
+    y_des, v, a, j = get_min_jerk_trajectory(dt=self.dt, ta=0, tb=self.t_h/2, x_ta=self.x_0[0], x_tb=0, u_ta=self.x_0[2], u_tb=ub_0)
+    # plotMinJerkTraj(y_des, v, a, j, self.dt, "MINJERK")
 
     # calc desired input
     u_ff_new = self.quad_input_optim.calcDesiredInput(self.kf_dpn.d, np.array(y_des[1:], dtype='float').reshape(-1, 1))
@@ -96,10 +97,10 @@ class ILC:
       self.kf_d1d2.updateStep(0, np.array([d1_meas, d2_meas], dtype='float').reshape(-1, 1))  # estimate d1d2 disturbances
       self.kf_dpn.updateStep(u_ff_old, y_meas)  # estimate dpn disturbance
 
-      # calc new ub_0
-      # ub_0 = 0.5*self.g*( self.t_f - self.kf_d1d2.d(2))
-      ub_0 = ub_0 - 0.3*0.5*g*self.kf_d1d2.d[1]  # move in oposite direction of error
-      # ub_0 = ub_0 - 0.7*self.kf_d1d2.d(2) # move in oposite direction of error
+    # calc new ub_0
+    # ub_0 = 0.5*self.g*( self.t_f - self.kf_d1d2.d(2))
+    ub_0 = ub_0 - 0.3*0.5*g*self.kf_d1d2.d[1]  # move in oposite direction of error
+    # ub_0 = ub_0 - 0.7*self.kf_d1d2.d(2) # move in oposite direction of error
 
     # new MinJerk
     t0 = 0;           t1 = self.t_h/2; t2 = t1 + self.t_f; t3 = self.t_f + self.t_h
@@ -113,18 +114,3 @@ class ILC:
     # calc desired input
     u_ff_new = self.quad_input_optim.calcDesiredInput(self.kf_dpn.d, np.array(y_des[1:], dtype='float').reshape(-1, 1), True)
     return y_des, u_ff_new, ub_0
-
-
-def main():
-  print("Py3")
-  s = {
-    'M': np.eye(3),
-    'd0': np.zeros((3, 1)),
-    'P0': np.zeros((3, 3)),
-    'epsilon0': 0.3,
-    'epsilon_decreasse_rate': 0.9
-  }
-
-
-if __name__ == "__main__":
-    main()
