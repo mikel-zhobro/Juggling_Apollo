@@ -40,12 +40,12 @@ my_ilc = ILC(dt, kf_d1d2_params=kf_d1d2_params, kf_dpn_params=kf_dpn_params, x_0
 sim = Simulation(input_is_force=False, air_drag=True, plate_friction=True)
 
 # Learn Throw
-ILC_it = 15  # number of ILC iteration
+ILC_it = 33  # number of ILC iteration
 ub_0 = ub_00
 # reset ilc
 # my_ilc.initILC(N_1=N_1, impact_timesteps=[False]*N_1)  # ignore the ball
 # impact_timesteps =
-my_ilc.initILC(N_1=N_1, impact_timesteps=[True]*N_1)  # ignore the ball
+my_ilc.initILC(N_1=N_1, impact_timesteps=[False]*N_1)  # ignore the ball
 y_des, u_ff, ub_0 = my_ilc.learnWhole(ub_00)
 
 # collect: dup, x_p, x_b, u_p
@@ -64,25 +64,26 @@ y_meas = None
 
 # disturbance to be learned
 period = 0.02/dt
-disturbance = 200*np.sin(2*np.pi/period*np.arange(my_ilc.N_1), dtype='float')  # disturbance on the plate position(0:my_ilc.N_1-1)
+disturbance = 250*np.sin(2*np.pi/period*np.arange(my_ilc.N_1), dtype='float')  # disturbance on the plate position(0:my_ilc.N_1-1)
 for j in range(ILC_it):
 
   # Main Simulation
   [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, F_vec] = \
-    sim.simulate_one_iteration(dt=dt, T=Tb+Th, x_b0=x0[0], x_p0=x0[1], u_b0=x0[2], u_p0=x0[3], u=u_ff, d=None)
+    sim.simulate_one_iteration(dt=dt, T=Tb+Th, x_b0=x0[0], x_p0=x0[1], u_b0=x0[2], u_p0=x0[3], u=u_ff, d=disturbance)
 
   # Measurments
   N_fly_time = N_half_1+np.argmax(gN_vec[N_half_1:]<=1e-5)
   fly_time_meas = N_fly_time*dt
   y_meas = x_p[1:]
   d1_meas = max(x_b) - Hb  # disturbance on height
-  d2_meas = fly_time_meas - Tb - Th/2  # disturbance on ball flight time
+  d2_meas = fly_time_meas - Th/2 - Tb  # disturbance on ball flight time
 
   # LEARN THROW
   y_des, u_ff, ub_0 = my_ilc.learnWhole(ub_0=ub_0, u_ff_old=u_ff, y_meas=y_meas, d1_meas=d1_meas, d2_meas=d2_meas)
 
   # 5. Collect data for plotting
-  dup_vec[j, :] = np.squeeze(my_ilc.kf_dpn.d)
+  # dup_vec[j, :] = np.squeeze(my_ilc.kf_dpn.d)
+  dup_vec[j, :] = np.squeeze(y_des[1:]-np.squeeze(y_meas[:]))
   x_p_vec[j, :] = np.squeeze(x_p)
   u_p_vec[j, :] = np.squeeze(u_p)
   u_des_vec[j, :] = np.squeeze(u_ff)
@@ -98,7 +99,6 @@ for j in range(ILC_it):
 
 print("Tb: ", Tb, " Th/2", Th/2)
 plot_simulation(dt, F_vec, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec)
-
 # %%
 # plt.plot(np.squeeze(x_b), label="x_b")
 # plt.plot(y_des, label="y_des")
@@ -106,17 +106,23 @@ plot_simulation(dt, F_vec, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec)
 # plt.plot()
 # (y_des[1:].shape-np.squeeze(y_meas[:])).shape
 
-plt.plot(y_des[1:]-np.squeeze(y_meas[:]))
-# plotIterations(dup_vec.T, "dup", dt, every_n=1)
+# plt.plot(y_des[1:]-np.squeeze(y_meas[:]))
+# plt.show()
+plotIterations(dup_vec.T, "dup", dt, every_n=3)
 
 # plt.plot(x_p)
 # plt.plot(y_des)
 
+# %% Run the simulation 5 repetitions
+# [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, F_vec] = \
+#   sim.simulate_one_iteration(dt=dt, T=Tb+Th, x_b0=x0[0], x_p0=x0[1], u_b0=x0[2], u_p0=x0[3], u=u_ff, repetitions=5)
+# plot_simulation(dt, F_vec, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec)
 # %%
 # Plot the stuff
-plotIterations(dup_vec.T, "dup", dt, every_n=1)
-plotIterations(x_p_vec.T, "x_p", dt, every_n=1)
-plotIterations(u_Tb_vec-Th/2, "Tb", every_n=1)
-plotIterations(u_b0_vec, "ub0", every_n=1)
-plotIterations(u_d2_vec, "d2", every_n=1)
+# plotIterations(u_des_vec.T, "uff", dt, every_n=1)
+# plotIterations(dup_vec.T, "dup", dt, every_n=1)
+# plotIterations(x_p_vec.T, "x_p", dt, every_n=1)
+# plotIterations(u_Tb_vec-Th/2, "Tb", every_n=1)
+# plotIterations(u_b0_vec, "ub0", every_n=1)
+# plotIterations(u_d2_vec, "d2", every_n=1)
 # %%
