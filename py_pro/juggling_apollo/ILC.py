@@ -91,21 +91,24 @@ class ILC:
     u_ff_new = self.quad_input_optim.calcDesiredInput(self.kf_dpn.d, y_des)
     return u_ff_new
 
-  def learnWhole(self, ub_0, u_ff_old=None, y_meas=None, d1_meas=0, d2_meas=0):
+  def learnWhole2(self, ub_0, ub_catch, u_ff_old=None, y_meas=None, d1_meas=0, d2_meas=0, d3_meas=0):
     # 1. Throw
     if u_ff_old is not None:  # we are calculating u_ff for the first time
-      self.kf_d1d2.updateStep(0, np.array([d1_meas, d2_meas], dtype='float').reshape(-1, 1))  # estimate d1d2 disturbances
+      # self.kf_d1d2.updateStep(0, np.array([d1_meas, d2_meas], dtype='float').reshape(-1, 1))  # estimate d1d2 disturbances
       self.kf_dpn.updateStep(u_ff_old, y_meas)  # estimate dpn disturbance
 
     # calc new ub_0
-    # ub_0 = 0.5*self.g*( self.t_f - self.kf_d1d2.d(2))
-    ub_0 = ub_0 - 0.3*0.5*g*self.kf_d1d2.d[1]  # move in oposite direction of error
-    # ub_0 = ub_0 - 0.7*self.kf_d1d2.d(2) # move in oposite direction of error
+    # ub_0 = ub_0 - 0.3*0.5*g*self.kf_d1d2.d[1]  # move in oposite direction of error
+    ub_0 = ub_0 - 0.3*g*d2_meas  # move in oposite direction of error
+
+    # calc new catch velocity
+    # ub_catch = -ub_0/4
+    ub_catch = ub_catch - 0.3*0.5*g*d3_meas  # move in oposite direction of error
 
     # new MinJerk
-    t0 = 0;           t1 = self.t_h/2; t2 = t1 + self.t_f; t3 = self.t_f + self.t_h
-    x0 = self.x_0[0]; x1 = 0;          x2 = 0;             x3 = x0
-    u0 = self.x_0[2]; u1 = ub_0;       u2 = -ub_0/8;       u3 = u0
+    t0 = 0;           t1 = self.t_h/2; t2 = t1 + self.t_f;  t3 = self.t_f + self.t_h
+    x0 = self.x_0[0]; x1 = 0;          x2 = 0;              x3 = x0
+    u0 = self.x_0[2]; u1 = ub_0;       u2 = ub_catch;       u3 = u0
     # a0 = None;        a1 = None;       a2 = None;          a3 = None
     y_des, _, _, _ = get_minjerk_trajectory(self.dt, ta=[t0, t1, t2], tb=[t1, t2, t3],
                                             x_ta=[x0, x1, x2], x_tb=[x1, x2, x3],
@@ -114,3 +117,38 @@ class ILC:
     # calc desired input
     u_ff_new = self.quad_input_optim.calcDesiredInput(self.kf_dpn.d, np.array(y_des[1:], dtype='float').reshape(-1, 1), True)
     return y_des, u_ff_new, ub_0
+
+  def learnWhole(self, ub_0, t_catch=None, u_ff_old=None, y_meas=None, d1_meas=0, d2_meas=0, d3_meas=0):
+    # 1. Throw
+    if u_ff_old is not None:  # we are calculating u_ff for the first time
+      # self.kf_d1d2.updateStep(0, np.array([d1_meas, d2_meas], dtype='float').reshape(-1, 1))  # estimate d1d2 disturbances
+      self.kf_dpn.updateStep(u_ff_old, y_meas)  # estimate dpn disturbance
+
+    # calc new ub_0
+    # ub_0 = ub_0 - 0.3*0.5*g*self.kf_d1d2.d[1]  # move in oposite direction of error
+    ub_0 = ub_0 - 0.3*0.5*g*d2_meas  # move in oposite direction of error
+
+    # calc new catch velocity
+    no_t_catch = t_catch is None
+    if no_t_catch:
+      t_catch = self.t_f + self.t_h
+    else:
+      t_catch = np.squeeze(t_catch - 0.1*0.5*g*d3_meas)  # move in oposite direction of error
+
+    # new MinJerk
+    t0 = 0;           t1 = self.t_h/2; t2 = t1 + self.t_f/2;  t3 = t1 + self.t_f;  t4 = t_catch
+    x0 = self.x_0[0]; x1 = 0;          x2 = x0;               x3 = 0;              x4 = x0
+    u0 = self.x_0[2]; u1 = ub_0;       u2 = -ub_0/2;          u3 = -ub_0/2;        u4 = u0
+    # a0 = None;        a1 = None;       a2 = None;          a3 = None
+    y_des, _, _, _ = get_minjerk_trajectory(self.dt,
+                                            ta  =[t0, t1, t2, t3], tb  =[t1, t2, t3, t4],
+                                            x_ta=[x0, x1, x2, x3], x_tb=[x1, x2, x3, x4],
+                                            u_ta=[u0, u1, u2, x3], u_tb=[u1, u2, u3, u4])
+
+    # calc desired input
+    u_ff_new = self.quad_input_optim.calcDesiredInput(self.kf_dpn.d, np.array(y_des[1:], dtype='float').reshape(-1, 1), True)
+
+    if no_t_catch:
+      return y_des, u_ff_new, ub_0
+    else:
+      return y_des, u_ff_new, ub_0, t_catch
