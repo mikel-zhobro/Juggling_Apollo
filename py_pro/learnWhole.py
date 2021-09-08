@@ -13,6 +13,7 @@ Hb = 1
 Tb, ub_00 = plan_ball_trajectory(hb=Hb)  # important since input cannot influence the first state
 Th = Tb/2
 N_1 = steps_from_time(Tb+Th, dt)-1  # size of our vectors(i.e. length of the interval)
+N_h2_1 = steps_from_time(Th/2, dt)-1  # size of our vectors(i.e. length of the interval)
 N_half_1 = int(N_1/3)
 # Init state
 x_ruhe = -0.4
@@ -36,10 +37,10 @@ kf_dpn_params = {
 
 my_ilc = ILC(dt, kf_d1d2_params=kf_d1d2_params, kf_dpn_params=kf_dpn_params, x_0=x0, t_f=Tb, t_h=Th)
 
-sim = Simulation(input_is_force=False, air_drag=False, plate_friction=False)
+sim = Simulation(input_is_force=False, air_drag=True, plate_friction=True)
 
 # Learn Throw
-ILC_it = 25  # number of ILC iteration
+ILC_it = 15  # number of ILC iteration
 ub_0 = ub_00
 # reset ilc
 # my_ilc.initILC(N_1=N_1, impact_timesteps=[False]*N_1)  # ignore the ball
@@ -71,10 +72,11 @@ for j in range(ILC_it):
     sim.simulate_one_iteration(dt=dt, T=Tb+Th, x_b0=x0[0], x_p0=x0[1], u_b0=x0[2], u_p0=x0[3], u=u_ff, d=None)
 
   # Measurments
-  fly_time_meas = (N_half_1+np.argmax(gN_vec[N_half_1:]<=1e-5))*dt
+  N_fly_time = N_half_1+np.argmax(gN_vec[N_half_1:]<=1e-5)
+  fly_time_meas = N_fly_time*dt
   y_meas = x_p[1:]
   d1_meas = max(x_b) - Hb  # disturbance on height
-  d2_meas = fly_time_meas - Tb  # disturbance on ball flight time
+  d2_meas = fly_time_meas - Tb - Th/2  # disturbance on ball flight time
 
   # LEARN THROW
   y_des, u_ff, ub_0 = my_ilc.learnWhole(ub_0=ub_0, u_ff_old=u_ff, y_meas=y_meas, d1_meas=d1_meas, d2_meas=d2_meas)
@@ -87,10 +89,14 @@ for j in range(ILC_it):
   u_d2_vec[j] = my_ilc.kf_d1d2.d[1]  # ub_0
   u_b0_vec[j] = ub_0
   u_Tb_vec[j] = fly_time_meas
-  print("Fly time: " + str(fly_time_meas))
-  print("ITERATION: " + str(j+1), "Error on fly time: " + str(d2_meas))
+  print("ITERATION: " + str(j+1)  # noqa
+        + ", \n\tUb0: " + str(ub_0) + ", " + str(u_p[N_h2_1-1])  # flake8: W503
+        + ", \n\tFly time: " + str(fly_time_meas-Th/2)  # flake8: W503
+        + ", \n\tError on fly time: " + str(d2_meas)
+        + ", \n\tError on catch hight: " + str(x_p[N_fly_time])
+        )  # noqa: W503
 
-print("Tb: ", Tb, " Th", Th)
+print("Tb: ", Tb, " Th/2", Th/2)
 plot_simulation(dt, F_vec, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec)
 
 # %%
@@ -98,10 +104,19 @@ plot_simulation(dt, F_vec, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec)
 # plt.plot(y_des, label="y_des")
 # plt.legend()
 # plt.plot()
+# (y_des[1:].shape-np.squeeze(y_meas[:])).shape
+
+plt.plot(y_des[1:]-np.squeeze(y_meas[:]))
+# plotIterations(dup_vec.T, "dup", dt, every_n=1)
+
+# plt.plot(x_p)
+# plt.plot(y_des)
+
 # %%
 # Plot the stuff
-plotIterations(dup_vec.T, "dup", dt, every_n=3)
-plotIterations(x_p_vec.T, "x_p", dt, every_n=3)
-plotIterations(u_Tb_vec, "Tb", every_n=3)
-plotIterations(u_b0_vec, "ub0", every_n=3)
-plotIterations(u_d2_vec, "d2", every_n=3)
+plotIterations(dup_vec.T, "dup", dt, every_n=1)
+plotIterations(x_p_vec.T, "x_p", dt, every_n=1)
+plotIterations(u_Tb_vec-Th/2, "Tb", every_n=1)
+plotIterations(u_b0_vec, "ub0", every_n=1)
+plotIterations(u_d2_vec, "d2", every_n=1)
+# %%
