@@ -40,10 +40,10 @@ class Simulation:
     if d is None:
       d = np.zeros(u.shape)  # disturbance
 
-    u = np.repeat(u, repetitions)
-    d = np.repeat(d, repetitions)
+    u = np.squeeze(np.tile(u, [repetitions, 1]))
+    d = np.squeeze(np.tile(d, [repetitions, 1]))
     # Vectors to collect the history of the system states
-    N = steps_from_time(T, dt) * repetitions
+    N = (steps_from_time(T, dt)-1) * repetitions + 1
     x_b = np.zeros((N, 1)); x_b[0] = x_b0
     u_b = np.zeros((N, 1)); u_b[0] = u_b0
     x_p = np.zeros((N, 1)); x_p[0] = x_p0
