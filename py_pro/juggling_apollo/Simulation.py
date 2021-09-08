@@ -119,7 +119,7 @@ class Simulation:
       return f_drag
 
 
-def plot_simulation(dt, u, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec):
+def plot_simulation(dt, u, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, x_p_des=None, title = None, vertical_lines = None):
   # Everything are column vectors
   intervals = find_continuous_intervals(1 + np.argwhere(np.squeeze(gN_vec) <= 1e-5))
   # print("INTERVALS: ", np.array(intervals[0])*dt, np.array(intervals[1])*dt)
@@ -128,28 +128,37 @@ def plot_simulation(dt, u, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec):
   timesteps = np.arange(u_p.size) * dt
   axs[0].plot(timesteps, x_b, 'r', label='Ball position [m]')
   axs[0].plot(timesteps, x_p, 'b', label='Plate position [m]')
+  if x_p_des is not None:
+    axs[0].plot(timesteps, x_p_des, color='green', linestyle='dashed', label='Desired Plate position [m]')
   axs[1].plot(timesteps, u_b, 'r', label='Ball velocity [m/s]')
   axs[1].plot(timesteps, u_p, 'b', label='Plate velocity [m/s]')
   axs[2].plot(timesteps, dP_N_vec, 'b', label='dP_N')
   axs[3].plot(timesteps, gN_vec, 'b', label='g_{N_{vec}} [m]')
   axs[4].plot(timesteps, u, 'b', label='F [N]')
   for ax in axs:
-      ax = plot_intervals(ax, intervals, dt)
-      # Position where legend can be put
-      # ===============   =============
-      # Location String   Location Code
-      # ===============   =============
-      # 'best'            0
-      # 'upper right'     1
-      # 'upper left'      2
-      # 'lower left'      3
-      # 'lower right'     4
-      # 'right'           5
-      # 'center left'     6
-      # 'center right'    7
-      # 'lower center'    8
-      # 'upper center'    9
-      # 'center'          10
-      # ===============   =============
-      ax.legend(loc=1)
+    ax = plot_intervals(ax, intervals, dt)
+    # Position where legend can be put
+    # ===============   =============
+    # Location String   Location Code
+    # ===============   =============
+    # 'best'            0
+    # 'upper right'     1
+    # 'upper left'      2
+    # 'lower left'      3
+    # 'lower right'     4
+    # 'right'           5
+    # 'center left'     6
+    # 'center right'    7
+    # 'lower center'    8
+    # 'upper center'    9
+    # 'center'          10
+    # ===============   =============
+    ax.axhline(y=0.0, color='y', linestyle='-')
+    if vertical_lines is not None:
+      for pos, label in vertical_lines.items():
+        ax.axvline(pos, linestyle='--', color='k', label=label)
+    ax.legend(loc=1)
+
+  if title is not None:
+    fig.suptitle(title)
   plt.show()
