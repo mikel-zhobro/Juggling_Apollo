@@ -48,8 +48,10 @@ class ILC:
       self.t_h = self.t_f/2
 
   def initILC(self, N_1, impact_timesteps):
+    # TODO: re-sizing
     self.N_1 = len(impact_timesteps)  # time steps
     # init LSS
+    # TODO: re-sizing ( maybe add a resize function( if smaller than is just slice, otherwise add 0s))
     self.lss.updateQuadrProgMatrixes(impact_timesteps)
     # init KFs
     self.resetILC()
@@ -131,12 +133,15 @@ class ILC:
     # calc new catch velocity
     no_t_catch = t_catch is None
     if no_t_catch:
-      t_catch = self.t_f + self.t_h
+      t_catch = self.t_h/2
+      t_throw = self.t_h/2  # self.t_h + self.t_f - t_catch
     else:
-      t_catch = np.squeeze(t_catch - 0.1*0.5*g*d3_meas)  # move in oposite direction of error
+      t_catch = min(self.t_h-0.01, float(t_catch - 0.03*d3_meas))  # move in oposite direction of error
+      t_throw = float(self.t_h - t_catch)
 
     # new MinJerk
-    t0 = 0;           t1 = self.t_h/2; t2 = t1 + self.t_f/2;  t3 = t1 + self.t_f;  t4 = t_catch
+    t_end = self.t_f + self.t_h
+    t0 = 0;           t1 = t_throw;    t2 = t1 + self.t_f/2;  t3 = t_end - t_catch;  t4 = t_end
     x0 = self.x_0[0]; x1 = 0;          x2 = x0;               x3 = 0;              x4 = x0
     u0 = self.x_0[2]; u1 = ub_0;       u2 = -ub_0/2;          u3 = -ub_0/2;        u4 = u0
     # a0 = None;        a1 = None;       a2 = None;          a3 = None
@@ -145,7 +150,7 @@ class ILC:
                                             x_ta=[x0, x1, x2, x3], x_tb=[x1, x2, x3, x4],
                                             u_ta=[u0, u1, u2, x3], u_tb=[u1, u2, u3, u4])
 
-    # calc desired input
+    # calc desired input # TODO: re-sizing(u_ff_new will be longer than u_ff_old)
     u_ff_new = self.quad_input_optim.calcDesiredInput(self.kf_dpn.d, np.array(y_des[1:], dtype='float').reshape(-1, 1), True)
 
     if no_t_catch:
