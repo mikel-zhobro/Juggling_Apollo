@@ -2,6 +2,7 @@
 import numpy as np
 from utils import steps_from_time, find_continuous_intervals, plot_intervals, plt
 from settings import m_b, m_p, k_c, g
+from juggling_apollo.Visual import Paddle
 
 
 class Simulation:
@@ -15,12 +16,14 @@ class Simulation:
     self.air_drag = air_drag
     # bool whether we should add some friction to the plate movement
     self.plate_friction = plate_friction
+    # visualisation
+    self.vis = None
 
   def force_from_velocity(self, u_des_p, u_p):
     F_p = m_p * k_c * (u_des_p - u_p)
     return F_p
 
-  def simulate_one_iteration(self, dt, T, x_b0, x_p0, u_b0, u_p0, u, repetitions=1, d=None):
+  def simulate_one_iteration(self, dt, T, x_b0, x_p0, u_b0, u_p0, u, repetitions=1, d=None, visual=False):
     """ Simulates the system from the time interval 0->T
 
     Args:
@@ -37,6 +40,12 @@ class Simulation:
     Returns:
         [type]: x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec of shape [1, N]
     """
+    if visual:
+      if self.vis is None:
+        self.vis = Paddle(x_b0, x_p0, dt)
+      else:
+        self.vis.reset(x_b0, x_p0)
+
     if d is None:
       d = np.zeros(u.shape)  # disturbance
 
@@ -57,6 +66,8 @@ class Simulation:
     for i in range(N-1):
       # one step simulation
       x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, u_i = self.simulate_one_step(dt, u[i], x_b[i], x_p[i], u_b[i], u_p[i], d[i])
+      if visual:
+        self.vis.run_frame(x_b_new, x_p_new, u_b_new, u_p_new)
       # collect state of the system
       x_b[i+1] = x_b_new
       x_p[i+1] = x_p_new
