@@ -25,6 +25,7 @@ class Simulation:
 
   def simulate_one_iteration(self, dt, T, x_b0, x_p0, u_b0, u_p0, u, repetitions=1, d=None, visual=False):
     """ Simulates the system from the time interval 0->T
+    TODO: not part of the simulation
 
     Args:
         dt ([double]): [description]
@@ -80,8 +81,8 @@ class Simulation:
     return x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec
 
   def simulate_one_step(self, dt, u_i, x_b_i, x_p_i, u_b_i, u_p_i, plate_force_disturbance):
-    # this works only with force as input
-    # so if we get speed we transform it to force.
+    # 1.Generalized to multiple balls: x_b_i and u_b_i can be vectors
+    # 2.This works only with force as input: so if we get speed we transform it to force.
     F_i = u_i
     if not self.input_is_force:  # did we get speed?
       F_i = self.force_from_velocity(u_i, u_p_i)
@@ -100,19 +101,16 @@ class Simulation:
     gamma_n_i = u_b_i - u_p_i
     # && (((-gamma_n_i + g*dt + u_i*dt/m_p))>=0)
     contact_impact = gN <= 1e-5
-    if contact_impact:
-      dP_N = max(0, (-gamma_n_i + gravity_force + F_i*dt/m_p) / (m_b ** -1 + m_p ** -1))
-      # dP_N = (-gamma_n_i + g*dt + u_i*dt/m_p)/ (m_b**-1 + m_p**-1)
-    else:
-      dP_N = 0
+    dP_N = np.where(contact_impact, max(0, (-gamma_n_i + gravity_force + F_i*dt/m_p) / (m_b ** -1 + m_p ** -1)), 0)
 
-    u_b_new = u_b_i - gravity_force + dP_N / m_b
-    u_p_new = u_p_i + F_i * dt / m_p - dP_N / m_p
+    u_b_new = u_b_i - gravity_force + np.sum(dP_N / m_b)
+    u_p_new = u_p_i + F_i * dt / m_p - np.sum(dP_N / m_p)
     x_b_new = x_b_1_2 + 0.5 * dt * u_b_new
     x_p_new = x_p_1_2 + 0.5 * dt * u_p_new
     return x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, F_i
 
   def get_ball_force_friction(self, v):
+    # v can be both a vector or a scalar
     f_drag = 0
     if self.air_drag:
       # D is the diameter of the ball
