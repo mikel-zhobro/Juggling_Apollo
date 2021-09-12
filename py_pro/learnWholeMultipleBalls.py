@@ -43,8 +43,43 @@ sim = Simulation(input_is_force=False, air_drag=True, plate_friction=True)
 
 x_b0 = [-0.4, 0.6]
 u_b0 = [0.0, 0.0]
+
+ILC_it = 3
+# collect: dup, x_p, x_b, u_p
+dup_vec = np.zeros([ILC_it, my_ilc.kf_dpn.d.size], dtype='float')
+x_p_vec = np.zeros([ILC_it, my_ilc.N_1 + 1], dtype='float')
+u_p_vec = np.zeros([ILC_it, my_ilc.N_1 + 1], dtype='float')
+x_b_vec = np.zeros([ILC_it, my_ilc.N_1 + 1, len(x_b0)], dtype='float')
+u_des_vec = np.zeros([ILC_it, my_ilc.N_1], dtype='float')
+
+u_b0_vec = np.zeros([ILC_it, 1], dtype='float')
+t_catch_vec = np.zeros([ILC_it, 1], dtype='float')
+u_d2_vec = np.zeros([ILC_it, 1], dtype='float')
+u_Tb_vec = np.zeros([ILC_it, 1], dtype='float')
+
+
 # Main Simulation
-[x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, F_vec] = \
-  sim.simulate_one_iteration(dt=dt, T=Tb+Th, x_b0=x_b0, x_p0=x0[1], u_b0=u_b0, u_p0=x0[3], u=u_ff, visual=True, repetitions=6)
+for j in range(ILC_it):
+  [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, F_vec] = \
+    sim.simulate_one_iteration(dt=dt, T=Tb+Th, x_b0=x_b0, x_p0=x0[1], u_b0=u_b0, u_p0=x0[3], u=u_ff, visual=True, repetitions=1)
+
+  # 5. Collect data for plotting
+  u_des_vec[j, :] = np.squeeze(u_ff)
+  x_p_vec[j, :] = np.squeeze(x_p)
+  u_p_vec[j, :] = np.squeeze(u_p)
+  x_b_vec[j] = x_b
+  # dup_vec[j, :] = np.squeeze(y_des[1:]-np.squeeze(y_meas[:]))
+  # u_d2_vec[j] = d2_meas
+  # u_b0_vec[j] = ub_0
+  # t_catch_vec[j] = t_catch
+  # u_Tb_vec[j] = fly_time_meas
+  # print("ITERATION: " + str(j+1)
+  #       + ", \n\tUb0: " + str(ub_0) + ", " + str(u_p[N_h2_1-1])
+  #       + ", \n\tFly time: " + str(fly_time_meas)
+  #       + ", \n\tError on fly time: " + str(d2_meas)
+  #       + ", \n\tError on catch hight: " + str(x_p[N_fly_time])
+  #       + ", \n\tThrow/Catch time: " + str(t_throw) + " / " + str(t_catch)
+  #       + ", \n\tBiggest jump after catch: " + str(-d3_meas)
+  #       )
 
 plot_simulation(dt, F_vec, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec)
