@@ -12,7 +12,6 @@ print("juggling_apollo")
 Hb = 1
 Tb, ub_00 = plan_ball_trajectory(hb=Hb)  # important since input cannot influence the first state
 Th = 2*Tb/3
-# TODO: re-sizing
 N_1 = steps_from_time(Tb+Th, dt)-1  # size of our vectors(i.e. length of the interval)
 N_h2_1 = steps_from_time(Th/2, dt)-1  # size of our vectors(i.e. length of the interval)
 N_half_1 = int(N_1/3)
@@ -28,7 +27,6 @@ kf_d1d2_params = {
   'epsilon0': 0.3,                          # initial variance of noise on the disturbance
   'epsilon_decrease_rate': 1              # the decreasing factor of noise on the disturbance
 }
-# TODO: re-sizing (give only the diagonal values not the whole matrix, or maybe not necessary we can resolve this from inside ILC)
 kf_dpn_params = {
   'M': 0.1*np.eye(N_1, dtype='float'),      # covariance of noise on the measurment
   'P0': 0.1*np.eye(N_1, dtype='float'),     # initial disturbance covariance
@@ -48,9 +46,6 @@ t_catch = Th/2
 N_catch_1=steps_from_time(t_catch, dt)-1
 t_throw = Th - t_catch
 # reset ilc
-# TODO: re-sizing
-  # - maybe make them longer than needed and when plotting just plot the nonzero parts
-  # - save the measurement in a list( list can hold unequal long numpy vectors)
 
 my_ilc.initILC(N_1=N_1, impact_timesteps=[False]*N_1)  # ignore the ball
 y_des, u_ff, ub_0, t_catch = my_ilc.learnWhole(ub_00, t_catch=t_catch)
@@ -72,7 +67,7 @@ y_meas = None
 
 # disturbance to be learned
 period = 0.02/dt
-# TODO: re-sizing (disturbance can be a generator function)
+# TODO: (disturbance can be a generator function)
 disturbance = 250*np.sin(2*np.pi/period*np.arange(my_ilc.N_1), dtype='float')  # disturbance on the plate position(0:my_ilc.N_1-1)
 for j in range(ILC_it):
 

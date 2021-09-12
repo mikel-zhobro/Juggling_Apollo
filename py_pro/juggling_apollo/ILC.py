@@ -48,10 +48,8 @@ class ILC:
       self.t_h = self.t_f/2
 
   def initILC(self, N_1, impact_timesteps):
-    # TODO: re-sizing
     self.N_1 = len(impact_timesteps)  # time steps
     # init LSS
-    # TODO: re-sizing ( maybe add a resize function( if smaller than is just slice, otherwise add 0s))
     self.lss.updateQuadrProgMatrixes(impact_timesteps)
     # init KFs
     self.resetILC()
@@ -121,6 +119,7 @@ class ILC:
     return y_des, u_ff_new, ub_0
 
   def learnWhole(self, ub_0, t_catch=None, u_ff_old=None, y_meas=None, d1_meas=0, d2_meas=0, d3_meas=0):
+    # TODO: vectorize for multiple ball
     # 1. Throw
     if u_ff_old is not None:  # we are calculating u_ff for the first time
       # self.kf_d1d2.updateStep(0, np.array([d1_meas, d2_meas], dtype='float').reshape(-1, 1))  # estimate d1d2 disturbances
@@ -150,7 +149,6 @@ class ILC:
                                             x_ta=[x0, x1, x2, x3], x_tb=[x1, x2, x3, x4],
                                             u_ta=[u0, u1, u2, x3], u_tb=[u1, u2, u3, u4])
 
-    # calc desired input # TODO: re-sizing(u_ff_new will be longer than u_ff_old)
     u_ff_new = self.quad_input_optim.calcDesiredInput(self.kf_dpn.d, np.array(y_des[1:], dtype='float').reshape(-1, 1), True)
 
     if no_t_catch:
