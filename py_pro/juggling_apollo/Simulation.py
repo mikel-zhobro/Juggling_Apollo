@@ -25,7 +25,6 @@ class Simulation:
 
   def simulate_one_iteration(self, dt, T, x_b0, x_p0, u_b0, u_p0, u, repetitions=1, d=None, visual=False):
     """ Simulates the system from the time interval 0->T
-    TODO: not part of the simulation
 
     Args:
         dt ([double]): [description]
@@ -41,6 +40,8 @@ class Simulation:
     Returns:
         [type]: x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec of shape [1, N]
     """
+    x_b0 = np.asarray(x_b0)
+    u_b0 = np.asarray(u_b0)
     if visual:
       if self.vis is None:
         self.vis = Paddle(x_b0, x_p0, dt)
@@ -54,13 +55,13 @@ class Simulation:
     d = np.squeeze(np.tile(d, [repetitions, 1]))
     # Vectors to collect the history of the system states
     N = (steps_from_time(T, dt)-1) * repetitions + 1
-    x_b = np.zeros((N, 1)); x_b[0] = x_b0
-    u_b = np.zeros((N, 1)); u_b[0] = u_b0
+    x_b = np.zeros((N,) + x_b0.shape); x_b[0] = x_b0
+    u_b = np.zeros((N,) + u_b0.shape); u_b[0] = u_b0
     x_p = np.zeros((N, 1)); x_p[0] = x_p0
     u_p = np.zeros((N, 1)); u_p[0] = u_p0
     # Vector to collect extra info for debugging
-    dP_N_vec = np.zeros((N, 1))
-    gN_vec = np.zeros((N, 1))
+    dP_N_vec = np.zeros_like(x_b)
+    gN_vec = np.zeros_like(x_b)
     u_vec = np.zeros((N, 1))
 
     # Simulation
@@ -101,9 +102,9 @@ class Simulation:
     gamma_n_i = u_b_i - u_p_i
     # && (((-gamma_n_i + g*dt + u_i*dt/m_p))>=0)
     contact_impact = gN <= 1e-5
-    dP_N = np.where(contact_impact, max(0, (-gamma_n_i + gravity_force + F_i*dt/m_p) / (m_b ** -1 + m_p ** -1)), 0)
+    dP_N = np.where(contact_impact, np.maximum(0, (-gamma_n_i + gravity_force + F_i*dt/m_p) / (m_b ** -1 + m_p ** -1)), 0)
 
-    u_b_new = u_b_i - gravity_force + np.sum(dP_N / m_b)
+    u_b_new = u_b_i - gravity_force + dP_N / m_b
     u_p_new = u_p_i + F_i * dt / m_p - np.sum(dP_N / m_p)
     x_b_new = x_b_1_2 + 0.5 * dt * u_b_new
     x_p_new = x_p_1_2 + 0.5 * dt * u_p_new
@@ -130,39 +131,23 @@ class Simulation:
 
 def plot_simulation(dt, u, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, x_p_des=None, title = None, vertical_lines = None):
   # Everything are column vectors
-  intervals = find_continuous_intervals(1 + np.argwhere(np.squeeze(gN_vec) <= 1e-5))
+  intervals = find_continuous_intervals(gN_vec)
   # print("INTERVALS: ", np.array(intervals[0])*dt, np.array(intervals[1])*dt)
   fig, axs = plt.subplots(5, 1)
 
   timesteps = np.arange(u_p.size) * dt
-  axs[0].plot(timesteps, x_b, 'r', label='Ball position [m]')
+  axs[0].plot(timesteps, x_b, label='Ball position [m]')
   axs[0].plot(timesteps, x_p, 'b', label='Plate position [m]')
+  axs[0].axhline(y=0.0, color='y', linestyle='-')
   if x_p_des is not None:
     axs[0].plot(timesteps, x_p_des, color='green', linestyle='dashed', label='Desired Plate position [m]')
-  axs[1].plot(timesteps, u_b, 'r', label='Ball velocity [m/s]')
+  axs[1].plot(timesteps, u_b, label='Ball velocity [m/s]')
   axs[1].plot(timesteps, u_p, 'b', label='Plate velocity [m/s]')
-  axs[2].plot(timesteps, dP_N_vec, 'b', label='dP_N')
-  axs[3].plot(timesteps, gN_vec, 'b', label='g_{N_{vec}} [m]')
+  axs[2].plot(timesteps, dP_N_vec, label='dP_N')
+  axs[3].plot(timesteps, gN_vec, label='g_{N_{vec}} [m]')
   axs[4].plot(timesteps, u, 'b', label='F [N]')
   for ax in axs:
     ax = plot_intervals(ax, intervals, dt)
-    # Position where legend can be put
-    # ===============   =============
-    # Location String   Location Code
-    # ===============   =============
-    # 'best'            0
-    # 'upper right'     1
-    # 'upper left'      2
-    # 'lower left'      3
-    # 'lower right'     4
-    # 'right'           5
-    # 'center left'     6
-    # 'center right'    7
-    # 'lower center'    8
-    # 'upper center'    9
-    # 'center'          10
-    # ===============   =============
-    ax.axhline(y=0.0, color='y', linestyle='-')
     if vertical_lines is not None:
       for pos, label in vertical_lines.items():
         ax.axvline(pos, linestyle='--', color='k', label=label)
