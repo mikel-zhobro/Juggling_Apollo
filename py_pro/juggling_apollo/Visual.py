@@ -1,9 +1,10 @@
 import turtle as t
 import time
+import numpy as np
 
 
 class Paddle():
-  def __init__(self, x0b, x0p, dt):
+  def __init__(self, x0b, x0p, dt, colors=None):
 
     self.it = 0
     # meter to pixel
@@ -18,6 +19,16 @@ class Paddle():
     self.win.setup(width=600, height=600)
     self.win.tracer(0)
 
+    # Ball
+    self.balls = [t.Turtle() for _ in np.array(x0b).reshape(-1, 1)]
+    if colors is None:
+      colors = ['red'] * len(self.balls)
+    for ball, color in zip(self.balls, colors):
+      ball.speed(0)
+      ball.shape('circle')
+      ball.color(color)
+      ball.penup()
+
     # Paddle
     self.paddle = t.Turtle()
     self.paddle.speed(0)
@@ -25,13 +36,6 @@ class Paddle():
     self.paddle.shapesize(stretch_wid=1, stretch_len=5)
     self.paddle.color('white')
     self.paddle.penup()
-
-    # Ball
-    self.ball = t.Turtle()
-    self.ball.speed(0)
-    self.ball.shape('circle')
-    self.ball.color('red')
-    self.ball.penup()
 
     # Info
     self.info = t.Turtle()
@@ -55,8 +59,9 @@ class Paddle():
   def run_frame(self, x_b, x_p, u_b, u_p):
     self.win.update()
     # Update
-    self.ball.sety(self.m2pixel(x_b)+20)
-    self.ball.dy = u_b
+    for ball, xb in zip(self.balls, np.array(x_b).reshape(-1, 1)):
+      ball.sety(self.m2pixel(xb)+20)
+      # self.ball.dy = u_b
 
     self.paddle.sety(self.m2pixel(x_p))
     self.paddle.dy = u_p
@@ -76,6 +81,23 @@ class Paddle():
     self.paddle.goto(0, self.m2pixel(x_p))
     self.paddle.dy = 0
 
-    self.ball.clear()
-    self.ball.goto(0, self.m2pixel(x_b)+20)
-    self.ball.dy = 0
+    for ball, xb in zip(self.balls, np.array(x_b).reshape(-1, 1)):
+      ball.clear()
+      ball.goto(0, self.m2pixel(xb)+20)
+      ball.dy = 0
+
+
+
+#!/usr/bin/env python3
+
+def main():
+  env  = Paddle([0, 0.2, -0.3], -0.4, 0.4, colors = ['red', 'yellow', 'green'])
+  for i in range(100):
+    x_b_new = np.random.rand(3, 1)
+    x_p_new = np.random.rand(1)
+    env.run_frame(x_b_new, x_p_new, 0, 0)
+
+##############################################################################
+
+if __name__ == "__main__":
+    main()
