@@ -9,13 +9,9 @@ from utils import steps_from_time, DotDict
 
 
 class ILC:
-    # ILC('x_0', x_0, 't_f', t_f)
-
   def __init__(self, dt, kf_d1d2_params, kf_dpn_params, x_0, t_f, t_h=None):
     # design params
     self.dt  = dt
-    self.kf_d1d2_params = kf_d1d2_params
-    self.kf_dpn_params = kf_dpn_params
     self.x_0 = x_0  # starting state
 
     # Here we want to set some convention to avoid missunderstandins later on.
@@ -37,9 +33,8 @@ class ILC:
         'GF': np.array([0, 0], dtype='float').reshape(-1, 1),
       }
     )
-    self.kf_d1d2 = KalmanFilter(lss=s, **self.kf_d1d2_params)
-    # dpn
-    self.kf_dpn = KalmanFilter(lss=self.lss, **self.kf_dpn_params)
+    self.kf_d1d2 = KalmanFilter(lss=s, **kf_d1d2_params)
+    self.kf_dpn = KalmanFilter(lss=self.lss, **kf_dpn_params)  # dpn estimator
 
     self.t_f = t_f  # flying time of the ball
     self.t_h = t_h  # time that ball is in the hand
@@ -49,10 +44,8 @@ class ILC:
 
   def initILC(self, N_1, impact_timesteps):
     self.N_1 = len(impact_timesteps)  # time steps
-    # init LSS
-    self.lss.updateQuadrProgMatrixes(impact_timesteps)
-    # init KFs
-    self.resetILC()
+    self.lss.updateQuadrProgMatrixes(impact_timesteps)  # init LSS
+    self.resetILC()  # init KFs
 
   def resetILC(self):
     # reset KFs
@@ -127,9 +120,9 @@ class ILC:
 
     # calc new ub_0
     # ub_0 = ub_0 - 0.3*0.5*g*self.kf_d1d2.d[1]  # move in oposite direction of error
-    ub_0 = ub_0 - 0.3*0.5*g*d2_meas  # move in oposite direction of error
+    ub_0 = ub_0 - 0.3*0.5*g*d2_meas  # move in oposite direction of error # TODO: vectorized
 
-    # calc new catch velocity
+    # calc new catch velocity # TODO: vectorized
     no_t_catch = t_catch is None
     if no_t_catch:
       t_catch = self.t_h/2
@@ -141,8 +134,8 @@ class ILC:
     # new MinJerk
     t_end = self.t_f + self.t_h
     t0 = 0;           t1 = t_throw;    t2 = t1 + self.t_f/2;  t3 = t_end - t_catch;  t4 = t_end
-    x0 = self.x_0[0]; x1 = 0;          x2 = x0;               x3 = 0;              x4 = x0
-    u0 = self.x_0[2]; u1 = ub_0;       u2 = -ub_0/2;          u3 = -ub_0/2;        u4 = u0
+    x0 = self.x_0[0]; x1 = 0;          x2 = x0;               x3 = 0;                x4 = x0
+    u0 = self.x_0[2]; u1 = ub_0;       u2 = -ub_0/2;          u3 = -ub_0/2;          u4 = u0
     # a0 = None;        a1 = None;       a2 = None;          a3 = None
     y_des, _, _, _ = get_minjerk_trajectory(self.dt,
                                             ta  =[t0, t1, t2, t3], tb  =[t1, t2, t3, t4],
