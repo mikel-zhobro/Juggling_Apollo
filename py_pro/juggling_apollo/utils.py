@@ -31,15 +31,22 @@ def steps_from_time(T, dt):
     return int(np.ceil(T / dt))  # np.arange(0,T,dt)
 
 
-def find_continuous_intervals(indices):
+def find_continuous_intervals(gN_vec):
     """ Find connected intervals of values
+    TODO: vectorize for multiple ball
 
     Args:
-        indices ([int]): List of indexes of true intervals
+        indices ([int]): List of indexes of true intervals [timesteps x N]
 
     Returns:
         set: A 2xN set where N is nr of intevals found and 2 represents start and end indexes.
     """
+    if len(gN_vec.shape) > 1:
+      temp = np.logical_or.reduce(gN_vec <= 1e-5, axis=1)
+    else:
+      temp = gN_vec <= 1e-5
+
+    indices = 1 + np.argwhere(temp)
 
     intervals = tuple()
     indices = np.squeeze(indices)
@@ -59,7 +66,6 @@ def find_continuous_intervals(indices):
 def plot_intervals(ax, intervals, dt, colors=None):
     if colors is None or len(colors) != len(intervals):
         colors = np.repeat('gray', len(intervals))  # #2ca02c
-
     for i, col in zip(intervals, colors):
         ax.axvspan(dt * i[0], dt * i[1], facecolor=col, alpha=0.3)
     return ax
