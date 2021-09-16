@@ -12,8 +12,8 @@ print("juggling_apollo")
 Hb = 1
 Tb, ub_00 = plan_ball_trajectory(hb=Hb)  # important since input cannot influence the first state
 Th = Tb/2
-N_1 = steps_from_time(Tb+Th, dt)-1  # size of our vectors(i.e. length of the interval)
-N_h2_1 = steps_from_time(Th/2, dt)-1  # size of our vectors(i.e. length of the interval)
+N_1 = steps_from_time(Tb+Th, dt)-1       # size of our vectors(i.e. length of the interval)
+N_h2_1 = steps_from_time(Th/2, dt)-1     # size of our vectors(i.e. length of the interval)
 N_half_1 = int(N_1/3)
 # Init state
 x_ruhe = -0.4
@@ -25,14 +25,14 @@ kf_d1d2_params = {
   'P0': 0.2*np.eye(2, dtype='float'),       # initial disturbance covariance
   'd0': np.zeros((2, 1), dtype='float'),    # initial disturbance value
   'epsilon0': 0.3,                          # initial variance of noise on the disturbance
-  'epsilon_decrease_rate': 1              # the decreasing factor of noise on the disturbance
+  'epsilon_decrease_rate': 1                # the decreasing factor of noise on the disturbance
 }
 kf_dpn_params = {
   'M': 0.1*np.eye(N_1, dtype='float'),      # covariance of noise on the measurment
   'P0': 0.1*np.eye(N_1, dtype='float'),     # initial disturbance covariance
   'd0': np.zeros((N_1, 1), dtype='float'),  # initial disturbance value
   'epsilon0': 0.3,                          # initial variance of noise on the disturbance
-  'epsilon_decrease_rate': 1              # the decreasing factor of noise on the disturbance
+  'epsilon_decrease_rate': 1                # the decreasing factor of noise on the disturbance
 }
 
 my_ilc = ILC(dt, kf_d1d2_params=kf_d1d2_params, kf_dpn_params=kf_dpn_params, x_0=x0, t_f=Tb, t_h=Th)
@@ -43,9 +43,7 @@ sim = Simulation(input_is_force=False, air_drag=True, plate_friction=True)
 ILC_it = 33  # number of ILC iteration
 ub_0 = ub_00
 # reset ilc
-# my_ilc.initILC(N_1=N_1, impact_timesteps=[False]*N_1)  # ignore the ball
-# impact_timesteps =
-my_ilc.initILC(N_1=N_1, impact_timesteps=[False]*N_1)  # ignore the ball
+my_ilc.initILC(N_1=N_1, impact_timesteps=[False]*N_1)
 y_des, u_ff, ub_0 = my_ilc.learnWhole(ub_00)
 
 # collect: dup, x_p, x_b, u_p
@@ -90,12 +88,12 @@ for j in range(ILC_it):
   u_d2_vec[j] = my_ilc.kf_d1d2.d[1]  # ub_0
   u_b0_vec[j] = ub_0
   u_Tb_vec[j] = fly_time_meas
-  print("ITERATION: " + str(j+1)  # noqa
-        + ", \n\tUb0: " + str(ub_0) + ", " + str(u_p[N_h2_1-1])  # flake8: W503
-        + ", \n\tFly time: " + str(fly_time_meas-Th/2)  # flake8: W503
+  print("ITERATION: " + str(j+1)
+        + ", \n\tUb0: " + str(ub_0) + ", " + str(u_p[N_h2_1-1])
+        + ", \n\tFly time: " + str(fly_time_meas-Th/2)
         + ", \n\tError on fly time: " + str(d2_meas)
         + ", \n\tError on catch hight: " + str(x_p[N_fly_time])
-        )  # noqa: W503
+        )
 
 print("Tb: ", Tb, " Th/2", Th/2)
 plot_simulation(dt, F_vec, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec)
