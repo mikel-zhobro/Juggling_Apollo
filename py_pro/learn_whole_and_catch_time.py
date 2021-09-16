@@ -28,7 +28,7 @@ kf_d1d2_params = {
   'epsilon_decrease_rate': 1              # the decreasing factor of noise on the disturbance
 }
 kf_dpn_params = {
-  'M': 0.1*np.eye(N_1, dtype='float'),      # covariance of noise on the measurment
+  'M': 0.031*np.eye(N_1, dtype='float'),      # covariance of noise on the measurment
   'P0': 0.1*np.eye(N_1, dtype='float'),     # initial disturbance covariance
   'd0': np.zeros((N_1, 1), dtype='float'),  # initial disturbance value
   'epsilon0': 0.3,                          # initial variance of noise on the disturbance
@@ -40,9 +40,9 @@ my_ilc = ILC(dt, kf_d1d2_params=kf_d1d2_params, kf_dpn_params=kf_dpn_params, x_0
 sim = Simulation(input_is_force=False, air_drag=True, plate_friction=True)
 
 # Learn Throw
-ILC_it = 22  # number of ILC iteration
+ILC_it = 20  # number of ILC iteration
 ub_0 = ub_00
-t_catch = Th/2
+t_catch = 2*Th/3
 N_catch_1=steps_from_time(t_catch, dt)-1
 t_throw = Th - t_catch
 # reset ilc
@@ -69,11 +69,18 @@ y_meas = None
 period = 0.02/dt
 # TODO: (disturbance can be a generator function)
 disturbance = 250*np.sin(2*np.pi/period*np.arange(my_ilc.N_1), dtype='float')  # disturbance on the plate position(0:my_ilc.N_1-1)
+
+# [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, F_vec] = \
+
+  # sim.simulate_one_iteration(dt=dt, T=Tb+Th, x_b0=x0[0], x_p0=x0[1], u_b0=x0[2], u_p0=x0[3], u=u_ff, d=disturbance, visual=True, repetitions=2, pause_on_hight=0)
+# plot_simulation(dt, F_vec, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, title="Iteration: " + str(ILC_it),
+#                 vertical_lines={Th-t_catch: "T_throw", Tb+Th-t_catch: "T_catch"})
+
 for j in range(ILC_it):
 
   # Main Simulation
   [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, F_vec] = \
-    sim.simulate_one_iteration(dt=dt, T=Tb+Th, x_b0=x0[0], x_p0=x0[1], u_b0=x0[2], u_p0=x0[3], u=u_ff, d=disturbance)
+    sim.simulate_one_iteration(dt=dt, T=Tb+Th, x_b0=x0[0], x_p0=x0[1], u_b0=x0[2], u_p0=x0[3], u=u_ff, d=disturbance, it=j)
   # if j % 7 == 0:
   #   plot_simulation(dt, F_vec, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, y_des, title="Iteration: " + str(j),
   #                   vertical_lines={Th-t_catch: "T_throw", Tb+Th-t_catch: "T_catch"})
@@ -92,7 +99,7 @@ for j in range(ILC_it):
   # d3_meas =max(x_b[-N_h2_1:] - x0[0])
 
   # LEARN THROW
-  y_des, u_ff, ub_0, t_catch = my_ilc.learnWhole(ub_0=ub_0, t_catch=t_catch, u_ff_old=u_ff, y_meas=y_meas, d1_meas=d1_meas, d2_meas=d2_meas, d3_meas=d3_meas)
+  y_des, u_ff, ub_0, t_catch = my_ilc.learnWhole(ub_0=ub_0, t_catch=t_catch, u_ff_old=u_ff, y_meas=y_meas, d1_meas=d1_meas, d2_meas=d2_meas, d3_meas=0)
 
   # 5. Collect data for plotting
   # dup_vec[j, :] = np.squeeze(my_ilc.kf_dpn.d)
@@ -112,10 +119,17 @@ for j in range(ILC_it):
         + ", \n\tThrow/Catch time: " + str(t_throw) + " / " + str(t_catch)  # flake8: W503
         + ", \n\tBiggest jump after catch: " + str(-d3_meas)
         )  # noqa: W503
+  # if j%6==0:
+  #   sim.simulate_one_iteration(dt=dt, T=Tb+Th, x_b0=x0[0], x_p0=x0[1], u_b0=x0[2], u_p0=x0[3], u=u_ff, d=disturbance, visual=True, repetitions=3, pause_on_hight=0)
+
+x_H=max(x_b)
+u_H=0
+# sim.simulate_one_iteration(dt=dt, T=Tb+Th, x_b0=x_b0, x_p0=x_b0, u_b0=u_b, u_p0=u_b, u=u_ff, d=disturbance, repetitions=3)
+sim.simulate_one_iteration(dt=dt, T=Tb+Th, x_b0=[x0[0], x_H], x_p0=x0[1], u_b0=[x0[2], u_H], u_p0=x0[3], u=u_ff, d=disturbance, visual=True, repetitions=6, pause_on_hight=0, it=ILC_it)
 
 print("Tb: ", Tb, " Th/2", Th/2)
-plot_simulation(dt, F_vec, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, y_des, title="Iteration: " + str(ILC_it),
-                vertical_lines={Th-t_catch: "T_throw", Tb+Th-t_catch: "T_catch"})
+# plot_simulation(dt, F_vec, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, y_des, title="Iteration: " + str(ILC_it),
+#                 vertical_lines={Th-t_catch: "T_throw", Tb+Th-t_catch: "T_catch"})
 # plt.plot(u_b_catch_vec)
 # %%
 # plt.plot(np.squeeze(x_b), label="x_b")
@@ -126,7 +140,7 @@ plot_simulation(dt, F_vec, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, y_des, title="I
 
 # plt.plot(y_des[1:]-np.squeeze(y_meas[:]))
 # plt.show()
-plotIterations(t_catch_vec, "t_catch", dt, every_n=3)
+# plotIterations(t_catch_vec, "t_catch", dt, every_n=3)
 # plotIterations(dup_vec.T, "dup", dt, every_n=3)
 
 # plt.plot(x_p)
@@ -143,5 +157,5 @@ plotIterations(t_catch_vec, "t_catch", dt, every_n=3)
 # plotIterations(x_p_vec.T, "x_p", dt, every_n=1)
 # plotIterations(u_Tb_vec-Th/2, "Tb", every_n=1)
 # plotIterations(u_b0_vec, "ub0", every_n=1)
-plotIterations(u_d2_vec, "d2", every_n=1)
+# plotIterations(u_d2_vec, "d2", every_n=1)
 # %%

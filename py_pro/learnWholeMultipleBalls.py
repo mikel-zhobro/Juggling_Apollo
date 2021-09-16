@@ -41,10 +41,12 @@ y_des, u_ff, ub_0 = my_ilc.learnWhole(ub_00)
 
 sim = Simulation(input_is_force=False, air_drag=True, plate_friction=True)
 
-x_b0 = [-0.4, 0.6]
-u_b0 = [0.0, 0.0]
+x_b0 = [-0.4, 0.6, 0.3]
+u_b0 = [0.0, 0.0, 0.0]
+x_b0 = [-0.4]
+u_b0 = [0.0]
 
-ILC_it = 3
+ILC_it = 23
 # collect: dup, x_p, x_b, u_p
 dup_vec = np.zeros([ILC_it, my_ilc.kf_dpn.d.size], dtype='float')
 x_p_vec = np.zeros([ILC_it, my_ilc.N_1 + 1], dtype='float')
@@ -60,8 +62,9 @@ u_Tb_vec = np.zeros([ILC_it, 1], dtype='float')
 
 # Main Simulation
 for j in range(ILC_it):
+
   [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, F_vec] = \
-    sim.simulate_one_iteration(dt=dt, T=Tb+Th, x_b0=x_b0, x_p0=x0[1], u_b0=u_b0, u_p0=x0[3], u=u_ff, visual=True, repetitions=1)
+    sim.simulate_one_iteration(dt=dt, T=Tb+Th, x_b0=x_b0, x_p0=x0[1], u_b0=u_b0, u_p0=x0[3], u=u_ff, repetitions=1)
 
   # 5. Collect data for plotting
   u_des_vec[j, :] = np.squeeze(u_ff)
@@ -81,5 +84,5 @@ for j in range(ILC_it):
   #       + ", \n\tThrow/Catch time: " + str(t_throw) + " / " + str(t_catch)
   #       + ", \n\tBiggest jump after catch: " + str(-d3_meas)
   #       )
-
+sim.simulate_one_iteration(dt=dt, T=Tb+Th, x_b0=x_b0, x_p0=x0[1], u_b0=u_b0, u_p0=x0[3], u=u_ff, visual=True, repetitions=13)
 plot_simulation(dt, F_vec, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec)

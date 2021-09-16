@@ -23,7 +23,7 @@ class Simulation:
     F_p = m_p * k_c * (u_des_p - u_p)
     return F_p
 
-  def simulate_one_iteration(self, dt, T, x_b0, x_p0, u_b0, u_p0, u, repetitions=1, d=None, visual=False):
+  def simulate_one_iteration(self, dt, T, x_b0, x_p0, u_b0, u_p0, u, repetitions=1, d=None, visual=False, pause_on_hight=None, it=0):
     """ Simulates the system from the time interval 0->T
 
     Args:
@@ -42,19 +42,22 @@ class Simulation:
     """
     x_b0 = np.asarray(x_b0)
     u_b0 = np.asarray(u_b0)
+    x_p0 = np.asarray(x_p0)
+    u_p0 = np.asarray(u_p0)
     if visual:
       if self.vis is None:
         self.vis = Paddle(x_b0, x_p0, dt)
-      else:
-        self.vis.reset(x_b0, x_p0)
+    if self.vis:
+      self.vis.reset(x_b0, x_p0, it)
 
     if d is None:
       d = np.zeros(u.shape)  # disturbance
 
+    d = np.squeeze(np.tile(d.reshape(u.shape), [repetitions, 1]))
     u = np.squeeze(np.tile(u, [repetitions, 1]))
-    d = np.squeeze(np.tile(d, [repetitions, 1]))
     # Vectors to collect the history of the system states
-    N = (steps_from_time(T, dt)-1) * repetitions + 1
+    N0 =steps_from_time(T, dt)-1
+    N = N0 * repetitions + 1
     x_b = np.zeros((N,) + x_b0.shape); x_b[0] = x_b0
     u_b = np.zeros((N,) + u_b0.shape); u_b[0] = u_b0
     x_p = np.zeros((N, 1)); x_p[0] = x_p0
@@ -65,11 +68,24 @@ class Simulation:
     u_vec = np.zeros((N, 1))
 
     # Simulation
+    repetition = 0
+    old_repetition = -1
+    old_repetition2 = -1
     for i in range(N-1):
       # one step simulation
-      x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, u_i = self.simulate_one_step(dt, u[i], x_b[i], x_p[i], u_b[i], u_p[i], d[i])
+      if i%N0==1:
+        repetition +=1
+        if visual:
+          self.vis.update_repetition(repetition)
+      x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, u_i, contact_impact = self.simulate_one_step(dt, u[i], x_b[i], x_p[i], u_b[i], u_p[i], d[i])
       if visual:
         self.vis.run_frame(x_b_new, x_p_new, u_b_new, u_p_new)
+        if pause_on_hight is not None and i%N0>N0/4 and any(contact_impact) and old_repetition != repetition:
+          old_repetition = repetition  # stop only once per repetition
+          self.vis.plot_catch_line()
+        if pause_on_hight is not None and i%N0<N0/4 and not any(contact_impact) and old_repetition2 != repetition:
+          old_repetition2 = repetition  # stop only once per repetition
+          self.vis.plot_throw_line()
       # collect state of the system
       x_b[i+1] = x_b_new
       x_p[i+1] = x_p_new
@@ -108,7 +124,7 @@ class Simulation:
     u_p_new = u_p_i + F_i * dt / m_p - np.sum(dP_N / m_p)
     x_b_new = x_b_1_2 + 0.5 * dt * u_b_new
     x_p_new = x_p_1_2 + 0.5 * dt * u_p_new
-    return x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, F_i
+    return x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, F_i, contact_impact
 
   def get_ball_force_friction(self, v):
     # v can be both a vector or a scalar
