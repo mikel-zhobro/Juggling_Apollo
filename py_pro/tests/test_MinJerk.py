@@ -70,15 +70,16 @@ def test3():
   ub_0 = 4.4287
   N_1 = steps_from_time(t_h+t_f, dt)
   # new MinJerk
-  t0 = 0;      t1 = t_h/2; t2 = t1 + t_f; t3 = t_f + t_h
-  x0 = x_0[0]; x1 = 0;     x2 = 0;        x3 = x0
-  u0 = x_0[2]; u1 = ub_0;  u2 = -ub_0/6;  u3 = u0
+  t0 = 0;      t1 = t_h/2; t2 = t1 + t_f
+  x0 = x_0[0]; x1 = 0;     x2 = 0
+  u0 = x_0[2]; u1 = ub_0;  u2 = -ub_0/6
 
-  x, v, a, j = get_minjerk_trajectory(dt, ta=[t0, t1, t2], tb=[t1, t2, t3],
-                                      x_ta=[x0, x1, x2], x_tb=[x1, x2, x3],
-                                      u_ta=[u0, u1, u2], u_tb=[u1, u2, u3])
+  x, v, a, j = get_minjerk_trajectory(dt, smooth_acc=True,
+                                      tt=(t0, t1, t2),
+                                      xx=(x0, x1, x2),
+                                      uu=(u0, u1, u2))
   assert x.size == N_1, "SIZE NO MATCH: " + str(N_1) + " != " + str(x.size)
-  plotMinJerkTraj(x, v, a, j, dt, "Plate Free Motion")
+  plotMinJerkTraj(x, v, a, j, dt, "Plate Free Motion(smooth acc)")
 
 
 def test_all():

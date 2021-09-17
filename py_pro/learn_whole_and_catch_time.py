@@ -68,7 +68,7 @@ y_meas = None
 # disturbance to be learned
 period = 0.02/dt
 # TODO: (disturbance can be a generator function)
-disturbance = 250*np.sin(2*np.pi/period*np.arange(my_ilc.N_1), dtype='float')  # disturbance on the plate position(0:my_ilc.N_1-1)
+disturbance = 150*np.sin(2*np.pi/period*np.arange(my_ilc.N_1), dtype='float')  # disturbance on the plate position(0:my_ilc.N_1-1)
 
 # [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, F_vec] = \
 
@@ -125,11 +125,11 @@ for j in range(ILC_it):
 x_H=max(x_b)
 u_H=0
 # sim.simulate_one_iteration(dt=dt, T=Tb+Th, x_b0=x_b0, x_p0=x_b0, u_b0=u_b, u_p0=u_b, u=u_ff, d=disturbance, repetitions=3)
-sim.simulate_one_iteration(dt=dt, T=Tb+Th, x_b0=[x0[0], x_H], x_p0=x0[1], u_b0=[x0[2], u_H], u_p0=x0[3], u=u_ff, d=disturbance, visual=True, repetitions=6, pause_on_hight=0, it=ILC_it)
+sim.simulate_one_iteration(dt=dt, T=Tb+Th, x_b0=[x0[0]], x_p0=x0[1], u_b0=[x0[2]], u_p0=x0[3], u=u_ff, d=disturbance, visual=True, repetitions=2, pause_on_hight=0, it=ILC_it)
 
 print("Tb: ", Tb, " Th/2", Th/2)
-# plot_simulation(dt, F_vec, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, y_des, title="Iteration: " + str(ILC_it),
-#                 vertical_lines={Th-t_catch: "T_throw", Tb+Th-t_catch: "T_catch"})
+plot_simulation(dt, F_vec, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, y_des, title="Iteration: " + str(ILC_it),
+                vertical_lines={Th-t_catch: "T_throw", Tb+Th-t_catch: "T_catch"})
 # plt.plot(u_b_catch_vec)
 # %%
 # plt.plot(np.squeeze(x_b), label="x_b")

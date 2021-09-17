@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from .settings import g
+from settings import g
 import numpy as np
 # mpl.use('TkAgg')
 
@@ -16,6 +16,12 @@ def plan_ball_trajectory(hb, d1=0, d2=0):
     ub_0 = np.sqrt(2*g*(hb - d1))  # velocity of ball at throw point
     Tb = 2*ub_0/g + d2  # flying time of the ball
     return Tb, ub_0
+
+
+def flyTime2HeightAndVelocity(Tfly):
+  ub_0 = g*Tfly
+  Hb = ub_0**2 /(2*g)
+  return Hb, ub_0
 
 
 def steps_from_time(T, dt):

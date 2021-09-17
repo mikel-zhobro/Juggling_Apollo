@@ -6,7 +6,7 @@ from OptimLss import OptimLss
 from MinJerk import get_min_jerk_trajectory, plotMinJerkTraj, get_minjerk_trajectory
 from KalmanFilter import KalmanFilter
 from utils import steps_from_time, DotDict
-
+from JugglingPlanner import traj_nb_2_na_1
 
 class ILC:
   def __init__(self, dt, kf_d1d2_params, kf_dpn_params, x_0, t_f, t_h=None):
@@ -99,13 +99,14 @@ class ILC:
     ub_catch = ub_catch - 0.3*0.5*g*d3_meas  # move in oposite direction of error
 
     # new MinJerk
-    t0 = 0;           t1 = self.t_h/2; t2 = t1 + self.t_f;  t3 = self.t_f + self.t_h
-    x0 = self.x_0[0]; x1 = 0;          x2 = 0;              x3 = x0
-    u0 = self.x_0[2]; u1 = ub_0;       u2 = ub_catch;       u3 = u0
-    # a0 = None;        a1 = None;       a2 = None;          a3 = None
-    y_des, _, _, _ = get_minjerk_trajectory(self.dt, ta=[t0, t1, t2], tb=[t1, t2, t3],
-                                            x_ta=[x0, x1, x2], x_tb=[x1, x2, x3],
-                                            u_ta=[u0, u1, u2], u_tb=[u1, u2, u3])
+    dt = 0.004
+    x_0 = [-0.4, 0]
+    E = 0.25
+    tau = 0.53
+    dwell_ration = 0.68
+    catch_throw_ratio = 0.5
+    smooth_accs = True
+    y_des, ub_throw, ub_catch, H = traj_nb_2_na_1(tau, dwell_ration, catch_throw_ratio, E, x_0, dt, smooth_accs)
 
     # calc desired input
     u_ff_new = self.quad_input_optim.calcDesiredInput(self.kf_dpn.d, np.array(y_des[1:], dtype='float').reshape(-1, 1), True)
@@ -135,12 +136,12 @@ class ILC:
     t_end = self.t_f + self.t_h
     t0 = 0;           t1 = t_throw;    t2 = t1 + self.t_f/2;  t3 = t_end - t_catch;  t4 = t_end
     x0 = self.x_0[0]; x1 = 0;          x2 = x0;               x3 = 0;                x4 = x0
-    u0 = self.x_0[2]; u1 = ub_0;       u2 = -ub_0/2;          u3 = -ub_0/2;          u4 = u0
+    u0 = self.x_0[2]; u1 = ub_0;       u2 = -ub_0/2;          u3 = -ub_0/4;          u4 = u0
     # a0 = None;        a1 = None;       a2 = None;          a3 = None
-    y_des, _, _, _ = get_minjerk_trajectory(self.dt,
-                                            ta  =[t0, t1, t2, t3], tb  =[t1, t2, t3, t4],
-                                            x_ta=[x0, x1, x2, x3], x_tb=[x1, x2, x3, x4],
-                                            u_ta=[u0, u1, u2, x3], u_tb=[u1, u2, u3, u4])
+    y_des, _, _, _ = get_minjerk_trajectory(self.dt, smooth_acc=True,
+                                            tt=(t0, t1, t2, t3, t4),
+                                            xx=(x0, x1, x2, x3, x4),
+                                            uu=(u0, u1, u2, u3, u4))
 
     u_ff_new = self.quad_input_optim.calcDesiredInput(self.kf_dpn.d, np.array(y_des[1:], dtype='float').reshape(-1, 1), True)
 

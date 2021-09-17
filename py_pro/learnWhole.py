@@ -67,7 +67,7 @@ for j in range(ILC_it):
 
   # Main Simulation
   [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, F_vec] = \
-    sim.simulate_one_iteration(dt=dt, T=Tb+Th, x_b0=x0[0], x_p0=x0[1], u_b0=x0[2], u_p0=x0[3], u=u_ff, d=disturbance, visual=True)
+    sim.simulate_one_iteration(dt=dt, T=Tb+Th, x_b0=x0[0], x_p0=x0[1], u_b0=x0[2], u_p0=x0[3], u=u_ff, d=disturbance, visual=False)
 
   # Measurments
   N_fly_time = N_half_1+np.argmax(gN_vec[N_half_1:]<=1e-5)

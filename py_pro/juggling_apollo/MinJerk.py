@@ -8,24 +8,27 @@ import numpy as np
 from utils import plot_intervals, plt, steps_from_time
 
 
-def get_minjerk_trajectory(dt, ta, tb, x_ta, x_tb, u_ta, u_tb, a_ta=None, a_tb=None):
+def get_minjerk_trajectory(dt, tt, xx, uu, smooth_acc=False):
   # Initialization
-  T_whole = tb[-1] - ta[0]
+  T_whole = tt[-1] - tt[0]
   N_Whole = steps_from_time(T_whole, dt)
   x_ret = np.zeros(N_Whole, dtype='double')
   v_ret = np.zeros(N_Whole, dtype='double')
   a_ret = np.zeros(N_Whole, dtype='double')
   j_ret = np.zeros(N_Whole, dtype='double')
 
-  N = len(ta)
+  N = len(tt)
 
-  t_last = ta[0]  # last end-time
+  t_last = tt[0]  # last end-time
+  x_last = xx[0]
+  u_last = uu[0]
+  a_last = None
   n_last = 0  # last end-index
-  for i in range(N):
-    t0 = t_last;  t1 = tb[i]
-    x0 = x_ta[i]; x1 = x_tb[i]
-    u0 = u_ta[i]; u1 = u_tb[i]
-    x, v, a, j = get_min_jerk_trajectory(dt, t0, t1, x0, x1, u0, u1)
+  for i in range(N-1):
+    t0 = t_last; t1 = tt[i+1]
+    x0 = x_last; x1 = xx[i+1]
+    u0 = u_last; u1 = uu[i+1]
+    x, v, a, j = get_min_jerk_trajectory(dt, t0, t1, x0, x1, u0, u1, a_ta=a_last)
 
     len_x = len(x)
     x_ret[n_last: n_last+len_x] = x
@@ -35,7 +38,14 @@ def get_minjerk_trajectory(dt, ta, tb, x_ta, x_tb, u_ta, u_tb, a_ta=None, a_tb=N
 
     t_last = t0 + (len_x-1)*dt
     n_last += len_x-1  # (since last end-value == new first-value we overlay them and take only 1)
+    x_last = x[-1]
+    u_last = v[-1]
+    a_last = a[-1] if smooth_acc else None
 
+  x_ret[n_last:] = x[-1]
+  v_ret[n_last:] = v[-1]
+  a_ret[n_last:] = a[-1]
+  j_ret[n_last:] = j[-1]
   return x_ret, v_ret, a_ret, j_ret
 
 
