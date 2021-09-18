@@ -1,7 +1,7 @@
 from utils import flyTime2HeightAndVelocity
 from MinJerk import get_min_jerk_trajectory, plotMinJerkTraj, get_minjerk_trajectory
 
-def traj_nb_2_na_1(tau, dwell_ration, catch_throw_ratio, E, x_0, dt, smooth_acc):
+def traj_nb_2_na_1(tau, dwell_ration, catch_throw_ratio, E, x_0, dt, smooth_acc, plot=False):
   # no x-movement
   nb = 2
   na = 1
@@ -33,19 +33,17 @@ def traj_nb_2_na_1(tau, dwell_ration, catch_throw_ratio, E, x_0, dt, smooth_acc)
   tt = [t0, t1, t2, t3]
   xx = [x0, x1, x2, x3]
   uu = [u0, u1, u2, u3]
-
-  # x, v, a, j = get_minjerk_trajectory(dt,
-  #                                     ta  =(t0, t1, t2), tb  =(t1, t2, t3),
-  #                                     x_ta=(x0, x1, x2), x_tb=(x1, x2, x3),
-  #                                     u_ta=(u0, u1, u2), u_tb=(u1, u2, u3))
   x, v, a, j = get_minjerk_trajectory(dt, tt=tt, xx=xx, uu=uu, smooth_acc=smooth_acc)
-  print(
+
+  if plot:
+    print(
     "\n t_throw: " +str(t_throw)+
     "\n t_catch: " +str(t_catch)+
     "\n X: " +str(xx) +
     "\n U: " +str(uu)
         )
-  # plotMinJerkTraj(x, v, a, j, dt, "TITLE")
+    title = "Min-Jerk trajectory with " +  ("" if smooth_acc else "non") +"-smoothed acceleration."
+    plotMinJerkTraj(x, v, a, j, dt, title)
 
   return x, ub_throw, ub_catch, H
 
@@ -60,5 +58,4 @@ if __name__ == "__main__":
   catch_throw_ratio = 0.5
   smooth_accs = [False, True]
   for smooth in smooth_accs:
-  # for cr in catch_throw_ratio:
-    traj_nb_2_na_1(tau, dwell_ration, catch_throw_ratio, E, x_0, dt, smooth)
+    traj_nb_2_na_1(tau, dwell_ration, catch_throw_ratio, E, x_0, dt, smooth, True)
