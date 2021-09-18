@@ -7,7 +7,7 @@ from juggling_apollo.Visual import Paddle
 
 class Simulation:
   # Constructor
-  def __init__(self, input_is_force, air_drag, sys=None, plate_friction=False):
+  def __init__(self, input_is_force, air_drag, x0, sys=None, plate_friction=False):
     # true if input is force, false if input is velocity
     self.input_is_force = input_is_force
     # dynamic sys used to get state space matrixes of system(TODO)
@@ -18,6 +18,22 @@ class Simulation:
     self.plate_friction = plate_friction
     # visualisation
     self.vis = None
+    
+    # state
+    self.xb0 = x0[0]
+    self.xp0 = x0[1]
+    self.ub0 = x0[2]
+    self.up0 = x0[3]
+    self.xb0 = None
+    self.xp0 = None
+    self.ub0 = None
+    self.up0 = None
+
+  def reset(self):
+    self.xb = self.xb0
+    self.xp = self.xp0
+    self.ub = self.ub0
+    self.up = self.up0
 
   def force_from_velocity(self, u_des_p, u_p):
     F_p = m_p * k_c * (u_des_p - u_p)
@@ -71,6 +87,7 @@ class Simulation:
     repetition = 0
     old_repetition = -1
     old_repetition2 = -1
+    throw = False
     for i in range(N-1):
       # one step simulation
       if i%N0==1:
@@ -80,10 +97,10 @@ class Simulation:
       x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, u_i, contact_impact = self.simulate_one_step(dt, u[i], x_b[i], x_p[i], u_b[i], u_p[i], d[i])
       if visual:
         self.vis.run_frame(x_b_new, x_p_new, u_b_new, u_p_new)
-        if pause_on_hight is not None and i%N0>N0/4 and any(contact_impact) and old_repetition != repetition:
+        if i%N0>N0/4 and any(contact_impact) and old_repetition != repetition:
           old_repetition = repetition  # stop only once per repetition
           self.vis.plot_catch_line()
-        if pause_on_hight is not None and i%N0<N0/4 and not any(contact_impact) and old_repetition2 != repetition:
+        if i%N0<N0/4 and not any(contact_impact) and old_repetition2 != repetition:
           old_repetition2 = repetition  # stop only once per repetition
           self.vis.plot_throw_line()
       # collect state of the system
@@ -152,13 +169,13 @@ def plot_simulation(dt, u, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, x_p_des=None, t
   fig, axs = plt.subplots(5, 1)
 
   timesteps = np.arange(u_p.size) * dt
-  axs[0].plot(timesteps, x_b, label='Ball position [m]')
-  axs[0].plot(timesteps, x_p, 'b', label='Plate position [m]')
+  axs[0].plot(timesteps, x_b, label='Ball [m]')
+  axs[0].plot(timesteps, x_p, 'r', label='Plate [m]')
   axs[0].axhline(y=0.0, color='y', linestyle='-')
   if x_p_des is not None:
-    axs[0].plot(timesteps, x_p_des, color='green', linestyle='dashed', label='Desired Plate position [m]')
-  axs[1].plot(timesteps, u_b, label='Ball velocity [m/s]')
-  axs[1].plot(timesteps, u_p, 'b', label='Plate velocity [m/s]')
+    axs[0].plot(timesteps, x_p_des, color='green', linestyle='dashed', label='Desired')
+  axs[1].plot(timesteps, u_b, label='Ball [m/s]')
+  axs[1].plot(timesteps, u_p, 'r', label='Plate [m/s]')
   axs[2].plot(timesteps, dP_N_vec, label='dP_N')
   axs[3].plot(timesteps, gN_vec, label='g_{N_{vec}} [m]')
   axs[4].plot(timesteps, u, 'b', label='F [N]')
@@ -166,9 +183,9 @@ def plot_simulation(dt, u, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, x_p_des=None, t
     ax = plot_intervals(ax, intervals, dt)
     if vertical_lines is not None:
       for pos, label in vertical_lines.items():
-        ax.axvline(pos, linestyle='--', color='k', label=label)
+        ax.axvline(pos, linestyle='--', color='k')  # , label=label
     ax.legend(loc=1)
 
   if title is not None:
     fig.suptitle(title)
-  plt.show()
+  plt.show(block=False)
