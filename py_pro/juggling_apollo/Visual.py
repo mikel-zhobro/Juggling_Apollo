@@ -5,12 +5,13 @@ import numpy as np
 
 class Paddle():
   def __init__(self, x0b, x0p, dt, colors=None):
-    pause = False
+    self.pause = True
 
     # meter to pixel
     self.fact = 150
     self.const = -125
     self.delay = dt
+    self.it = 0
 
     # Setup Background
     self.win = t.Screen()
@@ -52,7 +53,7 @@ class Paddle():
     # The catch_line
     self.line2 = t.Turtle()
     self.line2.shape('square')
-    self.line2.shapesize(stretch_wid=0.03, stretch_len=240)
+    self.line2.shapesize(stretch_wid=0.04, stretch_len=240)
     self.line2.color('red')
     self.line2.hideturtle()
 
@@ -65,7 +66,10 @@ class Paddle():
 
     self.reset(x0b, np.asarray(x0p), 0)
 
-  def run_frame(self, x_b, x_p, u_b, u_p, repetition=1):
+  def run_frame(self, x_b, x_p, u_b, u_p, slow=1):
+    if self.pause:
+      self.wait_for_keypress()
+
     self.win.update()
     # Update
     for ball, xb in zip(self.balls, np.array(x_b).reshape(-1, 1)):
@@ -75,7 +79,7 @@ class Paddle():
     self.paddle.sety(self.m2pixel(x_p))
     self.paddle.dy = u_p
 
-    time.sleep(self.delay)
+    time.sleep(self.delay*slow)
 
   def update_repetition(self, repetition):
     self.info_rep.clear()
@@ -85,6 +89,7 @@ class Paddle():
     return int(x*self.fact + self.const)
 
   def reset(self, x_b, x_p, it):
+    self.it = it
     self.info.clear()
     self.info.write("Iteration: {}".format(it), align='center', font=('Courier', 30, 'bold'))
 
@@ -110,23 +115,18 @@ class Paddle():
     self.line3.goto(0, self.paddle.pos()[1])
 
   def wait_for_keypress(self):
-    # Do stuff
-    self.line2.showturtle()
-    self.line2.penup()
-    self.line2.goto(0, self.paddle.pos()[1])
-    print(self.paddle.pos()[1])
-    self.pause = True
-    self.info.clear()
     # Wait
+    self.info.clear()
+    self.info_rep.clear()
     self.info.write("WAITING FOR KEYPRESS", align='center', font=('Courier', 30, 'bold'))
     while self.pause:
       self.win.update()
 
   def clickHandler(self, x, y):
     self.pause = False
-    self.line2.hideturtle()
     self.info.clear()
-    self.info.write("Iteration: {}, {}".format(x, y), align='center', font=('Courier', 30, 'bold'))
+    self.info.write("Iteration: {}".format(self.it), align='center', font=('Courier', 30, 'bold'))
+    
 
   def set_info(self):
     # Info

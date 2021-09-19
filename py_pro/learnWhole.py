@@ -20,13 +20,6 @@ x_ruhe = -0.4
 x0 = [x_ruhe, x_ruhe, 0, 0]  # the plate and ball in ruhe
 
 # %%
-kf_d1d2_params = {
-  'M': 0.1*np.eye(2, dtype='float'),        # covariance of noise on the measurment
-  'P0': 0.2*np.eye(2, dtype='float'),       # initial disturbance covariance
-  'd0': np.zeros((2, 1), dtype='float'),    # initial disturbance value
-  'epsilon0': 0.3,                          # initial variance of noise on the disturbance
-  'epsilon_decrease_rate': 1                # the decreasing factor of noise on the disturbance
-}
 kf_dpn_params = {
   'M': 0.1*np.eye(N_1, dtype='float'),      # covariance of noise on the measurment
   'P0': 0.1*np.eye(N_1, dtype='float'),     # initial disturbance covariance
@@ -35,9 +28,9 @@ kf_dpn_params = {
   'epsilon_decrease_rate': 1                # the decreasing factor of noise on the disturbance
 }
 
-my_ilc = ILC(dt, kf_d1d2_params=kf_d1d2_params, kf_dpn_params=kf_dpn_params, x_0=x0, t_f=Tb, t_h=Th)
+my_ilc = ILC(dt, kf_dpn_params=kf_dpn_params, x_0=x0, t_f=Tb, t_h=Th)
 
-sim = Simulation(input_is_force=False, air_drag=True, plate_friction=True)
+sim = Simulation(x0=x0, input_is_force=False, air_drag=True, plate_friction=True)
 
 # Learn Throw
 ILC_it = 33  # number of ILC iteration
@@ -66,8 +59,9 @@ disturbance = 250*np.sin(2*np.pi/period*np.arange(my_ilc.N_1), dtype='float')  #
 for j in range(ILC_it):
 
   # Main Simulation
+  x000 = [x0[0], x0[1], x0[2], x0[3]]
   [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, F_vec] = \
-    sim.simulate_one_iteration(dt=dt, T=Tb+Th, x_b0=x0[0], x_p0=x0[1], u_b0=x0[2], u_p0=x0[3], u=u_ff, d=disturbance, visual=False)
+    sim.simulate_one_iteration(dt=dt, T=Tb+Th, x0=x000, u=u_ff, d=disturbance, visual=False)
 
   # Measurments
   N_fly_time = N_half_1+np.argmax(gN_vec[N_half_1:]<=1e-5)
@@ -85,7 +79,7 @@ for j in range(ILC_it):
   x_p_vec[j, :] = np.squeeze(x_p)
   u_p_vec[j, :] = np.squeeze(u_p)
   u_des_vec[j, :] = np.squeeze(u_ff)
-  u_d2_vec[j] = my_ilc.kf_d1d2.d[1]  # ub_0
+  u_d2_vec[j] = d2_meas
   u_b0_vec[j] = ub_0
   u_Tb_vec[j] = fly_time_meas
   print("ITERATION: " + str(j+1)
@@ -113,7 +107,6 @@ plotIterations(dup_vec.T, "dup", dt, every_n=3)
 
 # %% Run the simulation 5 repetitions
 # [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, F_vec] = \
-#   sim.simulate_one_iteration(dt=dt, T=Tb+Th, x_b0=x0[0], x_p0=x0[1], u_b0=x0[2], u_p0=x0[3], u=u_ff, repetitions=5)
 # plot_simulation(dt, F_vec, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec)
 # %%
 # Plot the stuff
@@ -124,3 +117,5 @@ plotIterations(dup_vec.T, "dup", dt, every_n=3)
 # plotIterations(u_b0_vec, "ub0", every_n=1)
 # plotIterations(u_d2_vec, "d2", every_n=1)
 # %%
+sim.simulate_one_iteration(dt=dt, T=Tb+Th, x0=x000, u=u_ff, d=disturbance, visual=True, repetitions=3)
+plt.show()

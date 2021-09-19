@@ -4,7 +4,7 @@ from juggling_apollo.Simulation import Simulation, plot_simulation
 from juggling_apollo.settings import dt
 from juggling_apollo.ILC import ILC
 
-
+import turtle
 print(plan_ball_trajectory(0.65))
 print(plan_ball_trajectory(1))
 print(plan_ball_trajectory(1.5))

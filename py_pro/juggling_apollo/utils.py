@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from matplotlib.ticker import MaxNLocator
 from settings import g
 import numpy as np
 # mpl.use('TkAgg')
@@ -19,7 +20,7 @@ def plan_ball_trajectory(hb, d1=0, d2=0):
 
 
 def flyTime2HeightAndVelocity(Tfly):
-  ub_0 = g*Tfly
+  ub_0 = g*Tfly/2
   Hb = ub_0**2 /(2*g)
   return Hb, ub_0
 
@@ -78,11 +79,25 @@ def plot_intervals(ax, intervals, dt, colors=None):
 
 
 def plotIterations(y, title, dt=1, every_n=1):
+
+  f = plt.figure()
   n_x = y.shape[0]
   n_i = y.shape[1]
   timesteps = np.arange(n_x)*dt
   for i in np.arange(0, n_i, every_n):
-    plt.plot(timesteps, y[:, i], label="iteration "+str(i+1))
+    label = "iteration "+str(i+1) if n_i>1 else ""
+    plt.plot(timesteps, y[:, i], label=label)
   plt.legend()
   plt.title(title)
-  plt.show()
+  plt.xlabel("ITERATIONS")
+  plt.axes().xaxis.set_major_locator(MaxNLocator(integer=True))
+  plt.show(block=False)
+
+def plot_lines_coord(ax, tt, xx):
+  assert len(tt) == len(xx)
+  xmin, xmax, ymin, ymax = ax.axis()
+  # Draw lines connecting points to axes
+  ax.scatter(tt, xx)
+  for t, x in zip(tt, xx):
+    ax.plot([t, t], [ymin, x], ls='--', lw=1.5, alpha=0.5)
+    ax.plot([xmin, t], [x, x], ls='--', lw=1.5, alpha=0.5)

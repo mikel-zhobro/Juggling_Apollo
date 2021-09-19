@@ -20,13 +20,6 @@ x_ruhe = -0.4
 x0 = [x_ruhe, x_ruhe, 0, 0]  # the plate and ball in ruhe
 
 # %%
-kf_d1d2_params = {
-  'M': 0.1*np.eye(2, dtype='float'),        # covariance of noise on the measurment
-  'P0': 0.2*np.eye(2, dtype='float'),       # initial disturbance covariance
-  'd0': np.zeros((2, 1), dtype='float'),    # initial disturbance value
-  'epsilon0': 0.3,                          # initial variance of noise on the disturbance
-  'epsilon_decrease_rate': 1              # the decreasing factor of noise on the disturbance
-}
 kf_dpn_params = {
   'M': 0.1*np.eye(N_1, dtype='float'),      # covariance of noise on the measurment
   'P0': 0.1*np.eye(N_1, dtype='float'),     # initial disturbance covariance
@@ -35,12 +28,12 @@ kf_dpn_params = {
   'epsilon_decrease_rate': 1              # the decreasing factor of noise on the disturbance
 }
 
-my_ilc = ILC(dt, kf_d1d2_params=kf_d1d2_params, kf_dpn_params=kf_dpn_params, x_0=x0, t_f=Tb, t_h=Th)
+my_ilc = ILC(dt, kf_dpn_params=kf_dpn_params, x_0=x0, t_f=Tb, t_h=Th)
 my_ilc.initILC(N_1=N_1, impact_timesteps=[False]*N_1)  # ignore the ball
 y_des, u_ff, ub_0 = my_ilc.learnWhole(ub_00)
 
-sim = Simulation(input_is_force=False, air_drag=True, plate_friction=True)
-
+sim = Simulation(input_is_force=False, x0=x0, air_drag=True, plate_friction=True)
+sim.reset()
 x_b0 = [-0.4, 0.6, 0.3]
 u_b0 = [0.0, 0.0, 0.0]
 x_b0 = [-0.4]
@@ -62,9 +55,9 @@ u_Tb_vec = np.zeros([ILC_it, 1], dtype='float')
 
 # Main Simulation
 for j in range(ILC_it):
-
+  x000=[x_b0, x0[1], u_b0, x0[3]]
   [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, F_vec] = \
-    sim.simulate_one_iteration(dt=dt, T=Tb+Th, x_b0=x_b0, x_p0=x0[1], u_b0=u_b0, u_p0=x0[3], u=u_ff, repetitions=1)
+    sim.simulate_one_iteration(dt=dt, T=Tb+Th, x0=x000, u=u_ff, repetitions=1)
 
   # 5. Collect data for plotting
   u_des_vec[j, :] = np.squeeze(u_ff)
@@ -84,5 +77,8 @@ for j in range(ILC_it):
   #       + ", \n\tThrow/Catch time: " + str(t_throw) + " / " + str(t_catch)
   #       + ", \n\tBiggest jump after catch: " + str(-d3_meas)
   #       )
-sim.simulate_one_iteration(dt=dt, T=Tb+Th, x_b0=x_b0, x_p0=x0[1], u_b0=u_b0, u_p0=x0[3], u=u_ff, visual=True, repetitions=13)
+sim.simulate_one_iteration(dt=dt, T=Tb+Th, x0=x000, u=u_ff, visual=True, repetitions=2)
 plot_simulation(dt, F_vec, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec)
+
+
+plt.show()

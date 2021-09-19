@@ -21,7 +21,7 @@ def test1():
   x_p0 = 0       # [m]   starting plate position
   u_p0 = 0       # [m/s] starting plate velocity
   u_b0 = u_p0    # [m/s] starting ball velocity
-
+  x0 = [x_b0, x_p0, u_b0, u_p0]
   # %% Simulation Example
   # Input
   A = 0.3                                            # [m] amplitude
@@ -32,7 +32,7 @@ def test1():
 
   # Simulation for N steps
   sim = Simulation(input_is_force, air_drag)
-  [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, F_vec] = sim.simulate_one_iteration(dt, Tsim, x_b0, x_p0, u_b0, u_p0, F_p, repetitions=1, d=dist)
+  [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, F_vec] = sim.simulate_one_iteration(dt, Tsim, x0, F_p, repetitions=1, d=dist)
 
   # Plotting for Simulation Example
   plot_simulation(dt, F_vec, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec)

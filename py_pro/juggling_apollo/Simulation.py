@@ -20,35 +20,37 @@ class Simulation:
     self.vis = None
     
     # state
-    self.xb0 = x0[0]
-    self.xp0 = x0[1]
-    self.ub0 = x0[2]
-    self.up0 = x0[3]
-    self.xb0 = None
-    self.xp0 = None
-    self.ub0 = None
-    self.up0 = None
+    self.x_b0 = np.asarray(x0[0]).reshape(-1)
+    self.x_p0 = np.asarray(x0[1]).reshape(-1)
+    self.u_b0 = np.asarray(x0[2]).reshape(-1)
+    self.u_p0 = np.asarray(x0[3]).reshape(-1)
+    self.x_b = None
+    self.x_p = None
+    self.u_b = None
+    self.u_p = None
 
-  def reset(self):
-    self.xb = self.xb0
-    self.xp = self.xp0
-    self.ub = self.ub0
-    self.up = self.up0
+  def reset(self, x0=None):
+    if x0 is not None:
+      self.x_b0 = np.asarray(x0[0]).reshape(-1)
+      self.x_p0 = np.asarray(x0[1]).reshape(-1)
+      self.u_b0 = np.asarray(x0[2]).reshape(-1)
+      self.u_p0 = np.asarray(x0[3]).reshape(-1)
+    self.x_b = self.x_b0
+    self.x_p = self.x_p0
+    self.u_b = self.u_b0
+    self.u_p = self.u_p0
 
   def force_from_velocity(self, u_des_p, u_p):
     F_p = m_p * k_c * (u_des_p - u_p)
     return F_p
 
-  def simulate_one_iteration(self, dt, T, x_b0, x_p0, u_b0, u_p0, u, repetitions=1, d=None, visual=False, pause_on_hight=None, it=0):
+  def simulate_one_iteration(self, dt, T, u, x0=None, repetitions=1, d=None, visual=False, pause_on_hight=None, it=0, slow=1):
     """ Simulates the system from the time interval 0->T
 
     Args:
         dt ([double]): [description]
         T ([double]): [description]
-        x_b0 ([double]): [description]
-        x_p0 ([double]): [description]
-        u_b0 ([double]): [description]
-        u_p0 ([double]): [description]
+        x0 ([list]):
         u ([np.array(double)]): [description]
         d ([np.array(double)], optional): [description]. Defaults to None.
         repetitions (int, optional): [description]. Defaults to 1.
@@ -56,28 +58,29 @@ class Simulation:
     Returns:
         [type]: x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec of shape [1, N]
     """
-    x_b0 = np.asarray(x_b0)
-    u_b0 = np.asarray(u_b0)
-    x_p0 = np.asarray(x_p0)
-    u_p0 = np.asarray(u_p0)
+    if x0 is not None:
+      self.reset(x0)
     if visual:
       if self.vis is None:
-        self.vis = Paddle(x_b0, x_p0, dt)
+        self.vis = Paddle(self.x_b, self.x_p, dt)
     if self.vis:
-      self.vis.reset(x_b0, x_p0, it)
+      self.vis.reset(self.x_b, self.x_p, it)
 
     if d is None:
       d = np.zeros(u.shape)  # disturbance
 
+    assert abs(T-len(u)*dt) < dt, "Input signal is of length {} instead of length {}".format(len(u)*dt ,T)
+    N0 = len(u)
     d = np.squeeze(np.tile(d.reshape(u.shape), [repetitions, 1]))
     u = np.squeeze(np.tile(u, [repetitions, 1]))
     # Vectors to collect the history of the system states
-    N0 =steps_from_time(T, dt)-1
+    # N0 = steps_from_time(T, dt)-1
+    
     N = N0 * repetitions + 1
-    x_b = np.zeros((N,) + x_b0.shape); x_b[0] = x_b0
-    u_b = np.zeros((N,) + u_b0.shape); u_b[0] = u_b0
-    x_p = np.zeros((N, 1)); x_p[0] = x_p0
-    u_p = np.zeros((N, 1)); u_p[0] = u_p0
+    x_b = np.zeros((N,) + self.x_b.shape); x_b[0] = self.x_b
+    u_b = np.zeros((N,) + self.u_b.shape); u_b[0] = self.u_b
+    x_p = np.zeros((N, 1)); x_p[0] = self.x_p
+    u_p = np.zeros((N, 1)); u_p[0] = self.u_p
     # Vector to collect extra info for debugging
     dP_N_vec = np.zeros_like(x_b)
     gN_vec = np.zeros_like(x_b)
@@ -94,9 +97,9 @@ class Simulation:
         repetition +=1
         if visual:
           self.vis.update_repetition(repetition)
-      x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, u_i, contact_impact = self.simulate_one_step(dt, u[i], x_b[i], x_p[i], u_b[i], u_p[i], d[i])
+      x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, u_i, contact_impact = self.simulate_one_step(dt, u[i], d[i])
       if visual:
-        self.vis.run_frame(x_b_new, x_p_new, u_b_new, u_p_new)
+        self.vis.run_frame(x_b_new, x_p_new, u_b_new, u_p_new, slow)
         if i%N0>N0/4 and any(contact_impact) and old_repetition != repetition:
           old_repetition = repetition  # stop only once per repetition
           self.vis.plot_catch_line()
@@ -114,34 +117,34 @@ class Simulation:
       u_vec[i] = u_i
     return x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec
 
-  def simulate_one_step(self, dt, u_i, x_b_i, x_p_i, u_b_i, u_p_i, plate_force_disturbance):
-    # 1.Generalized to multiple balls: x_b_i and u_b_i can be vectors
+  def simulate_one_step(self, dt, u_i, plate_force_disturbance):
+    # 1.Generalized to multiple balls: self.x_b and self.u_b can be vectors
     # 2.This works only with force as input: so if we get speed we transform it to force.
     F_i = u_i
     if not self.input_is_force:  # did we get speed?
-      F_i = self.force_from_velocity(u_i, u_p_i)
+      F_i = self.force_from_velocity(u_i, self.u_p)
 
     # disturbances
-    plate_friction_force_disturbance = self.get_plate_force_friction(u_p_i)
-    ball_friction_force_disturbance = self.get_ball_force_friction(u_b_i)
+    plate_friction_force_disturbance = self.get_plate_force_friction(self.u_p)
+    ball_friction_force_disturbance = self.get_ball_force_friction(self.u_b)
     gravity_force = dt*(g + ball_friction_force_disturbance/m_b)
     F_i = F_i + plate_force_disturbance - plate_friction_force_disturbance
 
-    x_b_1_2 = x_b_i + 0.5*dt*u_b_i
-    x_p_1_2 = x_p_i + 0.5*dt*u_p_i
+    x_b_1_2 = self.x_b + 0.5*dt*self.u_b
+    x_p_1_2 = self.x_p + 0.5*dt*self.u_p
 
     # gN = x_b_1_2 - x_p_1_2
-    gN = x_b_i - x_p_i
-    gamma_n_i = u_b_i - u_p_i
+    gN = self.x_b - self.x_p
+    gamma_n_i = self.u_b - self.u_p
     # && (((-gamma_n_i + g*dt + u_i*dt/m_p))>=0)
     contact_impact = gN <= 1e-5
     dP_N = np.where(contact_impact, np.maximum(0, (-gamma_n_i + gravity_force + F_i*dt/m_p) / (m_b ** -1 + m_p ** -1)), 0)
 
-    u_b_new = u_b_i - gravity_force + dP_N / m_b
-    u_p_new = u_p_i + F_i * dt / m_p - np.sum(dP_N / m_p)
-    x_b_new = x_b_1_2 + 0.5 * dt * u_b_new
-    x_p_new = x_p_1_2 + 0.5 * dt * u_p_new
-    return x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, F_i, contact_impact
+    self.u_b  = self.u_b - gravity_force + dP_N / m_b
+    self.u_p = self.u_p + F_i * dt / m_p - np.sum(dP_N / m_p)
+    self.x_b = x_b_1_2 + 0.5 * dt * self.u_b 
+    self.x_p = x_p_1_2 + 0.5 * dt * self.u_p
+    return self.x_b, self.x_p, self.u_b, self.u_p, dP_N, gN, F_i, contact_impact
 
   def get_ball_force_friction(self, v):
     # v can be both a vector or a scalar
@@ -162,7 +165,7 @@ class Simulation:
       return f_drag
 
 
-def plot_simulation(dt, u, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, x_p_des=None, title = None, vertical_lines = None):
+def plot_simulation(dt, u, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, x_p_des=None, title=None, vertical_lines=None, horizontal_lines=None):
   # Everything are column vectors
   intervals = find_continuous_intervals(gN_vec)
   # print("INTERVALS: ", np.array(intervals[0])*dt, np.array(intervals[1])*dt)
@@ -171,7 +174,10 @@ def plot_simulation(dt, u, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, x_p_des=None, t
   timesteps = np.arange(u_p.size) * dt
   axs[0].plot(timesteps, x_b, label='Ball [m]')
   axs[0].plot(timesteps, x_p, 'r', label='Plate [m]')
-  axs[0].axhline(y=0.0, color='y', linestyle='-')
+  # axs[0].axhline(y=0.0, color='y', linestyle='-')
+  if horizontal_lines is not None:
+        for pos, label in horizontal_lines.items():
+          axs[0].axhline(pos, linestyle='--', color='brown')  # , label=label
   if x_p_des is not None:
     axs[0].plot(timesteps, x_p_des, color='green', linestyle='dashed', label='Desired')
   axs[1].plot(timesteps, u_b, label='Ball [m/s]')

@@ -5,7 +5,7 @@
 # different constraints.
 
 import numpy as np
-from utils import plot_intervals, plt, steps_from_time
+from utils import plot_intervals, plt, steps_from_time, plot_lines_coord
 
 
 def get_minjerk_trajectory(dt, tt, xx, uu, smooth_acc=False):
@@ -155,7 +155,7 @@ def free_start_acceleration(T, x0, xT, u0, uT, aT=None):
   return c1, c2, c3, c4, c5, c6
 
 
-def plotMinJerkTraj(x, v, a, j, dt, title, intervals=None, colors=None):
+def plotMinJerkTraj(x, v, a, j, dt, title, intervals=None, colors=None, tt=None, xx=None, uu=None):
   """Plots the x,v,a,j trajectories together with possible intervals and colors
 
   Args:
@@ -172,7 +172,8 @@ def plotMinJerkTraj(x, v, a, j, dt, title, intervals=None, colors=None):
     colors = []
   fig, axs = plt.subplots(4, 1)
   timesteps = np.arange(0, x.size) * dt  # (1:length(x))*dt
-
+  for ax in axs:
+    ax.set_xlim(xmin=0,xmax=timesteps[-1])
   axs[0].plot(timesteps, x, 'b', label='Plate position')
   axs[0].legend(loc=1)
   axs[1].plot(timesteps, v, 'b', label='Plate velocity')
@@ -184,5 +185,20 @@ def plotMinJerkTraj(x, v, a, j, dt, title, intervals=None, colors=None):
   if intervals is not None:
     for ax in axs:
       ax = plot_intervals(ax, intervals, dt, colors)
+
+  if tt is not None:
+    if xx is not None:
+      plot_lines_coord(axs[0], tt, xx)
+    else:
+      for t in tt:
+        ax[0].axvline(t, linestyle='--')
+    if uu is not None:
+      plot_lines_coord(axs[1], tt, uu)
+    else:
+      for t in tt:
+        ax[1].axvline(t, linestyle='--')
+    for ax in axs[2:]:
+      for t in tt:
+        ax.axvline(t, linestyle='--')
   fig.suptitle(title)
-  plt.show()
+  plt.show(block = False)
