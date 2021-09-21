@@ -9,7 +9,7 @@ from utils import steps_from_time, DotDict, plt
 from JugglingPlanner import traj_nb_2_na_1
 
 class ILC:
-  def __init__(self, dt, kf_dpn_params, x_0, t_f, t_h=None):
+  def __init__(self, dt, kf_dpn_params, x_0):
     # design params
     self.dt  = dt
     self.x_0 = x_0  # starting state
@@ -26,12 +26,6 @@ class ILC:
     self.quad_input_optim = OptimLss(self.lss)
     # V. KALMAN FILTERS
     self.kf_dpn = KalmanFilter(lss=self.lss, **kf_dpn_params)  # dpn estimator
-
-    self.t_f = t_f  # flying time of the ball
-    self.t_h = t_h  # time that ball is in the hand
-    # TODO: n_b/n_a = (t_h+t_f)/(t_h+t_e)
-    if self.t_h is None:
-      self.t_h = self.t_f/2
 
   def initILC(self, N_1, impact_timesteps):
     self.N_1 = len(impact_timesteps)  # time steps
@@ -94,33 +88,10 @@ class ILC:
     u_ff_new = self.quad_input_optim.calcDesiredInput(self.kf_dpn.d, np.array(y_des[1:], dtype='float').reshape(-1, 1), True)
     return y_des, u_ff_new, ub_throw, 0
 
-  def learnWhole(self, ub_0, t_catch=None, u_ff_old=None, y_meas=None, d1_meas=0, d2_meas=0, d3_meas=0):
+  def learnWhole(self, tt, xx, uu, u_ff_old=None, y_meas=None, smooth_acc = False):
     # 1. Throw
     if u_ff_old is not None:  # we are calculating u_ff for the first time
       self.kf_dpn.updateStep(u_ff_old, y_meas)  # estimate dpn disturbance
-
-    # calc new ub_0
-    ub_0 = ub_0 - 0.3*0.5*g*d2_meas  # move in oposite direction of error # TODO: vectorized
-
-    # calc new catch velocity # TODO: vectorized
-    no_t_catch = t_catch is None
-    if no_t_catch:
-      t_catch = self.t_h/2
-      t_throw = self.t_h/2  # self.t_h + self.t_f - t_catch
-    else:
-      t_catch = min(self.t_h-0.01, float(t_catch - 0.03*d3_meas))  # move in oposite direction of error
-      t_throw = float(self.t_h - t_catch)
-
-    # new MinJerk
-    t_end = self.t_f + self.t_h
-    t0 = 0;           t1 = t_throw;    t2 = t1 + self.t_f/4;  t3 = t_end - t_catch;  t4 = t_end
-    x0 = self.x_0[0]; x1 = 0;          x2 = -0.2;               x3 = 0;                x4 = x0
-    u0 = self.x_0[2]; u1 = ub_0;       u2 = 0.0;          u3 = -ub_0/3;          u4 = u0
-    # a0 = None;        a1 = None;       a2 = None;          a3 = None
-    tt=[t0, t1, t2, t3, t4]
-    xx=[x0, x1, x2, x3, x4]
-    uu=[u0, u1, u2, u3, u4]
-    smooth_acc = False
     y_des, v, a, j = get_minjerk_trajectory(self.dt, smooth_acc=smooth_acc,
                                             tt=tt,
                                             xx=xx,
@@ -131,7 +102,4 @@ class ILC:
 
     u_ff_new = self.quad_input_optim.calcDesiredInput(self.kf_dpn.d, np.array(y_des[1:], dtype='float').reshape(-1, 1), True)
 
-    if no_t_catch:
-      return y_des, u_ff_new, ub_0
-    else:
-      return y_des, u_ff_new, ub_0, t_catch
+    return y_des, u_ff_new
