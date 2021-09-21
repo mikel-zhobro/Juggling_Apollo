@@ -36,8 +36,8 @@ class LiftedStateSpace:
         A_power_holder[i+1] = self.get_Ad(set_of_impact_timesteps[i+1]).dot(A_power_holder[i])
 
     # Create lifted-space matrixes F, K, G, M:
-    #    x = Fu + Kdu_p + d0,
-    #    y = Gx,
+    #    x[1:] = Fu + Kdu_p + d0,
+    #    y[1:] = Gx,
     # where the constant part
     #    d0 = L*x0_N-1 + M*c0_N-1
 
