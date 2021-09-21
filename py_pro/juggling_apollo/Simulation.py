@@ -58,32 +58,32 @@ class Simulation:
     Returns:
         [type]: x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec of shape [1, N]
     """
-    if x0 is not None:
-      self.reset(x0)
     if visual:
       if self.vis is None:
-        self.vis = Paddle(self.x_b, self.x_p, dt)
+        self.vis = Paddle(self.x_b, self.x_p, dt, colors=['red', 'blue'])
     if self.vis:
       self.vis.reset(self.x_b, self.x_p, it)
 
-    if d is None:
-      d = np.zeros(u.shape)  # disturbance
-
     assert abs(T-len(u)*dt) < dt, "Input signal is of length {} instead of length {}".format(len(u)*dt ,T)
     N0 = len(u)
+    if d is None:
+      d = np.zeros(u.shape)  # disturbance
     d = np.squeeze(np.tile(d.reshape(u.shape), [repetitions, 1]))
     u = np.squeeze(np.tile(u, [repetitions, 1]))
     # Vectors to collect the history of the system states
     # N0 = steps_from_time(T, dt)-1
     
     N = N0 * repetitions + 1
+    if x0 is not None:
+      self.reset(x0)
+      
     x_b = np.zeros((N,) + self.x_b.shape); x_b[0] = self.x_b
     u_b = np.zeros((N,) + self.u_b.shape); u_b[0] = self.u_b
     x_p = np.zeros((N, 1)); x_p[0] = self.x_p
     u_p = np.zeros((N, 1)); u_p[0] = self.u_p
     # Vector to collect extra info for debugging
+    gN_vec = np.zeros_like(x_b);   gN_vec[0] = self.x_b - self.x_p
     dP_N_vec = np.zeros_like(x_b)
-    gN_vec = np.zeros_like(x_b)
     u_vec = np.zeros((N, 1))
 
     # Simulation
@@ -95,25 +95,17 @@ class Simulation:
       # one step simulation
       if i%N0==1:
         repetition +=1
-        if visual:
-          self.vis.update_repetition(repetition)
       x_b_new, x_p_new, u_b_new, u_p_new, dP_N, gN, u_i, contact_impact = self.simulate_one_step(dt, u[i], d[i])
       if visual:
-        self.vis.run_frame(x_b_new, x_p_new, u_b_new, u_p_new, slow)
-        if i%N0>N0/4 and any(contact_impact) and old_repetition != repetition:
-          old_repetition = repetition  # stop only once per repetition
-          self.vis.plot_catch_line()
-        if i%N0<N0/4 and not any(contact_impact) and old_repetition2 != repetition:
-          old_repetition2 = repetition  # stop only once per repetition
-          self.vis.plot_throw_line()
+        self.visual(i, N0, repetition, contact_impact, old_repetition, old_repetition2 ,slow)
       # collect state of the system
       x_b[i+1] = x_b_new
       x_p[i+1] = x_p_new
       u_b[i+1] = u_b_new
       u_p[i+1] = u_p_new
       # collect helpers
-      dP_N_vec[i] = dP_N
-      gN_vec[i] = gN
+      dP_N_vec[i+1] = dP_N
+      gN_vec[i+1] = gN
       u_vec[i] = u_i
     return x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec
 
@@ -164,6 +156,15 @@ class Simulation:
         f_drag = np.sign(v)*c* (v**2)
       return f_drag
 
+  def visual(self,i, N0, repetition, contact_impact, old_repetition, old_repetition2 ,slow):
+    self.vis.update_repetition(repetition)
+    self.vis.run_frame(self.x_b, self.x_p, self.u_b, self.u_p, slow)
+    if i%N0>N0/4 and any(contact_impact) and old_repetition != repetition:
+      old_repetition = repetition  # stop only once per repetition
+      self.vis.plot_catch_line()
+    if i%N0<N0/4 and not any(contact_impact) and old_repetition2 != repetition:
+      old_repetition2 = repetition  # stop only once per repetition
+      self.vis.plot_throw_line()
 
 def plot_simulation(dt, u, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, x_p_des=None, title=None, vertical_lines=None, horizontal_lines=None):
   # Everything are column vectors
