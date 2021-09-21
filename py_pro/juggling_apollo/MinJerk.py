@@ -202,3 +202,14 @@ def plotMinJerkTraj(x, v, a, j, dt, title, intervals=None, colors=None, tt=None,
         ax.axvline(t, linestyle='--')
   fig.suptitle(title)
   plt.show(block = False)
+
+
+def plotMJ(dt, tt, xx, uu, smooth_acc):
+  print(
+  "\n X: " +str(xx) +
+  "\n T: " +str(tt) +
+  "\n U: " +str(uu)
+      )
+  title = "Min-Jerk trajectory with " +  ("" if smooth_acc else "non") +"-smoothed acceleration."
+  x, v, a, j = get_minjerk_trajectory(dt, tt=tt, xx=xx, uu=uu, smooth_acc=smooth_acc)
+  plotMinJerkTraj(x, v, a, j, dt, title, tt=tt[0:4], xx=xx[0:4], uu=uu[0:4])
