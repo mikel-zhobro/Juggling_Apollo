@@ -95,8 +95,9 @@ i_a_end = None
 tt=[0,        T_throw,     T_throw+T_empty,    T_throw+T_tau,   T_throw+T_fly,   T_throw+T_fly+T_hand, T_throw+T_fly+T_tau]
 xx=[x0[0],    0.0,         z_catch,            0.0,             z_catch,         0.0                 , z_catch]
 uu=[x0[2],    ub_throw,    ub_catch,           ub_throw2,       ub_catch,        ub_throw3           , ub_catch]
-if False:
+if True:
   plotMJ(dt, tt, xx, uu, smooth_acc)  
+  plt.show()
 
 extra_rep = 2
 for j in range(ILC_it):
