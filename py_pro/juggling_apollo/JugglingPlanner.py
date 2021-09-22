@@ -20,12 +20,12 @@ def calc(tau, dwell_ration, catch_throw_ratio, E):
   z_catch = z_throw + E
 
   H, ub_throw = flyTime2HeightAndVelocity(T_fly)
-  ub_catch = -ub_throw
 
-  return T_throw, T_hand, ub_catch, ub_throw, T_empty, H, z_catch
+  return T_throw, T_hand, ub_throw, T_empty, H, z_catch
 
 def traj_nb_2_na_1(T_throw, T_hand, ub_catch, ub_throw, T_empty, z_catch, x_0, dt, smooth_acc, plot=False):
   #
+  ub_catch = -ub_throw
   t0 = 0;        t1 = T_throw;    t2 = t1+T_empty;  t4 = t2+T_hand;  t5 = t4+T_empty
   x0 = x_0[0];   x1 = 0;          x2 = z_catch;     x4 = 0;          x5 = x2
   u0 = x_0[1];   u1 = ub_throw;   u2 = ub_catch;    u4 = ub_throw;   u5 = u2
