@@ -8,7 +8,7 @@ import numpy as np
 from utils import plot_intervals, plt, steps_from_time, plot_lines_coord
 
 
-def get_minjerk_trajectory(dt, tt, xx, uu, smooth_acc=False):
+def get_minjerk_trajectory(dt, tt, xx, uu, smooth_acc=False, i_a_end=None):
   # Initialization
   T_whole = tt[-1] - tt[0]
   N_Whole = steps_from_time(T_whole, dt)
@@ -23,12 +23,14 @@ def get_minjerk_trajectory(dt, tt, xx, uu, smooth_acc=False):
   x_last = xx[0]
   u_last = uu[0]
   a_last = None
+  a_ende = None
+  a_end = None
   n_last = 0  # last end-index
   for i in range(N-1):
     t0 = t_last; t1 = tt[i+1]
     x0 = x_last; x1 = xx[i+1]
     u0 = u_last; u1 = uu[i+1]
-    x, v, a, j = get_min_jerk_trajectory(dt, t0, t1, x0, x1, u0, u1, a_ta=a_last)
+    x, v, a, j = get_min_jerk_trajectory(dt, t0, t1, x0, x1, u0, u1, a_ta=a_last, a_tb=a_ende)
 
     len_x = len(x)
     x_ret[n_last: n_last+len_x] = x
@@ -41,7 +43,10 @@ def get_minjerk_trajectory(dt, tt, xx, uu, smooth_acc=False):
     x_last = x[-1]
     u_last = v[-1]
     a_last = a[-1] if smooth_acc else None
-
+    if i_a_end is not None and i == i_a_end:
+      a_end = a[-1]
+    if i==N-3:
+      a_ende = a_end
   x_ret[n_last:] = x[-1]
   v_ret[n_last:] = v[-1]
   a_ret[n_last:] = a[-1]
@@ -90,7 +95,7 @@ def get_trajectories(t, c1, c2, c3, c4, c5, c6):
   t_4 = t**4
   t_3 = t**3
   t_2 = t**2
-  j = c1*t_2/2   - c2*t       + c3                              # jerk
+  j = c1*t_2/2   - c2*t      + c3                               # jerk
   a = c1*t_3/6   - c2*t_2/2  + c3*t     + c4                    # acceleration
   v = c1*t_4/24  - c2*t_3/6  + c3*t_2/2 + c4*t      + c5        # velocity
   x = c1*t_5/120 - c2*t_4/24 + c3*t_3/6 + c4*t_2/2 + c5*t + c6  # position
@@ -107,14 +112,14 @@ def set_start_acceleration(T, x0, xT, u0, uT, a0=None, aT=None):
       # free end acceleration u(T)=0
       M = np.array([[320/T_5, -120/T_4, -20/(3*T_2)],
                     [200/T_4, -72/T_3, -8/(3*T)],
-                    [40/T_3, -12/T_2, -1/3]])
+                    [40/T_3, -12/T_2, -1.0/3.0]])
       c = np.array([-(a0*T_2)/2 - u0*T - x0 + xT, uT - u0 - T*a0, 0])
   else:
       # set end acceleration a(T)=aT
       M = np.array([[720/T_5, -360/T_4, 60/T_3],
                     [360/T_4, -168/T_3, 24/T_2],
                     [60/T_3, -24/T_2, 3/T]])
-      c = np.array([-(a0*T_2)/2 - u0*T - x0 + xT, uT - u0 - T*a0, aT - a0])
+      c = np.array([xT - x0 - T*u0 - (a0*T_2)/2, uT - u0 - T*a0, aT - a0])
 
   c123 = M.dot(c.T)
   c1 = c123[0]
@@ -142,7 +147,7 @@ def free_start_acceleration(T, x0, xT, u0, uT, aT=None):
       # set end acceleration a(T)=aT
       M = np.array([[320/T_5, -200/T_4, 40/T_3],
                     [120/T_4, -72/T_3, 12/T_2],
-                    [20/(3*T_2), -8/(3*T), 1/3]])
+                    [20/(3*T_2), -8/(3*T), 1.0/3.0]])
       c = np.array([xT - x0 - T*u0, uT - u0, aT])
 
   c123 = M.dot(c.T)
