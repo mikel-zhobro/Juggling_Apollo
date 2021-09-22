@@ -88,18 +88,16 @@ class ILC:
     u_ff_new = self.quad_input_optim.calcDesiredInput(self.kf_dpn.d, np.array(y_des[1:], dtype='float').reshape(-1, 1), True)
     return y_des, u_ff_new, ub_throw, 0
 
-  def learnWhole(self, tt, xx, uu, u_ff_old=None, y_meas=None, smooth_acc = False):
+  def learnWhole(self, y_des, u_ff_old=None, y_meas=None):
     # 1. Throw
     if u_ff_old is not None:  # we are calculating u_ff for the first time
       self.kf_dpn.updateStep(u_ff_old, y_meas)  # estimate dpn disturbance
-    y_des, v, a, j = get_minjerk_trajectory(self.dt, smooth_acc=smooth_acc,
-                                            tt=tt,
-                                            xx=xx,
-                                            uu=uu)
+
     # title = "Min-Jerk trajectory with " +  ("" if smooth_acc else "non") +"-smoothed acceleration."
     # plotMinJerkTraj(y_des, v, a, j, self.dt, title, tt=tt[0:4], xx=xx[0:4], uu=uu[0:4])
     # plt.show()
 
+
     u_ff_new = self.quad_input_optim.calcDesiredInput(self.kf_dpn.d, np.array(y_des[1:], dtype='float').reshape(-1, 1), True)
 
-    return y_des, u_ff_new
+    return u_ff_new
