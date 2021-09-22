@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from matplotlib.ticker import MaxNLocator
-from settings import g
+from settings import g, ABS
 import numpy as np
 # mpl.use('TkAgg')
 
@@ -49,9 +49,9 @@ def find_continuous_intervals(gN_vec):
         set: A 2xN set where N is nr of intevals found and 2 represents start and end indexes.
     """
     if len(gN_vec.shape) > 1:
-      temp = np.logical_or.reduce(gN_vec <= 1e-5, axis=1)
+      temp = np.logical_or.reduce(gN_vec <= ABS, axis=1)
     else:
-      temp = gN_vec <= 1e-5
+      temp = gN_vec <= ABS
 
     indices = 1 + np.argwhere(temp)
 
