@@ -1,7 +1,7 @@
 
 import numpy as np
 from utils import steps_from_time, find_continuous_intervals, plot_intervals, plt
-from settings import m_b, m_p, k_c, g
+from settings import m_b, m_p, k_c, g, ABS
 from juggling_apollo.Visual import Paddle
 
 
@@ -64,7 +64,7 @@ class Simulation:
     if self.vis:
       self.vis.reset(self.x_b, self.x_p, it)
 
-    assert abs(T-len(u)*dt) < dt, "Input signal is of length {} instead of length {}".format(len(u)*dt ,T)
+    assert abs(T-len(u)*dt) <= dt, "Input signal is of length {} instead of length {}".format(len(u)*dt ,T)
     N0 = len(u)
     if d is None:
       d = np.zeros(u.shape)  # disturbance
@@ -76,7 +76,6 @@ class Simulation:
     N = N0 * repetitions + 1
     if x0 is not None:
       self.reset(x0)
-      
     x_b = np.zeros((N,) + self.x_b.shape); x_b[0] = self.x_b
     u_b = np.zeros((N,) + self.u_b.shape); u_b[0] = self.u_b
     x_p = np.zeros((N, 1)); x_p[0] = self.x_p
@@ -84,7 +83,7 @@ class Simulation:
     # Vector to collect extra info for debugging
     gN_vec = np.zeros_like(x_b);   gN_vec[0] = self.x_b - self.x_p
     dP_N_vec = np.zeros_like(x_b)
-    u_vec = np.zeros((N, 1))
+    u_vec = np.zeros((N-1, 1))
 
     # Simulation
     repetition = 0
@@ -107,7 +106,10 @@ class Simulation:
       dP_N_vec[i+1] = dP_N
       gN_vec[i+1] = gN
       u_vec[i] = u_i
-    return x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec
+    if x0 is not None:
+      return x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec
+    else:
+      return x_b[1:], u_b[1:], x_p[1:], u_p[1:], dP_N_vec[1:], gN_vec[1:], u_vec
 
   def simulate_one_step(self, dt, u_i, plate_force_disturbance):
     # 1.Generalized to multiple balls: self.x_b and self.u_b can be vectors
@@ -129,7 +131,7 @@ class Simulation:
     gN = self.x_b - self.x_p
     gamma_n_i = self.u_b - self.u_p
     # && (((-gamma_n_i + g*dt + u_i*dt/m_p))>=0)
-    contact_impact = gN <= 1e-5
+    contact_impact = gN <= ABS
     dP_N = np.where(contact_impact, np.maximum(0, (-gamma_n_i + gravity_force + F_i*dt/m_p) / (m_b ** -1 + m_p ** -1)), 0)
 
     self.u_b  = self.u_b - gravity_force + dP_N / m_b
@@ -189,8 +191,8 @@ def plot_simulation(dt, u, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, x_p_des=None, t
   for ax in axs:
     ax = plot_intervals(ax, intervals, dt)
     if vertical_lines is not None:
-      for pos, label in vertical_lines.items():
-        ax.axvline(pos, linestyle='--', color='k')  # , label=label
+      for pos in vertical_lines:
+        ax.axvline(pos, linestyle='--', color='k')
     ax.legend(loc=1)
 
   if title is not None:
