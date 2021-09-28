@@ -1,3 +1,4 @@
+# %%
 import numpy as np
 from math import cos, sin, acos, atan2, sqrt
 
@@ -19,6 +20,43 @@ q2_fixed = 0.0
 q3_fixed = 0.0
 q5_fixed = pi_2
 q7_fixed = -pi_2
+
+def FK_DH(q1, q2, q3, q4, q5, q6, q7):    
+    q1 += off1
+    q2 += off2
+    q3 += off3
+    q4 += off4
+    q5 += off5
+    q6 += off6
+    q7 += off7
+    
+    c1 = cos(q1); s1 = sin(q1)
+    c2 = cos(q2); s2 = sin(q2)
+    c3 = cos(q3); s3 = sin(q3)
+    c4 = cos(q4); s4 = sin(q4)
+    c5 = cos(q5); s5 = sin(q5)
+    c6 = cos(q6); s6 = sin(q6)
+    c7 = cos(q7); s7 = sin(q7)
+    
+    signs = [1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0]
+    cs = [c1, c2, c3, c4, c5, c6, c7]
+    ss = [s1, s2, s3, s4, s5, s6, s7]
+    ds = [d1, 0.0, d3, 0.0, d5, 0.0, d7]
+
+    def getT(i):
+        return np.array([
+                        [cs[i], 0.0,        signs[i]*ss[i],     0.0],
+                        [ss[i], 0.0,        -signs[i]*cs[i],    0.0],
+                        [0.0,   signs[i],   0.0,                ds[i]],
+                        [0.0,   0.0,        0.0,                1.0]]
+                        , dtype='float')
+    
+    T0_7 = np.eye(4)
+    for i in range(7):
+        T0_7 = T0_7.dot(getT(i))
+    
+    return T0_7
+
 
 
 def FK(q1, q2, q3, q4, q5, q6, q7):
@@ -207,12 +245,17 @@ def J(q1, q2, q3, q4, q5, q6, q7):
     return J
 
 
+
+# %%
 if __name__ == '__main__':
     np.set_printoptions(precision=3, suppress=True)
-    # print(FK(0, 0, 0, pi_2, 0, 0, 0))
-    print(FK_reduced(0, 0, -pi_2))
+    print()
+    print(FK_DH(0, 1, 0, pi_2, 0, 0, 0))
+    # print(FK_reduced(0, 0, -pi_2))
 
-
+    T1 = FK(0, 1, 0, pi_2, 0, 0, 0)
+    T2 = FK_DH(0, 1, 0, pi_2, 0, 0, 0)
+    
     # q1, q2 ,q3 = IK_reduced(-0.3, -0.3, pi_2)
     # print(q1 + q2 + q3, pi_2)
-    print(FK_reduced(*IK_reduced(-0.5, -0.5, pi_2)))
+    # print(FK_reduced(*IK_reduced(-0.5, -0.5, pi_2)))
