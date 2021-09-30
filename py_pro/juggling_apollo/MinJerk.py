@@ -7,8 +7,39 @@
 import numpy as np
 from utils import plot_intervals, plt, steps_from_time, plot_lines_coord
 
+def get_minjerk_xyz(dt, tt, xx, uu, smooth_acc=False, i_a_end=None):
+  """Computes a multi-interval minjerk trajectory in 3 dimension(xyz)
 
-def get_minjerk_trajectory(dt, tt, xx, uu, smooth_acc=False, i_a_end=None):
+  Args:
+      dt ([list]): [[double] x nr_intervals] x 3
+      tt ([list]): [[double] x nr_intervals] x 3
+      xx ([list]): [[double] x nr_intervals] x 3
+      uu ([list]): [[double] x nr_intervals] x 3
+      smooth_acc (bool, optional): Whether the acceleartion between intervals should be smooth.
+      i_a_end ([type], optional): If not None shows the number of the interval, whose end-acceleration should be used for the last interval.
+
+  Returns:
+      [lists]: xx
+  """
+  xx = [get_minjerk_trajectory(dt, tt, xx[i], uu[i], smooth_acc=smooth_acc, i_a_end=i_a_end, only_x=True) for i in range(len(xx))]
+  return xx
+
+  
+
+def get_minjerk_trajectory(dt, tt, xx, uu, smooth_acc=False, i_a_end=None, only_x=False):
+  """Computes a multi-interval minjerk trajectory in 1 dimension
+
+  Args:
+      dt ([list]): [double] x nr_intervals
+      tt ([list]): [double] x nr_intervals 
+      xx ([list]): [double] x nr_intervals 
+      uu ([list]): [double] x nr_intervals
+      smooth_acc (bool, optional): Whether the acceleartion between intervals should be smooth.
+      i_a_end ([type], optional): If not None shows the number of the interval, whose end-acceleration should be used for the last interval.
+
+  Returns:
+      [lists]: x, v, a, j
+  """
   # Initialization
   T_whole = tt[-1] - tt[0]
   N_Whole = steps_from_time(T_whole, dt)
@@ -51,7 +82,10 @@ def get_minjerk_trajectory(dt, tt, xx, uu, smooth_acc=False, i_a_end=None):
   v_ret[n_last:] = v[-1]
   a_ret[n_last:] = a[-1]
   j_ret[n_last:] = j[-1]
-  return x_ret, v_ret, a_ret, j_ret
+  if only_x:
+    return x_ret
+  else:
+    return x_ret, v_ret, a_ret, j_ret
 
 
 def get_min_jerk_trajectory(dt, ta, tb, x_ta, x_tb, u_ta, u_tb, a_ta=None, a_tb=None):

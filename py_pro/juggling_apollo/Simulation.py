@@ -2,7 +2,7 @@
 import numpy as np
 from utils import steps_from_time, find_continuous_intervals, plot_intervals, plt
 from settings import m_b, m_p, k_c, g, ABS
-from juggling_apollo.Visual import Paddle
+from Visual import Paddle
 
 
 class Simulation:

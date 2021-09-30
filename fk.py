@@ -20,28 +20,14 @@ q2_fixed = 0.0
 q3_fixed = 0.0
 q5_fixed = pi_2
 q7_fixed = -pi_2
+signs = [1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0]  # alphas in DH table 1 if pi/2, -1 if -pi/2
+ds = [d1, 0.0, d3, 0.0, d5, 0.0, d7]
 
-def FK_DH(q1, q2, q3, q4, q5, q6, q7):    
-    q1 += off1
-    q2 += off2
-    q3 += off3
-    q4 += off4
-    q5 += off5
-    q6 += off6
-    q7 += off7
-    
-    c1 = cos(q1); s1 = sin(q1)
-    c2 = cos(q2); s2 = sin(q2)
-    c3 = cos(q3); s3 = sin(q3)
-    c4 = cos(q4); s4 = sin(q4)
-    c5 = cos(q5); s5 = sin(q5)
-    c6 = cos(q6); s6 = sin(q6)
-    c7 = cos(q7); s7 = sin(q7)
-    
-    signs = [1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0]
-    cs = [c1, c2, c3, c4, c5, c6, c7]
-    ss = [s1, s2, s3, s4, s5, s6, s7]
-    ds = [d1, 0.0, d3, 0.0, d5, 0.0, d7]
+
+def FK_DH(q):    
+    q = np.array(q).reshape(-1, 1) + np.array([off1, off2, off3, off4, off5, off6, off7]).reshape(-1, 1)
+    cs = np.cos(q)
+    ss = np.sin(q)
 
     def getT(i):
         return np.array([
@@ -54,9 +40,7 @@ def FK_DH(q1, q2, q3, q4, q5, q6, q7):
     T0_7 = np.eye(4)
     for i in range(7):
         T0_7 = T0_7.dot(getT(i))
-    
     return T0_7
-
 
 
 def FK(q1, q2, q3, q4, q5, q6, q7):
@@ -245,17 +229,85 @@ def J(q1, q2, q3, q4, q5, q6, q7):
     return J
 
 
+def IK(pos_goal, orient_goal, q_joints_state):
+    """ Calculates the IK from a certain joint configuration.
+
+    Args:
+        pos_goal ([np.array]): Goal position [x, y, z]
+        orient_goal ([np.array]): [nx, ny, nz] unit vector showing the goal orientaiton of TCP in base frame
+        q_joints_state ([np.array]): [q1, q2, q3, q4, q5, q6, q7] actual joint conifguration
+    """
+    v_step_size = 0.05  # 5mm/ 0.05rad = 9grad
+    theta_max_step = 0.2
+    Q_j = q_joints_state  # Array containing the starting joint angles
+    T_j = FK(*Q_j)  # x, y, z, nx, ny, nz coordinate of the position of the end effector in the base frame
+    
+    p_j = T_j[-1,:3]
+    n_j = x_j[3:]
+    delta_p = pos_goal - p_j  # delta_x, delta_y, delta_z between start position and desired final position of end effector
+    delta_n = orient_goal - n_j  # delta_nx, delta_ny, delta_nz between start position and desired final position of end effector
+    j = 0  # Initialize the counter variable
+
+    # While the magnitude of the delta_p vector is greater than 0.01
+    # and we are less than the max number of steps
+    while np.linalg.norm(delta_p) > 0.01 and np.linalg.norm(delta_n) > 0.01 and j<max_steps:
+        print('j{}: Q[{}], P[{}], O[{}]'.format(j, Q_j, p_j, n_j))  # Print the current joint angles and position of the end effector in the global frame
+
+        # Reduce the delta_p 3-element delta_p vector by some scaling factor
+        # delta_p represents the distance between where the end effector is now and our goal position.
+        v_p = delta_p * v_step_size / np.linalg.norm(delta_p)
+        v_n = delta_n * v_step_size / np.linalg.norm(delta_n)
+
+        # Get the jacobian matrix given the current joint angles
+        J_j = J(*Q_j)  # if we don't give the transpose qi=[qi] so all qi_s are 1x1 matrixes
+
+        # Calculate the pseudo-inverse of the Jacobian matrix
+        J_invj = np.linalg.pinv(J_j)
+
+        # Multiply the two matrices together
+        v_Q = np.matmul(J_invj, np.vstack(v_p, v_n))
+
+        # Move the joints to new angles
+        # We use the np.clip method here so that the joint doesn't move too much. We
+        # just want the joints to move a tiny amount at each time step because
+        # the full motion of the end effector is nonlinear, and we're approximating the
+        # big nonlinear motion of the end effector as a bunch of tiny linear motions.
+        Q_j = Q_j + np.clip(v_Q, -1*theta_max_step, theta_max_step)  # [:self.N_joints]
+
+        # Get the current position of the end-effector in the global frame
+        x_j = FK(Q_j)
+        p_j = x_j[:3]
+        n_j = x_j[3:]
+
+        # Increment the time step
+        j = j + 1
+
+        # Determine the difference between the new position and the desired end position
+        delta_p = pos_goal - p_j
+        delta_n = orient_goal - n_j
+
+    # Return the final angles for each joint
+    return Q_j
+
 
 # %%
 if __name__ == '__main__':
     np.set_printoptions(precision=3, suppress=True)
-    print()
-    print(FK_DH(0, 1, 0, pi_2, 0, 0, 0))
-    # print(FK_reduced(0, 0, -pi_2))
+    # print()
+    # print(FK_DH([0, 1, 0, pi_2, 0, 0, 0]))
+    print(FK_reduced(*np.array([0, 0, -pi_2]).reshape(-1,1)))
 
     T1 = FK(0, 1, 0, pi_2, 0, 0, 0)
-    T2 = FK_DH(0, 1, 0, pi_2, 0, 0, 0)
+    T2 = FK_DH([0, 1, 0, pi_2, 0, 0, 0])
+    print(T1)
+    print()
+    print(T2)
     
     # q1, q2 ,q3 = IK_reduced(-0.3, -0.3, pi_2)
     # print(q1 + q2 + q3, pi_2)
     # print(FK_reduced(*IK_reduced(-0.5, -0.5, pi_2)))
+
+    pos_goal = np.array([-0.3, -0.3, -0.3]).reshape(-1, 1)
+    orient_goal = np.array([0.0, 0.0, 1.0]).reshape(-1, 1)
+    q_joints_state = np.array([0, 1.0, 0, pi_2, 0, 0, 0]).reshape(-1, 1)
+    print(IK(pos_goal, orient_goal, q_joints_state))
