@@ -6,6 +6,8 @@ from juggling_apollo.settings import dt, g, ABS
 from juggling_apollo.ILC import ILC
 from juggling_apollo.JugglingPlanner import calc, traj_nb_2_na_1
 from juggling_apollo.MinJerk import plotMJ, get_minjerk_trajectory
+from juggling_apollo.DynamicSystem import BallAndPlateDynSys as DynamicSystem
+
 
 # %%
 print("juggling_apollo")
@@ -44,6 +46,12 @@ ILC_it = 21  # number of ILC iteration
 
 
 # Init ilc
+# Here we want to set some convention to avoid missunderstandins later on.
+# 1. the state is [xb, xp, ub, up]^T
+# 2. the system can have as input either velocity u_des or the force F_p
+# I. SYSTEM DYNAMICS
+input_is_velocity = True
+sys = DynamicSystem(dt, input_is_velocity=input_is_velocity)
 kf_dpn_params = {
   'M': 0.031*np.eye(N_1, dtype='float'),      # covariance of noise on the measurment
   'P0': 0.1*np.eye(N_1, dtype='float'),     # initial disturbance covariance

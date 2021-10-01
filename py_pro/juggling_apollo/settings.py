@@ -9,3 +9,6 @@ m_b = 0.1       # [kg] mass of ball
 m_p = 10.0        # [kg] mass of plate
 k_c = 10.0        # [1/s] force coefficient
 ABS = 1e-5
+
+# Apollo
+alpha = 0.25

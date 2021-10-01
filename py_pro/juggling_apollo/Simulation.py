@@ -18,7 +18,7 @@ class Simulation:
     self.plate_friction = plate_friction
     # visualisation
     self.vis = None
-    
+
     # state
     self.x_b0 = np.asarray(x0[0]).reshape(-1)
     self.x_p0 = np.asarray(x0[1]).reshape(-1)
@@ -72,7 +72,7 @@ class Simulation:
     u = np.squeeze(np.tile(u, [repetitions, 1]))
     # Vectors to collect the history of the system states
     # N0 = steps_from_time(T, dt)-1
-    
+
     N = N0 * repetitions + 1
     if x0 is not None:
       self.reset(x0)
@@ -136,7 +136,7 @@ class Simulation:
 
     self.u_b  = self.u_b - gravity_force + dP_N / m_b
     self.u_p = self.u_p + F_i * dt / m_p - np.sum(dP_N / m_p)
-    self.x_b = x_b_1_2 + 0.5 * dt * self.u_b 
+    self.x_b = x_b_1_2 + 0.5 * dt * self.u_b
     self.x_p = x_p_1_2 + 0.5 * dt * self.u_p
     return self.x_b, self.x_p, self.u_b, self.u_p, dP_N, gN, F_i, contact_impact
 

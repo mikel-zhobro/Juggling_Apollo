@@ -5,6 +5,7 @@ from juggling_apollo.utils import plan_ball_trajectory, steps_from_time, plotIte
 from juggling_apollo.Simulation import Simulation, plot_simulation
 from juggling_apollo.ILC import ILC
 from learnThrow import learnThrow
+from juggling_apollo.DynamicSystem import BallAndPlateDynSys as DynamicSystem
 
 # %%
 print("juggling_apollo")
@@ -29,6 +30,12 @@ N_catch_1=steps_from_time(t_catch, dt)-1
 t_throw = Th - t_catch
 
 # Init ilc
+# Here we want to set some convention to avoid missunderstandins later on.
+# 1. the state is [xb, xp, ub, up]^T
+# 2. the system can have as input either velocity u_des or the force F_p
+# I. SYSTEM DYNAMICS
+input_is_velocity = True
+sys = DynamicSystem(dt, input_is_velocity=input_is_velocity)
 kf_dpn_params = {
   'M': 0.031*np.eye(N_1, dtype='float'),      # covariance of noise on the measurment
   'P0': 0.1*np.eye(N_1, dtype='float'),     # initial disturbance covariance
@@ -36,7 +43,7 @@ kf_dpn_params = {
   'epsilon0': 0.3,                          # initial variance of noise on the disturbance
   'epsilon_decrease_rate': 1              # the decreasing factor of noise on the disturbance
 }
-my_ilc = ILC(dt, kf_dpn_params=kf_dpn_params, x_0=x0)
+my_ilc = ILC(dt, sys, kf_dpn_params=kf_dpn_params, x_0=x0)
 my_ilc.initILC(N_1=N_1, impact_timesteps=[False]*N_1)  # ignore the ball
 
 

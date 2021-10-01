@@ -1,6 +1,5 @@
 import numpy as np
 from settings import g, m_b, m_p, k_c
-from DynamicSystem import DynamicSystem
 from LiftedStateSpace import LiftedStateSpace
 from OptimLss import OptimLss
 from MinJerk import get_min_jerk_trajectory, plotMinJerkTraj, get_minjerk_trajectory
@@ -9,19 +8,13 @@ from utils import steps_from_time, DotDict, plt
 from JugglingPlanner import traj_nb_2_na_1
 
 class ILC:
-  def __init__(self, dt, kf_dpn_params, x_0):
+  def __init__(self, dt, sys, kf_dpn_params, x_0):
     # design params
     self.dt  = dt
     self.x_0 = x_0  # starting state
 
-    # Here we want to set some convention to avoid missunderstandins later on.
-    # 1. the state is [xb, xp, ub, up]^T
-    # 2. the system can have as input either velocity u_des or the force F_p
-    # I. SYSTEM DYNAMICS
-    input_is_velocity = True
-    self.sys = DynamicSystem(self.dt, input_is_velocity=input_is_velocity)
     # II. LIFTED STATE SPACE
-    self.lss = LiftedStateSpace(sys=self.sys, x0=x_0)
+    self.lss = LiftedStateSpace(sys=sys, x0=x_0)
     # IV. DESIRED INPUT OPTIMIZER
     self.quad_input_optim = OptimLss(self.lss)
     # V. KALMAN FILTERS

@@ -6,6 +6,8 @@ from juggling_apollo.settings import dt, ABS, g, ABS
 from juggling_apollo.ILC import ILC
 from juggling_apollo.JugglingPlanner import calc, traj_nb_2_na_1
 from juggling_apollo.MinJerk import plotMJ, get_minjerk_trajectory
+from juggling_apollo.DynamicSystem import BallAndPlateDynSys as DynamicSystem
+
 
 # %%
 print("juggling_apollo")
@@ -40,6 +42,12 @@ ILC_it = 55  # number of ILC iteration
 
 
 # Init ilc
+# Here we want to set some convention to avoid missunderstandins later on.
+# 1. the state is [xb, xp, ub, up]^T
+# 2. the system can have as input either velocity u_des or the force F_p
+# I. SYSTEM DYNAMICS
+input_is_velocity = True
+sys = DynamicSystem(dt, input_is_velocity=input_is_velocity)
 kf_dpn_params = {
   'M': 0.031*np.eye(N_1, dtype='float'),      # covariance of noise on the measurment
   'P0': 0.1*np.eye(N_1, dtype='float'),     # initial disturbance covariance
@@ -47,7 +55,7 @@ kf_dpn_params = {
   'epsilon0': 0.3,                          # initial variance of noise on the disturbance
   'epsilon_decrease_rate': 1              # the decreasing factor of noise on the disturbance
 }
-my_ilc = ILC(dt, kf_dpn_params=kf_dpn_params, x_0=x0)
+my_ilc = ILC(dt, sys, kf_dpn_params=kf_dpn_params, x_0=x0)
 my_ilc.initILC(N_1=N_1, impact_timesteps=[False]*N_1)  # ignore the ball
 
 sim = Simulation(input_is_force=False, x0=x0, air_drag=True, plate_friction=True)
@@ -89,7 +97,7 @@ tt=[0,        T_throw,     T_throw+T_empty,    T_FULL-T_empty,   T_FULL  ]
 xx=[x0[0],    0.0,         z_catch,            0.0,              z_catch ]
 uu=[x0[2],    ub_throw,    ub_catch,           ub_throw,         ub_catch]
 if False:
-  plotMJ(dt, tt, xx, uu, smooth_acc)  
+  plotMJ(dt, tt, xx, uu, smooth_acc)
 
 ub_throw2 = ub_throw
 extra_rep = 2
@@ -121,7 +129,7 @@ for j in range(ILC_it):
   # c. Catch point
   N_catch_time = N_throw_empty+np.argmax(gN_vec_full_1[N_throw_empty:]<=ABS) # plate_ball
   d_T_catch_1 = N_catch_time*dt - T_FULL
-  
+
   N_catch_time2 = np.argmax(gN_vec_full_2<=ABS)  # released_ball ( first_catch )
   d_T_catch_2 = N_catch_time2*dt - T_empty - T_throw
 
@@ -129,9 +137,9 @@ for j in range(ILC_it):
   d_T_catch_3 = N_catch_time3*dt - (T_FULL-T_empty+T_fly)
 
   # Newton updates
-  ub_throw = ub_throw - 0.08*g*d_T_catch_1  
+  ub_throw = ub_throw - 0.08*g*d_T_catch_1
   ub_throw2 = ub_throw2 - 0.08*g*d_T_catch_3
-  H = H - 0.2*d_T_catch_2        
+  H = H - 0.2*d_T_catch_2
   # H = max(x_b[:,1])  # disturbance on height
 
   # 5. Collect data for plotting
@@ -139,17 +147,17 @@ for j in range(ILC_it):
   x_p_vec[j, :] = np.squeeze(x_p)
   u_p_vec[j, :] = np.squeeze(u_p)
   u_ff_vec[j, :] = np.squeeze(u_ff)
-  u_d_T_catch_1_vec[j] = d_T_catch_1 
-  u_d_T_catch_2_vec[j] = d_T_catch_2 
-  u_d_T_catch_3_vec[j] = d_T_catch_3 
+  u_d_T_catch_1_vec[j] = d_T_catch_1
+  u_d_T_catch_2_vec[j] = d_T_catch_2
+  u_d_T_catch_3_vec[j] = d_T_catch_3
   u_throw_vec[j] = ub_throw
-  print("ITERATION: " + str(j+1) 
-        + ", \n\tU_throw: " + str(ub_throw) + ", " + str(u_p[N_throw_time-1]) 
+  print("ITERATION: " + str(j+1)
+        + ", \n\tU_throw: " + str(ub_throw) + ", " + str(u_p[N_throw_time-1])
         + ", \n\tError on throw time: " + str(T_throw_time - T_throw)
         + ", \n\tError on throw hight: " + str(x_p[N_throw_time])
         + ", \n\tError on catch time: " + str(d_T_catch_1)
         + ", \n\tError on catch hight: " + str(np.append(x_p, x_p_ex, 0)[N_catch_time]-z_catch)
-        ) 
+        )
 
 
 # %%
@@ -167,7 +175,7 @@ if True:
   # y_des = np.append(y_des, np.append(y_des[N_throw_empty+1:], y_des[N_throw_empty+1:]))
   y_dess = np.append(y_des[1:], np.tile(y_des[N_throw_empty+1:], extra_rep))
   plot_simulation(dt,
-                  F_vec_full, x_b_vec_full, u_b_vec_full, x_p_vec_full, 
+                  F_vec_full, x_b_vec_full, u_b_vec_full, x_p_vec_full,
                   u_p_vec_full, dP_N_vec_full, gN_vec_full, y_dess,
                   title="Iteration: " + str(j),
                   vertical_lines={T_throw:        "T_throw1",              T_throw+T_empty: "T_catch_released_ball",
@@ -192,8 +200,8 @@ visual = False
 extra_rep = 155
 [x_b_ex, u_b_ex, x_p_ex, u_p_ex, dP_N_vec_ex, gN_vec_ex, F_vec_ex] = \
   sim.simulate_one_iteration(dt=dt, T=T_hand+T_empty, u=u_ff[N_throw_empty:], d=disturbance[N_throw_empty:], it=j, repetitions=extra_rep, visual=visual)
-  
-  
+
+
 gN_vec_full =   np.append(gN_vec[1:], gN_vec_ex, 0)
 x_b_vec_full =  np.append(x_b[1:], x_b_ex, 0)
 x_p_vec_full =  np.append(x_p[1:], x_p_ex, 0)

@@ -1,24 +1,35 @@
 import numpy as np
-from settings import m_b, m_p, g, k_c
+from settings import m_b, m_p, g, k_c, alpha
 
 
 class DynamicSystem:
+  """A abstract class implementing a dynamic system.
+  """
   def __init__(self, dt, input_is_velocity):
     self.dt = dt    # time step
-
     self.Ad = None
-    self.Ad_impact = None  # [nx, nx]
     self.Bd = None
+    self._Ad_impact = None  # [nx, nx]
     self.Bd_impact = None  # [nx, nu]
+    self.c_impact = None   # constants from gravity ~ dt, g, mp mb
     self.Cd = None         # [ny, nx]
     self.S = None          # [nx, ndup]
     self.c = None
-    self.c_impact = None   # constants from gravity ~ dt, g, mp mb
     self.x0 = None         # initial state (xb0, xp0, ub0, up0)
-    self.initDynSys(input_is_velocity, dt)
-    pass
+    
+    self.initDynSys(dt, input_is_velocity)
 
-  def initDynSys(self, input_is_velocity, dt):
+  def initDynSys(self, dt, input_is_velocity):
+    assert False, "The 'initDynSys' abstract method is not implemented for the used subclass."
+    
+  @property
+  def Ad_impact(self):
+    assert self._Ad_impact is not None, "Impact dynamics are not implemented."
+    return self._Ad_impact
+  
+class BallAndPlateDynSys(DynamicSystem):
+
+  def initDynSys(self, dt, input_is_velocity):
     if input_is_velocity:
       self.Ad, self.Bd, self.Cd, self.S, self.c = self.getSystemMarixesVelocityControl(dt)
       self.Ad_impact, self.Bd_impact, self.Cd, self.S, self.c_impact = self.getSystemMarixesVelocityControl(dt, True)
@@ -94,3 +105,24 @@ class DynamicSystem:
 
     S = np.array([0, 1, 0, 0], dtype='float').reshape(-1, 1)
     return Ad, Bd, Cd, S, c
+
+
+class ApolloDynSys(DynamicSystem):
+  def __init__(self, dt, input_is_velocity):
+    super().__init__(self, dt, input_is_velocity)
+    self.alpha = alpha
+    
+  def initDynSys(self, dt, input_is_velocity=True):
+    assert input_is_velocity, "For apollo only dynamic system with velocity input is provided."
+    self.Ad, self.Bd, self.Cd, self.S, self.c = self.getSystemMarixesVelocityControl(dt)
+    
+  def getSystemMarixesVelocityControl(self, dt):
+    # x_k = Ad*x_k-1 + Bd*u_k-1 + S*d_k + c
+    # y_k = Cd*x_k
+    Ad = np.array([1.0, dt*(1-self.alpha*dt/2), 
+                   0.0, 1-dt*self.alpha], dtype='float').reshape(2,2)
+    Bd = np.array([self.alpha*dt**2/2, 
+                   dt*self.alpha], dtype='float').reshape(2,1)
+    Cd = np.array([1.0, 0.0], dtype='float').reshape(2,1)
+    c = np.array([0.0, 0.0], dtype='float').reshape(2,1)
+    return Ad, Bd, Cd, c
