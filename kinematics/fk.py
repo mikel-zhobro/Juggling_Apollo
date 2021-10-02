@@ -110,13 +110,22 @@ def FK(q1, q2, q3, q4, q5, q6, q7):
 
     return T
 
+def FK_reduced_5(q1, q4, q6):
+    # TODO
+    # FK with fixed 2,3,5 and 7 joint
+    return FK(q1, q2_fixed, q3_fixed, q4, q5_fixed, q6, q7_fixed)
 
-def FK_reduced(q1, q4, q6):
+def IK_reduced_5(x_TCP, y_TCP, theta_TCP):
+    # TODO
+    # The workspace is:
+    pass
+
+def FK_reduced_3(q1, q4, q6):
     # FK with fixed 2,3,5 and 7 joint
     return FK(q1, q2_fixed, q3_fixed, q4, q5_fixed, q6, q7_fixed)
 
 
-def IK_reduced(x_TCP, y_TCP, theta_TCP):
+def IK_reduced_3(x_TCP, y_TCP, theta_TCP):
     # The workspace is:
     #
     x_j6 = x_TCP + d7*cos(theta_TCP)
@@ -320,7 +329,7 @@ if __name__ == '__main__':
     np.set_printoptions(precision=3, suppress=True)
     # print()
     # print(FK_DH([0, 1, 0, pi_2, 0, 0, 0]))
-    # print(FK_reduced(*np.array([0, 0, -pi_2]).reshape(-1,1)))
+    # print(FK_reduced_3(*np.array([0, 0, -pi_2]).reshape(-1,1)))
 
     # T1 = FK(0, 1, 0, pi_2, 0, 0, 0)
     # T2 = FK_DH([0, 1, 0, pi_2, 0, 0, 0])
@@ -328,9 +337,9 @@ if __name__ == '__main__':
     # print()
     # print(T2)
 
-    # q1, q2 ,q3 = IK_reduced(-0.3, -0.3, pi_2)
+    # q1, q2 ,q3 = IK_reduced_3(-0.3, -0.3, pi_2)
     # print(q1 + q2 + q3, pi_2)
-    # print(FK_reduced(*IK_reduced(-0.5, -0.5, pi_2)))
+    # print(FK_reduced_3(*IK_reduced_3(-0.5, -0.5, pi_2)))
 
     R_goal = np.array([[0, 0, 1],
                       [0, 1, 0],
