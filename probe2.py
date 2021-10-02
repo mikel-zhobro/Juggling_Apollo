@@ -1,0 +1,28 @@
+import matplotlib.pyplot as plt
+import numpy as np
+from juggling_apollo.Apollo_It import MyApollo
+
+def main():
+
+    N = 2000
+    dt = 0.004
+    timesteps = np.arange(0.0, dt*N,dt)
+    inputs = np.zeros((N, 7))
+    inputs[:,0] = 0.3 * np.sin(timesteps)
+    
+    r_arm = MyApollo(r_arm=True)
+    r_arm.go_to_posture_array([0.0, 0.0, -np.pi/4, np.pi/2, np.pi/2, np.pi/2, 0.0], 2000, False)
+    # r_arm.go_to_posture_array([np.pi/4, 0.0, np.pi/4, np.pi/4, 3*np.pi/4, 3*np.pi/4, 0.0], 2000, False)
+    
+    poses, velocities, acc, _ = r_arm.apollo_run_one_iteration(dt, T=dt*len(timesteps), u=inputs)
+    
+    plt.figure()
+    plt.plot(timesteps, poses[:, 0], label='angle')
+    plt.plot(timesteps, velocities[:, 0], label='velocity')
+    plt.plot(timesteps, inputs[:, 0], label='des_velocity')
+    plt.plot(timesteps, acc[:, 0], label='acc')
+    plt.legend()
+    plt.show()
+    
+if __name__ == "__main__":
+    main()
