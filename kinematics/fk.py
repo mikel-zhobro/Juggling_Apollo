@@ -4,8 +4,8 @@ from math import cos, sin, acos, atan2, sqrt
 from scipy.linalg import logm
 
 d1 = 0.2
-d3 = 0.3
-d5 = 0.4
+d3 = 0.4
+d5 = 0.39
 d7 = 0.1
 
 pi_2 = np.pi/2
