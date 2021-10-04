@@ -1,6 +1,7 @@
 # %%
 import numpy as np
 from math import cos, sin, acos, atan2, sqrt
+from scipy.linalg import logm
 
 d1 = 0.2
 d3 = 0.3
@@ -68,7 +69,7 @@ def FK(q1, q2, q3, q4, q5, q6, q7):
     B1 = -c1*s3 + c2*c3*s1; Bb1 = B1*c4 - s1*s2*s4
     B2 = -c1*c3 - c2*s1*s3; Bb2 = B1*s4 + s1*s2*c4
 
-    C1 = c2*s4 + c3*s2*c4;
+    C1 = c2*s4 + c3*s2*c4
     C2 = -c2*c4 + c3*s2*s4; Cc1 = C1*c5 - s2*s3*s5
 
     Aa12 = Aa1*c5 + A2*s5
@@ -147,6 +148,14 @@ def IK_reduced_3(x_TCP, y_TCP, theta_TCP):
 
 
 def J(q1, q2, q3, q4, q5, q6, q7):
+    """ Local Jacobian at the seventh joint
+
+    Args:
+        qi ([double]): value of ith joint
+
+    Returns:
+        [np.array()]: J in [6 x 7] where Jp = J[:3, :] is the positional jacobian and Jo = J[3:, :] is the orientational jacobian
+    """
     q1 += off1
     q2 += off2
     q3 += off3
@@ -171,7 +180,7 @@ def J(q1, q2, q3, q4, q5, q6, q7):
     B1 = -c1*s3 + c2*c3*s1; Bb1 = B1*c4 - s1*s2*s4
     B2 = -c1*c3 - c2*s1*s3; Bb2 = B1*s4 + c4*s1*s2; Bb12 = Bb1*c5 + B2*s5
 
-    C1 = c2*s4 + c3*c4*s2;
+    C1 = c2*s4 + c3*c4*s2
     C2 = -c2*c4 + c3*s2*s4; Cc1 = C1*c5 - s2*s3*s5
 
     Xa = Aa12*c6 - Aa2*s6
@@ -254,11 +263,21 @@ def SO3_2_so3(R):
                                      R[1,0] - R[0,1]], dtype='float').reshape(3,1)
     return w, theta
 
-def orientation_error(R_i, R_goal):
-    R_e = R_goal.dot(R_i.T)  # error rotation
+def orientation_error2(R_i, R_goal):
+    R_e = R_i.T.dot(R_goal)  # error rotation
 
     n_e, theta_e = SO3_2_so3(R_e)
-    return n_e, theta_e
+    return n_e * theta_e
+
+def orientation_error(R_i, R_goal):
+    R_e = R_i.T.dot(R_goal)  # error rotation
+
+    w_e = logm(R_e)
+    wx = w_e[-1, 1]
+    wy = w_e[0, -1]
+    wz = w_e[1, 0]
+    n_e = np.array([wx, wy, wz]).reshape(3,1)
+    return n_e
 
 def IK(pos_goal, R_goal, q_joints_state):
     """ Calculates the IK from a certain joint configuration.
@@ -269,56 +288,74 @@ def IK(pos_goal, R_goal, q_joints_state):
         q_joints_state ([np.array]): [q1, q2, q3, q4, q5, q6, q7] actual joint conifguration
     """
     max_steps = 1000
-    v_step_size = 0.05  # 5mm/ 0.05rad = 9grad
-    vn_step_size = 0.01  # 5mm/ 0.05rad = 9grad
+    v_step_size = 0.05  # 5mm
+    vn_step_size = 0.03  # 0.01 rad ~ 2grad
     theta_max_step = 0.02
     Q_j = q_joints_state  # Array containing the starting joint angles
-    T_j = FK(*Q_j)  # x, y, z, nx, ny, nz coordinate of the position of the end effector in the base frame
+    T_j = FK(*Q_j.copy())  # x, y, z, nx, ny, nz coordinate of the position of the end effector in the base frame
 
     p_j = T_j[:3, 3:]
     R_j = T_j[:3, :3]
     delta_p = pos_goal - p_j  # delta_x, delta_y, delta_z between start position and desired final position of end effector
-    delta_n, theta_err = orientation_error(R_j, R_goal)  # delta_nx, delta_ny, delta_nz between start position and desired final position of end effector
+    delta_n = orientation_error(R_j, R_goal)  # delta_nx, delta_ny, delta_nz between start position and desired final position of end effector
     j = 0  # Initialize the counter variable
 
     # While the magnitude of the delta_p vector is greater than 0.01
+    border_p = 0.01  # 1cm
+    border_n = 0.01
     # and we are less than the max number of steps
-    while np.linalg.norm(delta_p) > 0.01 or np.linalg.norm(delta_n) > 0.01 and j<max_steps:
+    not_converged = True
+    while not_converged and j<max_steps*5:
         # print('j{}:\n Q[{}],\n P[{}],\n O[{}]'.format(j, Q_j.T, p_j.T, theta_err))  # Print the current joint angles and position of the end effector in the global frame
-        print('j{}:\n x_norm[{}],\n n_norm[{}]'.format(j, np.linalg.norm(delta_p), np.linalg.norm(delta_n)))
+        #  or np.linalg.norm(delta_n) > border_n
+        if j%20 == 0:
+            print('j{}:'.format(j))
+            print('x_norm={},  {}'.format(delta_p.T,  np.linalg.norm(delta_p)))
+            print('n_norm={},  {}'.format(delta_n.T,  np.linalg.norm(delta_n)))
         # Reduce the delta_p 3-element delta_p vector by some scaling factor
         # delta_p represents the distance between where the end effector is now and our goal position.
         v_p = delta_p * v_step_size / np.linalg.norm(delta_p)
         v_n = delta_n * vn_step_size / np.linalg.norm(delta_n)
-
+        # v_n = delta_n
+        # v_p = delta_p
         # Get the jacobian matrix given the current joint angles
         # np.block([[R_j.T, np.zeros_like(R_j)],[np.zeros_like(R_j), R_j.T]])
-        J_j = J(*Q_j)  # if we don't give the transpose qi=[qi] so all qi_s are 1x1 matrixes
+        J_j = J(*Q_j.copy())  # if we don't give the transpose qi=[qi] so all qi_s are 1x1 matrixes
 
         # Calculate the pseudo-inverse of the Jacobian matrix
         J_invj = np.linalg.pinv(J_j)
+        # J_invj = np.linalg.pinv(J_j[:3,:])
+        # J_invj = np.linalg.pinv(J_j[3:,:])
+        # J_invj  = J_j[:3,:].T.dot( np.linalg.inv(J_j[:3,:].dot(J_j[:3,:].T)) )
 
         # Multiply the two matrices together
         v_Q = np.matmul(J_invj, np.vstack([v_p, v_n]))
+        # v_Q = np.matmul(J_invj, v_p)
+        # v_Q = np.matmul(J_invj, v_n)
 
         # Move the joints to new angles
         # We use the np.clip method here so that the joint doesn't move too much. We
         # just want the joints to move a tiny amount at each time step because
         # the full motion of the end effector is nonlinear, and we're approximating the
         # big nonlinear motion of the end effector as a bunch of tiny linear motions.
-        Q_j = Q_j + np.clip(v_Q, -1*theta_max_step, theta_max_step)  # [:self.N_joints]
+        # Q_j = Q_j + np.clip(v_Q, -1*theta_max_step, theta_max_step)  # [:self.N_joints]
+        Q_j = Q_j + v_Q * 0.1  # [:self.N_joints]
 
         # Get the current position of the end-effector in the global frame
-        T_j = FK(*Q_j)
+        T_j = FK(*Q_j.copy())
         p_j = T_j[:3, 3:]
-        R_j = T_j[:3,:3]
+        R_j = T_j[:3, :3]
 
         # Increment the time step
         j = j + 1
 
         # Determine the difference between the new position and the desired end position
         delta_p = pos_goal - p_j
-        delta_n, theta_err = orientation_error(R_j, R_goal)
+        delta_n = orientation_error(R_j, R_goal)
+
+        pos_not_converged = np.linalg.norm(delta_p) > border_p
+        orient_not_converged = np.linalg.norm(delta_n) > border_n
+        not_converged = pos_not_converged or orient_not_converged
     print('j{}:\n x_norm[{}],\n n_norm[{}]'.format(j, np.linalg.norm(delta_p), np.linalg.norm(delta_n)))
     # Return the final angles for each joint
     return Q_j
@@ -341,11 +378,19 @@ if __name__ == '__main__':
     # print(q1 + q2 + q3, pi_2)
     # print(FK_reduced_3(*IK_reduced_3(-0.5, -0.5, pi_2)))
 
-    R_goal = np.array([[0, 0, 1],
-                      [0, 1, 0],
-                      [1, 0, 0]], dtype='float')
-    pos_goal = np.array([-0.3, -0.3, -0.3]).reshape(-1, 1)
-    orient_goal = np.array([0.0, 0.0, 1.0]).reshape(-1, 1)
+    # R_goal = np.array([[0, 0, 1],
+    #                   [0, 1, 0],
+    #                   [1, 0, 0]], dtype='float')
+    # pos_goal = np.array([-0.3, -0.3, -0.3]).reshape(-1, 1)
+    # orient_goal = np.array([0.0, 0.0, 1.0]).reshape(-1, 1)
+
     q_joints_state = np.array([0, 1.0, 0, pi_2/2, 0, 0, 0]).reshape(-1, 1)
+    q_joints_goal = np.array([0.2, 1.21, 1.1, pi_2/2, 1.1, 0.2, 0.2]).reshape(-1, 1)
+    T_goal = FK(*q_joints_goal)
+    pos_goal = T_goal[:3, 3:]
+    R_goal = T_goal[:3,:3]
+
+    print(pos_goal)
     q = IK(pos_goal, R_goal, q_joints_state)
+    print(T_goal)
     print(FK(*q))
