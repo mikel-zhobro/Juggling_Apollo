@@ -1,6 +1,6 @@
 import path_setter
 import numpy as np
-from juggling_apollo.utils import plan_ball_trajectory, steps_from_time
+from juggling_apollo.utils import plan_ball_trajectory, steps_from_time, plt
 from juggling_apollo.MinJerk import get_min_jerk_trajectory, plotMinJerkTraj, get_minjerk_trajectory
 from juggling_apollo.settings import dt, g
 
@@ -85,8 +85,9 @@ def test3():
 def test_all():
   test1()
   test2()
-  test3()
+  # test3()
 
 
 if __name__ == "__main__":
     test_all()
+    plt.show()
