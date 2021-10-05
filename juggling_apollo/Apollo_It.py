@@ -1,10 +1,10 @@
 import numpy as np
-import O8O_apollo as apollo
+# import O8O_apollo as apollo
 import matplotlib.pyplot as plt
 
 
-# List of all joints(motors) for Apollo. 
-# Their position in the list is the index to communcate through. 
+# List of all joints(motors) for Apollo.
+# Their position in the list is the index to communcate through.
 joints = [
  "R_SFE", "R_SAA", "R_HR", "R_EB", "R_WR", "R_WFE", "R_WAA",  # Right Arm
  "L_SFE", "L_SAA", "L_HR", "L_EB", "L_WR", "L_WFE", "L_WAA",  # Left Arm
@@ -96,7 +96,7 @@ class MyApollo:
             self.joints_list = R_joints
         else:
             self.joints_list = L_joints
-            
+
     def obs_to_numpy(self, obs):
         """Transform a O8O observation to a numpy matrix
 
@@ -108,7 +108,7 @@ class MyApollo:
         """
         # first for loop traverses the joints, second one the angle, ang_vel, ang_acc of the end effector!!!
         obs = obs.get_observed_states()
-        
+
         obs_np = np.zeros((len(self.joints_list), 3))
         for joint in self.joints_list:
             i = jointsToIndexDict[joint]
@@ -140,9 +140,9 @@ class MyApollo:
         # Vectors to collect the history of the system states
         N = N0 * repetitions + 1
         n_joints = 7
-        x_s = np.zeros((N, n_joints));  # x_b[0] = x0
-        u_s = np.zeros((N,n_joints))
-        a_s = np.zeros((N,n_joints))
+        thetas_s = np.zeros((N, n_joints));  # x_b[0] = x0
+        vel_s = np.zeros((N,n_joints))
+        acc_s = np.zeros((N,n_joints))
         dP_N_vec = np.zeros_like(x_s)  # TODO: hand torque sensor
 
         # Action Loop
@@ -152,15 +152,15 @@ class MyApollo:
             # one step simulation
             obs_np = self.go_to_speed_array(u[i], delta_it, False)
             # collect state of the system
-            x_s[i+1] = obs_np[:,0]
-            u_s[i+1] = obs_np[:,1]
-            a_s[i+1] = obs_np[:,2]
+            thetas_s[i+1] = obs_np[:,0]
+            vel_s[i+1] = obs_np[:,1]
+            acc_s[i+1] = obs_np[:,2]
             # collect helpers
             dP_N_vec[i+1] = 0
         if x0 is not None:
-            return x_s, u_s, a_s, dP_N_vec
+            return thetas_s, vel_s, acc_s, dP_N_vec
         else:
-            return x_s[1:], u_s[1:], a_s[1:],dP_N_vec[1:]
+            return thetas_s[1:], vel_s[1:], acc_s[1:],dP_N_vec[1:]
 
     def go_to_speed_array(self, speeds, nb_iterations, bursting):
         """Move right arm to a certain joint configuration and reset pinocchio jointstates.
@@ -190,6 +190,35 @@ class MyApollo:
         obs_np = self.obs_to_numpy(observation)
         return obs_np
 
+
+def plot_simulation(dt, u, thetas_s, vel_s, acc_s, dP_N_vec=None, thetas_s_des=None, title=None, vertical_lines=None, horizontal_lines=None):
+  # Everything are column vectors
+  for i in range(thetas_s.shape[1]):
+    fig, axs = plt.subplots(4, 1)
+    timesteps = np.arange(u.shape[0]) * dt
+    axs[0].plot(timesteps, thetas_s[:,i], label='Theta_{} [rad]'.format(i))
+    if horizontal_lines is not None:
+        for pos, label in horizontal_lines.items():
+            axs[0].axhline(pos, linestyle='--', color='brown')  # , label=label
+    if thetas_s_des is not None:
+        axs[0].plot(timesteps, thetas_s_des, color='green', linestyle='dashed', label='Desired')
+    axs[1].plot(timesteps, vel_s[:,i], label='w_{} [rad/s]'.format(i))
+    axs[2].plot(timesteps, acc_s[:,i], 'r', label='a_{} [rad/s^2]'.format(i))
+    if dP_N_vec is not None:
+        axs[2].plot(timesteps, dP_N_vec[:,i], label='dP_N')
+    axs[3].plot(timesteps, u[:,i], 'b', label='u_in_{} [rad/s]'.format(i))
+
+    for ax in axs:
+        if vertical_lines is not None:
+            for pos in vertical_lines:
+                ax.axvline(pos, linestyle='--', color='k')
+        ax.legend(loc=1)
+
+    if title is not None:
+        fig.suptitle(title)
+  plt.show(block=True)
+
+
 def main():
     # go_to_posture_array([np.pi/4, 0.0, np.pi/4, np.pi/4, 3*np.pi/4, 3*np.pi/4, 0.0], 2000, False)
 
@@ -197,20 +226,29 @@ def main():
     dt = 0.004
     timesteps = np.arange(0.0, dt*N,dt)
     inputs = np.zeros((N, 7))
-    inputs[:,0] = 0.3 * np.sin(timesteps)
-    
-    r_arm = MyApollo(r_arm=True)
-    r_arm.go_to_posture_array([0.0, 0.0, -np.pi/4, np.pi/2, np.pi/2, np.pi/2, 0.0], 2000, False)
-    
-    poses, velocities, acc, _ = r_arm.apollo_run_one_iteration(dt, T=dt*len(timesteps), u=inputs)
-    
-    plt.figure()
-    plt.plot(timesteps, poses[:, 0], label='angle')
-    plt.plot(timesteps, velocities[:, 0], label='velocity')
-    plt.plot(timesteps, inputs[:, 0], label='des_velocity')
-    plt.plot(timesteps, acc[:, 0], label='acc')
-    plt.legend()
-    plt.show()
-    
+    inputs[:,1] = 0.3 * np.sin(timesteps)
+    inputs[:,3] = 0.3 * np.sin(timesteps)
+    inputs[:,4] = 0.3 * np.sin(timesteps)
+    inputs[:,6] = 0.3 * np.sin(timesteps)
+
+    # r_arm = MyApollo(r_arm=True)
+    # r_arm.go_to_posture_array([0.0, 0.0, -np.pi/4, np.pi/2, np.pi/2, np.pi/2, 0.0], 2000, False)
+
+    # poses, velocities, acc, _ = r_arm.apollo_run_one_iteration(dt, T=dt*len(timesteps), u=inputs)
+
+    # plt.figure()
+    # plt.plot(timesteps, poses[:, 0], label='angle')
+    # plt.plot(timesteps, velocities[:, 0], label='velocity')
+    # plt.plot(timesteps, inputs[:, 0], label='des_velocity')
+    # plt.plot(timesteps, acc[:, 0], label='acc')
+    # plt.legend()
+    # plt.show()
+
+    poses = np.random.rand(*inputs.shape)
+    velocities = np.random.rand(*inputs.shape)
+    acc = np.random.rand(*inputs.shape)
+
+    plot_simulation(dt, inputs, poses, velocities, acc)
+
 if __name__ == "__main__":
     main()

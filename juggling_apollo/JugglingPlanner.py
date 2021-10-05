@@ -1,30 +1,23 @@
 from utils import flyTime2HeightAndVelocity, plt
 from MinJerk import get_min_jerk_trajectory, plotMinJerkTraj, get_minjerk_trajectory
 
-def calc(tau, dwell_ration, catch_throw_ratio, E):
-  # TODO: based on z_catch-x0[0] we need the min ub_catch for no disconnection
-  # no x-movement
-  nb = 2
-  na = 1
-
+def calc(tau, dwell_ration, E):
   # times
   T_hand = tau * dwell_ration  # time the ball spends on the hand
   T_empty = tau - T_hand             # time the hand is free
   T_fly = 2*T_empty + T_hand
 
-  # throw and catch position
-  T_catch = catch_throw_ratio * T_hand
-  T_throw = T_hand - T_catch
-
+  # positions
   z_throw = 0.0
   z_catch = z_throw + E
 
+  # ball height and velocity
   H, ub_throw = flyTime2HeightAndVelocity(T_fly)
 
-  return T_throw, T_hand, ub_throw, T_empty, H, z_catch
+  return T_hand, ub_throw, T_empty, H, z_catch
 
 def traj_nb_2_na_1(T_throw, T_hand, ub_catch, ub_throw, T_empty, z_catch, x_0, dt, smooth_acc, plot=False):
-  #
+  # 2balls 1hand
   ub_catch = -ub_throw
   t0 = 0;        t1 = T_throw;    t2 = t1+T_empty;  t4 = t2+T_hand;  t5 = t4+T_empty
   x0 = x_0[0];   x1 = 0;          x2 = z_catch;     x4 = 0;          x5 = x2
@@ -46,7 +39,6 @@ def traj_nb_2_na_1(T_throw, T_hand, ub_catch, ub_throw, T_empty, z_catch, x_0, d
   return x
 
 
-
 if __name__ == "__main__":
   dt = 0.004
   x_0 = [-0.4, 0]
@@ -56,7 +48,9 @@ if __name__ == "__main__":
   catch_throw_ratio = 0.5
   smooth_accs = [False, True]
   for smooth in smooth_accs:
-    t_throw, t_catch, ub_catch, ub_throw, t_empty, H, z_catch = calc(tau, dwell_ration, catch_throw_ratio, E)
-    traj_nb_2_na_1(t_throw, t_catch, ub_catch, ub_throw, t_empty, z_catch, x_0, dt, smooth, True)
+    T_hand, ub_throw, T_empty, H, z_catch = calc(tau, dwell_ration, E)
+    ub_catch = 0.9*ub_throw
+    T_throw = T_hand*(1-catch_throw_ratio)
+    traj_nb_2_na_1(T_throw, T_hand-T_throw, ub_catch, ub_throw, T_empty, z_catch, x_0, dt, smooth, True)
 
   plt.show()

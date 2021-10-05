@@ -97,7 +97,8 @@ E = 0.15
 tau = 0.5
 dwell_ration = 0.6
 catch_throw_ratio = 0.5
-T_throw, T_hand, ub_throw, T_empty, H,  z_catch = calc(tau, dwell_ration, catch_throw_ratio, E)
+T_hand, ub_throw, T_empty, H,  z_catch = calc(tau, dwell_ration, E)
+T_throw = T_hand*(1-catch_throw_ratio)
 T_fly = T_hand + 2*T_empty
 T_FULL = T_throw + T_fly
 

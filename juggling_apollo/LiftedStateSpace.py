@@ -5,7 +5,7 @@ class LiftedStateSpace:
   # Constructor
   def __init__(self, sys, x0):
     self.sys = sys
-    self.x0 = np.array(x0).reshape(4, 1)
+    self.x0 = np.array(x0).reshape(-1, 1)
     self.G = None       # [ny*N, nx*N]
     self.GF = None      # G * F
     self.GK = None      # G * k

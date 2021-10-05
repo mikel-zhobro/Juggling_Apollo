@@ -18,7 +18,8 @@ E = 0.15
 tau = 0.5
 dwell_ration = 0.6
 catch_throw_ratio = 0.5
-T_throw, T_hand, ub_throw, T_empty, H,  z_catch = calc(tau, dwell_ration, catch_throw_ratio, E)
+T_hand, ub_throw, T_empty, H,  z_catch = calc(tau, dwell_ration, E)
+T_throw = T_hand*(1-catch_throw_ratio)
 
 T_tau = T_empty + T_hand
 T_fly = T_hand + 2*T_empty
@@ -26,7 +27,7 @@ T_FULL = T_throw + T_fly + T_hand
 N_1 = steps_from_time(T_FULL, dt)-1    # size of our vectors(i.e. length of the interval)
 N_throw = steps_from_time(T_throw, dt)-1   # needed to measure z_throw
 N_empty = steps_from_time(T_empty, dt)-1   # needed to measure z_throw
-N_hand = steps_from_time(T_hand, dt)-1  
+N_hand = steps_from_time(T_hand, dt)-1
 N_tau = steps_from_time(T_tau, dt)-1   # needed to measure z_throw
 N_throw_empty = steps_from_time(T_throw+T_empty, dt)-1   # needed to measure z_throw
 N_throw_tau = steps_from_time(T_throw+T_tau, dt)-1   # needed to measure z_throw
@@ -59,7 +60,7 @@ kf_dpn_params = {
   'epsilon0': 0.3,                          # initial variance of noise on the disturbance
   'epsilon_decrease_rate': 1              # the decreasing factor of noise on the disturbance
 }
-my_ilc = ILC(dt, kf_dpn_params=kf_dpn_params, x_0=x0)
+my_ilc = ILC(dt, sys, kf_dpn_params=kf_dpn_params, x_0=x0)
 my_ilc.initILC(N_1=N_1, impact_timesteps=[False]*N_1)  # ignore the ball
 
 sim = Simulation(input_is_force=False, x0=x0, air_drag=True, plate_friction=True)
@@ -104,7 +105,7 @@ tt=[0,        T_throw,     T_throw+T_empty,    T_throw+T_tau,   T_throw+T_fly,  
 xx=[x0[0],    0.0,         z_catch,            0.0,             z_catch,         0.0                 , z_catch]
 uu=[x0[2],    ub_throw,    ub_catch,           ub_throw2,       ub_catch,        ub_throw3           , ub_catch]
 if True:
-  plotMJ(dt, tt, xx, uu, smooth_acc)  
+  plotMJ(dt, tt, xx, uu, smooth_acc)
   plt.show()
 
 extra_rep = 2
@@ -145,16 +146,16 @@ for j in range(ILC_it):
   # d. Catch1 released-ball
   N_catch_time2 = np.argmax(gN_vec_full_2<=ABS)  # released_ball ( first_catch )
   d_T_catch_2 = N_catch_time2*dt - T_empty - T_throw
-  # e. Catch2 released-ball  
+  # e. Catch2 released-ball
   N_catch_time3 = N_1-N_hand+ np.argmax(gN_vec_full_2[N_1-N_hand:]<=ABS)  # released_ball ( second_catch )
   d_T_catch_3 = N_catch_time3*dt - T_FULL - T_empty
 
 
   # Newton updates
-  H = H - 0.2*d_T_catch_2      
+  H = H - 0.2*d_T_catch_2
   ub_throw = ub_throw - 0.3*0.5*g*d_T_catch_1    # plate_ball
   ub_throw2 = ub_throw2 - 0.3*0.5*g*d_T_catch_3  # released_ball
-  ub_throw3 = ub_throw3 - 0.3*0.5*g*d_T_catch_4  # plate_ball  
+  ub_throw3 = ub_throw3 - 0.3*0.5*g*d_T_catch_4  # plate_ball
 
   # 5. Collect data for plotting
   # d_vec[j, :] = np.squeeze(my_ilc.kf_dpn.d)
@@ -163,17 +164,17 @@ for j in range(ILC_it):
   u_p_vec[j, :] = np.squeeze(u_p)
   u_ff_vec[j, :] = np.squeeze(u_ff)
   u_d_T_catch_1_vec[j] = d_T_catch_1  # plate_plate_1
-  u_d_T_catch_2_vec[j] = d_T_catch_2  # plate_release_1 
-  u_d_T_catch_3_vec[j] = d_T_catch_3  # plate_release_1 
+  u_d_T_catch_2_vec[j] = d_T_catch_2  # plate_release_1
+  u_d_T_catch_3_vec[j] = d_T_catch_3  # plate_release_1
   u_d_T_catch_4_vec[j] = d_T_catch_4  # plate_plate_2
   u_throw_vec[j] = ub_throw
-  print("ITERATION: " + str(j+1) 
-        + ", \n\tU_throw: " + str(ub_throw) + ", " + str(u_p[N_throw_time-1]) 
+  print("ITERATION: " + str(j+1)
+        + ", \n\tU_throw: " + str(ub_throw) + ", " + str(u_p[N_throw_time-1])
         + ", \n\tError on throw time: " + str(T_throw_time - T_throw)
         + ", \n\tError on throw hight: " + str(x_p[N_throw_time])
         + ", \n\tError on catch time: " + str(d_T_catch_1)
         + ", \n\tError on catch hight: " + str(np.append(x_p, x_p_ex, 0)[N_catch_time]-z_catch)
-        ) 
+        )
 
 
 # %%
@@ -197,7 +198,7 @@ if False:
     vertical_lines.append( T_throw+T_fly + i*(T_hand+T_fly))
     vertical_lines.append( T_throw + 2*T_tau + i*(T_hand+T_fly))
   plot_simulation(dt,
-                  F_vec_full, x_b_vec_full, u_b_vec_full, x_p_vec_full, 
+                  F_vec_full, x_b_vec_full, u_b_vec_full, x_p_vec_full,
                   u_p_vec_full, dP_N_vec_full, gN_vec_full, y_dess,
                   title="Iteration: " + str(j),
                   vertical_lines=vertical_lines)
@@ -211,12 +212,12 @@ if False:
   plotIterations(u_d_T_catch_3_vec, "Error on catch-time_release_2", every_n=1)
   plotIterations(u_d_T_catch_3_vec, "Error on catch-time_plate_2", every_n=1)
   plt.show()
-  
+
 
 
 # %% Simulate
 if True:
-  visual = True
+  visual = False
   extra_rep = 55
   [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, F_vec] = \
     sim.simulate_one_iteration(dt=dt, T=T_FULL-dt, x0=x000, u=u_ff, d=disturbance, it=j, visual=visual)
@@ -225,7 +226,7 @@ if True:
   N_temp = steps_from_time(T_throw + 2*T_tau, dt)-1
   [x_b_ex, u_b_ex, x_p_ex, u_p_ex, dP_N_vec_ex, gN_vec_ex, F_vec_ex] = \
     sim.simulate_one_iteration(dt=dt, T=T_tau, u=u_ff[N_throw_tau:], d=disturbance[N_throw_tau:], it=j, repetitions=extra_rep, visual=visual)
-  
+
   gN_vec_full =   np.append(gN_vec[1:], gN_vec_ex, 0)
   x_b_vec_full =  np.append(x_b[1:], x_b_ex, 0)
   x_p_vec_full =  np.append(x_p[1:], x_p_ex, 0).squeeze()
@@ -243,7 +244,7 @@ if True:
     vertical_lines.append( T_throw+T_fly + i*(T_hand+T_fly))
     vertical_lines.append( T_throw + 2*T_tau + i*(T_hand+T_fly))
   plot_simulation(dt,
-                  F_vec_full, x_b_vec_full, u_b_vec_full, x_p_vec_full, 
+                  F_vec_full, x_b_vec_full, u_b_vec_full, x_p_vec_full,
                   u_p_vec_full, dP_N_vec_full, gN_vec_full, y_dess,
                   title="Iteration: " + str(ILC_it),
                   vertical_lines=vertical_lines)

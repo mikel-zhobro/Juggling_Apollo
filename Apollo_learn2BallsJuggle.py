@@ -1,13 +1,20 @@
 # %%
 import numpy as np
 from juggling_apollo.utils import plan_ball_trajectory, steps_from_time, plotIterations, plt
-from juggling_apollo.Simulation import Simulation, plot_simulation
+from juggling_apollo.JugglingPlanner import calc, traj_nb_2_na_1
+
 from juggling_apollo.settings import dt, ABS, g, ABS
 from juggling_apollo.ILC import ILC
-from juggling_apollo.JugglingPlanner import calc, traj_nb_2_na_1
 from juggling_apollo.MinJerk import plotMJ, get_minjerk_trajectory
-from juggling_apollo.DynamicSystem import BallAndPlateDynSys as DynamicSystem
+from juggling_apollo.DynamicSystem import ApolloDynSys
+from juggling_apollo.Apollo_It import MyApollo, plot_simulation
+from kinematics.fk import FK, IK
 
+# create r_arm and go to home position
+r_arm = MyApollo(r_arm=True)
+home_pose = [0.0, 0.0, -np.pi/4, np.pi/2, np.pi/2, np.pi/2, 0.0]  # TODO
+r_arm.go_to_posture_array(home_pose, 2000, False)
+home_position = FK(*home_pose)
 
 # %%
 print("juggling_apollo")
@@ -18,23 +25,22 @@ E = 0.15
 tau = 0.5
 dwell_ration = 0.6
 catch_throw_ratio = 0.5
-T_throw, T_hand, ub_throw, T_empty, H,  z_catch = calc(tau, dwell_ration, catch_throw_ratio, E)
+T_hand, ub_throw, T_empty, H,  z_catch = calc(tau, dwell_ration, E)
+T_throw = T_hand*(1-catch_throw_ratio)
 
 T_fly = T_hand + 2*T_empty
 T_FULL = T_throw + T_fly
 N_1 = steps_from_time(T_FULL, dt)-1    # size of our vectors(i.e. length of the interval)
 N_throw = steps_from_time(T_throw, dt)-1   # needed to measure z_throw
 N_throw_empty = steps_from_time(T_throw+T_empty, dt)-1   # needed to measure z_throw
-N_half_1 = int(N_1/3)                  # needed to measure z_catch and T_catch
-# N_catch_1=steps_from_time(T_hand-T_throw, dt)-1
 
 print('H: ' + str(H))
 print('T_fly: ' + str(T_fly))
 
 # Init state
-x_ruhe = -0.2                # starting position for the plate
-x0 = [x_ruhe, x_ruhe, 0, 0]  # the plate and ball in ruhe
-x000 =  [[x0[0], H], x0[1], [x0[2],0], x0[3]]
+x_ruhe = -0.2 # starting position for the plate
+x0 = home_pose  # the arm and ball in home position
+N_joints = len(x0)
 
 # %%
 # Learn Throw
@@ -47,29 +53,29 @@ ILC_it = 55  # number of ILC iteration
 # 2. the system can have as input either velocity u_des or the force F_p
 # I. SYSTEM DYNAMICS
 input_is_velocity = True
-sys = DynamicSystem(dt, input_is_velocity=input_is_velocity)
 kf_dpn_params = {
-  'M': 0.031*np.eye(N_1, dtype='float'),      # covariance of noise on the measurment
+  'M': 0.031*np.eye(N_1, dtype='float'),    # covariance of noise on the measurment
   'P0': 0.1*np.eye(N_1, dtype='float'),     # initial disturbance covariance
   'd0': np.zeros((N_1, 1), dtype='float'),  # initial disturbance value
   'epsilon0': 0.3,                          # initial variance of noise on the disturbance
-  'epsilon_decrease_rate': 1              # the decreasing factor of noise on the disturbance
+  'epsilon_decrease_rate': 1                # the decreasing factor of noise on the disturbance
 }
-my_ilc = ILC(dt, sys, kf_dpn_params=kf_dpn_params, x_0=x0)
-my_ilc.initILC(N_1=N_1, impact_timesteps=[False]*N_1)  # ignore the ball
+my_ilcs = [ILC(dt=dt, sys=ApolloDynSys(dt, input_is_velocity), kf_dpn_params=kf_dpn_params, x_0=x0[i]) for i in range(N_joints)]
+for ilc in my_ilcs:
+  ilc.initILC(N_1=N_1, impact_timesteps=[False]*N_1)  # ignore the ball
 
 sim = Simulation(input_is_force=False, x0=x0, air_drag=True, plate_friction=True)
 sim.reset()
 
 # Data collection
 # System Trajectories
-x_p_vec = np.zeros([ILC_it, my_ilc.N_1+1], dtype='float')
-u_p_vec = np.zeros([ILC_it, my_ilc.N_1+1], dtype='float')
-x_b_vec = np.zeros([ILC_it, my_ilc.N_1+1, len(x000[0])], dtype='float')
-u_b_vec = np.zeros([ILC_it, my_ilc.N_1+1, len(x000[0])], dtype='float')
+x_p_vec = np.zeros([ILC_it, N_1+1], dtype='float')
+u_p_vec = np.zeros([ILC_it, N_1+1], dtype='float')
+x_b_vec = np.zeros([ILC_it, N_1+1, len(x0)], dtype='float')
+u_b_vec = np.zeros([ILC_it, N_1+1, len(x0)], dtype='float')
 # ILC Trajectories
-d_vec = np.zeros([ILC_it, my_ilc.kf_dpn.d.size], dtype='float')
-u_ff_vec = np.zeros([ILC_it, my_ilc.N_1], dtype='float')
+d_vec = np.zeros([ILC_it, N_1], dtype='float')
+u_ff_vec = np.zeros([ILC_it, N_1], dtype='float')
 # Measurments
 u_throw_vec = np.zeros([ILC_it, 1], dtype='float')
 u_d_T_catch_1_vec = np.zeros([ILC_it, 1], dtype='float')
@@ -82,10 +88,6 @@ y_meas = None
 d_T_catch_1 = 0
 d_T_catch_2 = 0
 d_T_catch_3 = 0
-
-# disturbance to be learned
-period = 0.02/dt
-disturbance = 150*np.sin(2*np.pi/period*np.arange(my_ilc.N_1), dtype='float')  # disturbance on the plate position(0:my_ilc.N_1-1)
 
 # Min Jerk Params
 # new MinJerk

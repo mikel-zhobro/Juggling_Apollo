@@ -16,17 +16,17 @@ class DynamicSystem:
     self.S = None          # [nx, ndup]
     self.c = None
     self.x0 = None         # initial state (xb0, xp0, ub0, up0)
-    
+
     self.initDynSys(dt, input_is_velocity)
 
   def initDynSys(self, dt, input_is_velocity):
     assert False, "The 'initDynSys' abstract method is not implemented for the used subclass."
-    
+
   @property
   def Ad_impact(self):
     assert self._Ad_impact is not None, "Impact dynamics are not implemented."
     return self._Ad_impact
-  
+
 class BallAndPlateDynSys(DynamicSystem):
 
   def initDynSys(self, dt, input_is_velocity):
@@ -109,20 +109,22 @@ class BallAndPlateDynSys(DynamicSystem):
 
 class ApolloDynSys(DynamicSystem):
   def __init__(self, dt, input_is_velocity):
-    super().__init__(self, dt, input_is_velocity)
     self.alpha = alpha
-    
+    DynamicSystem.__init__(self, dt, input_is_velocity)
+
   def initDynSys(self, dt, input_is_velocity=True):
     assert input_is_velocity, "For apollo only dynamic system with velocity input is provided."
     self.Ad, self.Bd, self.Cd, self.S, self.c = self.getSystemMarixesVelocityControl(dt)
-    
+
   def getSystemMarixesVelocityControl(self, dt):
     # x_k = Ad*x_k-1 + Bd*u_k-1 + S*d_k + c
     # y_k = Cd*x_k
-    Ad = np.array([1.0, dt*(1-self.alpha*dt/2), 
+    Ad = np.array([1.0, dt*(1-self.alpha*dt/2),
                    0.0, 1-dt*self.alpha], dtype='float').reshape(2,2)
-    Bd = np.array([self.alpha*dt**2/2, 
+    Bd = np.array([self.alpha*dt**2/2,
                    dt*self.alpha], dtype='float').reshape(2,1)
-    Cd = np.array([1.0, 0.0], dtype='float').reshape(2,1)
-    c = np.array([0.0, 0.0], dtype='float').reshape(2,1)
-    return Ad, Bd, Cd, c
+    Cd = np.array([1.0, 0.0], dtype='float').reshape(1,2)
+    S = np.array([1.0, 0.0], dtype='float').reshape(2,1)
+    c = np.array([1.0, 0.0], dtype='float').reshape(2,1)
+
+    return Ad, Bd, Cd, S, c

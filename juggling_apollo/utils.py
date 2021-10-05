@@ -4,7 +4,7 @@ from matplotlib.ticker import MaxNLocator
 from settings import g, ABS
 import numpy as np
 # mpl.use('TkAgg')
-
+np.set_printoptions(precision=3, suppress=True)
 
 class DotDict(dict):
     """dot.notation access to dictionary attributes"""

@@ -64,7 +64,7 @@ class Simulation:
     if self.vis:
       self.vis.reset(self.x_b, self.x_p, it)
 
-    assert abs(T-len(u)*dt) <= dt, "Input signal is of length {} instead of length {}".format(len(u)*dt ,T)
+    assert abs(T-len(u)*dt) < dt+1e-5, "Input signal is of length {} instead of length {}".format(len(u)*dt ,T)
     N0 = len(u)
     if d is None:
       d = np.zeros(u.shape)  # disturbance
