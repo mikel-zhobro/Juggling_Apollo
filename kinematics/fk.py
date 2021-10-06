@@ -41,6 +41,10 @@ def FK_DH(q):
     T0_7 = np.eye(4)
     for i in range(7):
         T0_7 = T0_7.dot(getT(i))
+    
+    # Make up for axes mismatch to real apollo  x_apollo->x_dh, y_apollo->z_dh, z_apollo-> -y_dh
+    T0_7 = T0_7[:, [0, 2, 1, -1]]
+    T0_7[:,2] *= -1
     return T0_7
 
 
