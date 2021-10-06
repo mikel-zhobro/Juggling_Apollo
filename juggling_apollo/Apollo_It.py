@@ -27,7 +27,7 @@ jointsToIndexDict = {
 jointsToUse = ["R_SFE", "R_SAA", "R_HR", "R_EB", "R_WR", "R_WFE", "R_WAA"]
 
 home_pose = np.array([np.pi/4, 0.0, 0.0, np.pi/4, -np.pi/2, np.pi/2, np.pi/2])  # modelled
-home_pose = np.array([np.pi/4, 0.0, 0.0, np.pi/4, np.pi/2, np.pi/2, np.pi/2])   # real model
+home_pose = np.array([np.pi/4, 0.0, 0.0, np.pi/4, np.pi/2, np.pi/2, -np.pi/2])   # real model
 
 
 def ref_name_to_index(posture):
@@ -138,7 +138,7 @@ class MyApollo:
         u = np.squeeze(np.tile(u, [repetitions, 1]))
 
         if x0 is not None:
-            self.go_to_speed_array([0.0, 0.0], 2000, False)
+            self.go_to_home_position(x0)
 
         # Vectors to collect the history of the system states
         N = N0 * repetitions + 1
@@ -193,7 +193,7 @@ class MyApollo:
         obs_np = self.obs_to_numpy(observation)
         return obs_np
     
-    def go_to_home_position(self, zero_pose=False):
+    def go_to_home_position(self, home_pose=home_pose, zero_pose=False):
         if zero_pose:
             self.go_to_posture_array(np.zeros_like(home_pose), 3000, False)
         else:

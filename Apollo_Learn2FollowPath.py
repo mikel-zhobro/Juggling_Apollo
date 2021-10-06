@@ -41,7 +41,7 @@ print('T_fly: ' + str(T_fly))
 y_home = 0.0 # starting position for the hand
 # create r_arm and go to home position
 r_arm = MyApollo(r_arm=True)
-home_pose = np.array([np.pi/4, 0.0, 0.0, np.pi/4, -np.pi/2, np.pi/2, np.pi/2])
+home_pose = np.array([np.pi/4, 0.0, 0.0, np.pi/4, np.pi/2, np.pi/2, -np.pi/2])
 # r_arm.go_to_posture_array(home_pose, 2000, False)  # TODO
 home_T = FK(*home_pose)
 home_position = home_T[:3, 3:]
@@ -84,8 +84,9 @@ u_ff_vec      = np.zeros([ILC_it, N_1+1, N_joints], dtype='float')
 torque_vec    = np.zeros([ILC_it, N_1+1, N_joints], dtype='float')
 
 # ILC Loop
-uff = [None] * N_joints
+u_ff = [None] * N_joints
 y_meas = [None] * N_joints
+y_meas = np.zeros((N_1, N_joints), dtype='float')
 
 # Min Jerk Params
 # new MinJerk
@@ -96,7 +97,7 @@ i_a_end = None
 tt=[0,        T_throw_first,     T_throw_first+T_empty,   T_FULL  ]
 xx=[y_home,   0.0,               z_catch,                 y_home   ]
 uu=[0.0,      ub_throw,          ub_catch,                0.0     ]
-if True:
+if False:
   print(uu[-1])
   xvaj = get_minjerk_trajectory(dt, tt=tt, xx=xx, uu=uu, smooth_acc=smooth_acc)
   plotMJ(dt, tt, xx, uu, smooth_acc, xvaj)
@@ -124,14 +125,14 @@ joints_traj_des = CartesianMinJerk2JointSpace(position_traj, thetas, home_pose) 
 
 for j in range(ILC_it):
   # Learn feed-forward signal
-  u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=joints_traj_des, y_meas=y_meas) for i, ilc in enumerate(my_ilcs)]
-  u_arr = np.array(uff, dtype='float').reshape(N_joints, -1).T
+  u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=joints_traj_des[:, i], y_meas=y_meas[:, i]) for i, ilc in enumerate(my_ilcs)]
+  u_arr = np.array(u_ff, dtype='float').squeeze().reshape(N_joints, -1).T
 
   # Main Simulation
   q_s, q_v_s, q_a_s, dP_N_vec, u_vec = r_arm.apollo_run_one_iteration(dt=dt, T=T_FULL, u=u_arr, x0=home_pose, repetitions=1, it=j)
 
   # Extra to catch the ball
-  q_s_ex, q_v_s_ex, q_a_s_ex, dP_N_vec_ex, u_vec_arr = r_arm.apollo_run_one_iteration(dt=dt, T=T_hand+T_empty, u=u_arr[N_throw_empty:], x0=home_pose, repetitions=extra_rep)
+  q_s_ex, q_v_s_ex, q_a_s_ex, dP_N_vec_ex, u_vec_arr = r_arm.apollo_run_one_iteration(dt=dt, T=T_hand+T_empty - T_throw_first, u=u_arr[N_throw_empty:], x0=home_pose, repetitions=extra_rep)
 
   # a. System output
   y_meas = q_s[1:]

@@ -11,4 +11,4 @@ k_c = 10.0        # [1/s] force coefficient
 ABS = 1e-5
 
 # Apollo
-alpha = 0.25
+alpha = 10

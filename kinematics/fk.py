@@ -291,7 +291,7 @@ def IK(pos_goal, R_goal, q_joints_state, verbose=False):
         R_goal ([np.array]): [nx, ny, nz] unit vector showing the goal orientaiton of TCP in base frame
         q_joints_state ([np.array]): [q1, q2, q3, q4, q5, q6, q7] actual joint conifguration
     """
-    max_steps = 100
+    max_steps = 1000
     v_step_size = 0.05  # 5mm
     vn_step_size = 0.0031  # 0.01 rad ~ 2grad
     theta_max_step = 0.04
@@ -365,7 +365,7 @@ def IK(pos_goal, R_goal, q_joints_state, verbose=False):
     if verbose:
         print('j{}:\n x_norm[{}],\n n_norm[{}]'.format(j, np.linalg.norm(delta_p), np.linalg.norm(delta_n)))
     if not_converged:
-        print("IK did not converge delta_n = {}".format(delta_n.T))
+        print("IK did not converge delta_n = {}, {}".format(delta_n.T, np.linalg.norm(delta_n)))
     # Return the final angles for each joint
     return Q_j
 
@@ -376,17 +376,17 @@ def CartesianMinJerk2JointSpace(position_traj, thetas, q_joints_state_start):
         position_traj ([np.array(dtype='float')]): [N,3] a xyz relative trajectory of length N from the start position specified by q_joints_state_start
         thetas ([np.array(dtype='float')]): [N,] describing the orientation of the cup in the 2D plane(deviation from upright position)
                                             z_cup = [0, -1, 0] is constant as we want to rotate only in the 2D plane
-                                            R = [[ s, c, 0],
-                                                 [ 0, 0,-1],
-                                                 [-c, s, 0]]
+                                            R = [[ s, 0, c],
+                                                 [ 0,-1, 0],
+                                                 [-c, 0, s]]
         q_joints_state_start ([type]): starting joint configuration which should correspond to the first pose
     """
     # 1. Make sure the home position of the hand matches the start theta of the trajectory
     T_start = FK(*q_joints_state_start.copy())
     s = sin(thetas[0]); c = cos(thetas[0])
-    R_goal_start =  np.array([[ s,    c,    0.0],
-                              [ 0.0,  0.0, -1.0],
-                              [-c,    s,    0.0]], dtype='float')
+    R_goal_start = np.array([[-s,    0.0,    c],
+                             [ 0.0,  1.0,  0.0],
+                             [-c,    0.0,   -s]], dtype='float')
     assert np.allclose(T_start[:3, :3], R_goal_start), "Make sure the home position matches the position and thetas of the trajectory"
     # q_joints_state_start = IK(T_start[:3, 3:], R_goal_start, q_joints_state_start.copy())
     # 2. Update the position_traj with the relative position of the hand at q_joints_state_start
@@ -403,9 +403,9 @@ def CartesianMinJerk2JointSpace(position_traj, thetas, q_joints_state_start):
     q_joint_state_i = q_joints_state_start.copy()
     for i, (pos_goal_i, theta_i) in enumerate(zip(position_traj[1:], thetas[1:])):
         s = sin(theta_i); c = cos(theta_i)
-        R_goal_i =  np.array([[ s,    c,    0.0],
-                              [ 0.0,  0.0, -1.0],
-                              [-c,    s,    0.0]], dtype='float')
+        R_goal_i = np.array([[-s,    0.0,    c],
+                             [ 0.0,  1.0,  0.0],
+                             [-c,    0.0,   -s]], dtype='float')
         q_joint_state_i = IK(pos_goal_i.reshape(3,1), R_goal_i, q_joint_state_i.copy(), verbose=False)
         joints_traj[i+1,:] = q_joint_state_i.T
     return joints_traj
@@ -415,33 +415,19 @@ def CartesianMinJerk2JointSpace(position_traj, thetas, q_joints_state_start):
 # %%
 if __name__ == '__main__':
     np.set_printoptions(precision=3, suppress=True)
-    # print()
-    # print(FK_DH([0, 1, 0, pi_2, 0, 0, 0]))
-    # print(FK_reduced_3(*np.array([0, 0, -pi_2]).reshape(-1,1)))
+    home_pose = np.array([np.pi/4, 0.0, 0.0, np.pi/4, np.pi/2, np.pi/2, -np.pi/2])
+    print(FK(*home_pose))
+    print(FK_DH(home_pose))
+    
+    
+    
+    # q_joints_goal = np.array([0.2, 1.21, 1.1, pi_2/2, 1.1, 0.2, 0.2]).reshape(-1, 1)
+    # T_goal = FK(*q_joints_goal)
+    # q_joints_state = np.array([0, 1.0, 0, pi_2/2, 0, 0, 0]).reshape(-1, 1)
+    # pos_goal = T_goal[:3, 3:]
+    # R_goal = T_goal[:3,:3]
 
-    # T1 = FK(0, 1, 0, pi_2, 0, 0, 0)
-    # T2 = FK_DH([0, 1, 0, pi_2, 0, 0, 0])
-    # print(T1)
-    # print()
-    # print(T2)
-
-    # q1, q2 ,q3 = IK_reduced_3(-0.3, -0.3, pi_2)
-    # print(q1 + q2 + q3, pi_2)
-    # print(FK_reduced_3(*IK_reduced_3(-0.5, -0.5, pi_2)))
-
-    # R_goal = np.array([[0, 0, 1],
-    #                   [0, 1, 0],
-    #                   [1, 0, 0]], dtype='float')
-    # pos_goal = np.array([-0.3, -0.3, -0.3]).reshape(-1, 1)
-    # orient_goal = np.array([0.0, 0.0, 1.0]).reshape(-1, 1)
-
-    q_joints_state = np.array([0, 1.0, 0, pi_2/2, 0, 0, 0]).reshape(-1, 1)
-    q_joints_goal = np.array([0.2, 1.21, 1.1, pi_2/2, 1.1, 0.2, 0.2]).reshape(-1, 1)
-    T_goal = FK(*q_joints_goal)
-    pos_goal = T_goal[:3, 3:]
-    R_goal = T_goal[:3,:3]
-
-    print(pos_goal)
-    q = IK(pos_goal, R_goal, q_joints_state)
-    print(T_goal)
-    print(FK(*q))
+    # print(pos_goal)
+    # q = IK(pos_goal, R_goal, q_joints_state)
+    # print(T_goal)
+    # print(FK(*q))
