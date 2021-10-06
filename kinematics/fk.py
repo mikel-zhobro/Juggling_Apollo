@@ -309,17 +309,17 @@ def IK(pos_goal, R_goal, q_joints_state, verbose=False):
     while not_converged and j<max_steps:
         # print('j{}:\n Q[{}],\n P[{}],\n O[{}]'.format(j, Q_j.T, p_j.T, theta_err))  # Print the current joint angles and position of the end effector in the global frame
         #  or np.linalg.norm(delta_n) > border_n
-        if True or j%20 == 0 and verbose:
+        if j%20 == 0 and verbose:
             print('j{}:'.format(j))
             print('x_norm={},  {}'.format(delta_p.T,  np.linalg.norm(delta_p)))
             print('n_norm={},  {}'.format(delta_n.T,  np.linalg.norm(delta_n)))
         # Reduce the delta_p 3-element delta_p vector by some scaling factor
         # delta_p represents the distance between where the end effector is now and our goal position.
-        v_p = np.nan_to_num(delta_p * v_step_size / np.linalg.norm(delta_p))
-        v_n = np.nan_to_num(delta_n * vn_step_size / np.linalg.norm(delta_n+1e-6))
+        # v_p = np.nan_to_num(delta_p * v_step_size / np.linalg.norm(delta_p))
+        # v_n = np.nan_to_num(delta_n * vn_step_size / np.linalg.norm(delta_n+1e-6))
 
-        # v_n = delta_n * vn_step_size
-        # v_p = delta_p
+        v_n = delta_n
+        v_p = delta_p
         # Get the jacobian matrix given the current joint angles
         # np.block([[R_j.T, np.zeros_like(R_j)],[np.zeros_like(R_j), R_j.T]])
         J_j = J(*Q_j.copy())  # if we don't give the transpose qi=[qi] so all qi_s are 1x1 matrixes
@@ -340,8 +340,8 @@ def IK(pos_goal, R_goal, q_joints_state, verbose=False):
         # just want the joints to move a tiny amount at each time step because
         # the full motion of the end effector is nonlinear, and we're approximating the
         # big nonlinear motion of the end effector as a bunch of tiny linear motions.
-        Q_j = Q_j + np.clip(v_Q, -1*theta_max_step, theta_max_step)  # [:self.N_joints]
-        # Q_j = Q_j + v_Q * 0.1  # [:self.N_joints]
+        # Q_j = Q_j + np.clip(v_Q, -1*theta_max_step, theta_max_step)  # [:self.N_joints]
+        Q_j = Q_j + v_Q * 0.01  # [:self.N_joints]
 
         # Get the current position of the end-effector in the global frame
         T_j = FK(*Q_j.copy())
@@ -378,14 +378,14 @@ def CartesianMinJerk2JointSpace(position_traj, thetas, q_joints_state_start):
                                                  [-c, s, 0]]
         q_joints_state_start ([type]): starting joint configuration which should correspond to the first pose
     """
-    T_start = FK(*q_joints_state_start.copy())
     # 1. Make sure the home position of the hand matches the start theta of the trajectory
+    T_start = FK(*q_joints_state_start.copy())
     s = sin(thetas[0]); c = cos(thetas[0])
     R_goal_start =  np.array([[ s,    c,    0.0],
                               [ 0.0,  0.0, -1.0],
                               [-c,    s,    0.0]], dtype='float')
-    if not np.allclose(T_start[:3, :3], R_goal_start):
-        q_joints_state_start = IK(T_start[:3, 3:], R_goal_start, q_joints_state_start.copy())
+    assert np.allclose(T_start[:3, :3], R_goal_start), "Make sure the home position matches the position and thetas of the trajectory"
+    # q_joints_state_start = IK(T_start[:3, 3:], R_goal_start, q_joints_state_start.copy())
     # 2. Update the position_traj with the relative position of the hand at q_joints_state_start
     # T_start = FK(*q_joints_state_start.copy())
     # position_traj += T_start[:3, 3:].T
@@ -403,7 +403,7 @@ def CartesianMinJerk2JointSpace(position_traj, thetas, q_joints_state_start):
         R_goal_i =  np.array([[ s,    c,    0.0],
                               [ 0.0,  0.0, -1.0],
                               [-c,    s,    0.0]], dtype='float')
-        q_joint_state_i = IK(pos_goal_i.reshape(3,1), R_goal_i, q_joint_state_i.copy(), verbose=True)
+        q_joint_state_i = IK(pos_goal_i.reshape(3,1), R_goal_i, q_joint_state_i.copy(), verbose=False)
         joints_traj[i+1,:] = q_joint_state_i.T
     return joints_traj
 
