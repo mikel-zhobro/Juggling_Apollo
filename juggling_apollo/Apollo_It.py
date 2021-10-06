@@ -26,6 +26,8 @@ jointsToIndexDict = {
 
 jointsToUse = ["R_SFE", "R_SAA", "R_HR", "R_EB", "R_WR", "R_WFE", "R_WAA"]
 
+home_pose = np.array([np.pi/4, 0.0, 0.0, np.pi/4, -np.pi/2, np.pi/2, np.pi/2])
+
 
 def ref_name_to_index(posture):
     """Transforms {joint_name: joint_posture} to {joint_index: joint_posture}
@@ -143,7 +145,7 @@ class MyApollo:
         thetas_s = np.zeros((N, n_joints));  # x_b[0] = x0
         vel_s = np.zeros((N,n_joints))
         acc_s = np.zeros((N,n_joints))
-        dP_N_vec = np.zeros_like(x_s)  # TODO: hand torque sensor
+        dP_N_vec = np.zeros_like(thetas_s)  # TODO: hand torque sensor
 
         # Action Loop
         # dt = 0.004
