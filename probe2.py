@@ -14,12 +14,12 @@ def main():
     r_arm.go_to_posture_array([0.0, 0.0, -np.pi/4, np.pi/2, np.pi/2, np.pi/2, 0.0], 2000, False)
     # r_arm.go_to_posture_array([np.pi/4, 0.0, np.pi/4, np.pi/4, 3*np.pi/4, 3*np.pi/4, 0.0], 2000, False)
     
-    poses, velocities, acc, _ = r_arm.apollo_run_one_iteration(dt, T=dt*len(timesteps), u=inputs)
+    poses, velocities, acc, _, u_vec = r_arm.apollo_run_one_iteration(dt, T=dt*len(timesteps), u=inputs)
     
     plt.figure()
     plt.plot(timesteps, poses[:, 0], label='angle')
     plt.plot(timesteps, velocities[:, 0], label='velocity')
-    plt.plot(timesteps, inputs[:, 0], label='des_velocity')
+    plt.plot(timesteps, u_vec[:, 0], label='des_velocity')
     plt.plot(timesteps, acc[:, 0], label='acc')
     plt.legend()
     plt.show()

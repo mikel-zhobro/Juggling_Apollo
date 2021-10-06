@@ -128,10 +128,10 @@ for j in range(ILC_it):
   u_arr = np.array(uff, dtype='float').reshape(N_joints, -1).T
 
   # Main Simulation
-  q_s, q_v_s, q_a_s, dP_N_vec = r_arm.apollo_run_one_iteration(dt=dt, T=T_FULL, u=u_arr, x0=home_pose, repetitions=1, it=j)
+  q_s, q_v_s, q_a_s, dP_N_vec, u_vec = r_arm.apollo_run_one_iteration(dt=dt, T=T_FULL, u=u_arr, x0=home_pose, repetitions=1, it=j)
 
   # Extra to catch the ball
-  q_s_ex, q_v_s_ex, q_a_s_ex, dP_N_vec_ex = r_arm.apollo_run_one_iteration(dt=dt, T=T_hand+T_empty, u=u_arr[N_throw_empty:], x0=home_pose, repetitions=extra_rep)
+  q_s_ex, q_v_s_ex, q_a_s_ex, dP_N_vec_ex, u_vec_arr = r_arm.apollo_run_one_iteration(dt=dt, T=T_hand+T_empty, u=u_arr[N_throw_empty:], x0=home_pose, repetitions=extra_rep)
 
   # a. System output
   y_meas = q_s[1:]
@@ -143,7 +143,7 @@ for j in range(ILC_it):
   # xyz_vec[j, ] = FK(joints_q_vec)
 
   joints_d_vec[j, ] = np.squeeze(joints_traj_des[1:]-y_meas)
-  u_ff_vec[j, ] = u_arr
+  u_ff_vec[j, ] = u_vec
   torque_vec[j, ] = dP_N_vec
 
   print("ITERATION: " + str(j+1)
@@ -161,7 +161,7 @@ if True:
   q_a_s_full =   np.append(q_a_s[1:], q_a_s_ex, 0)
   dP_N_vec_full =  np.append(dP_N_vec[1:], dP_N_vec_ex, 0)
   dP_N_vec_full =  np.append(dP_N_vec[1:], dP_N_vec_ex, 0)
-  u_vec_full =    np.append(u_arr, u_arr[N_throw_empty:], 0)
+  u_vec_full =    np.append(u_vec, u_vec_arr, 0)
   y_dess = np.append(y_des[1:], np.tile(y_des[N_throw_empty+1:], extra_rep), 0)
 
   plot_simulation(dt,

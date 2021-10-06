@@ -1,5 +1,5 @@
 import numpy as np
-# import O8O_apollo as apollo
+import O8O_apollo as apollo
 import matplotlib.pyplot as plt
 
 
@@ -26,7 +26,8 @@ jointsToIndexDict = {
 
 jointsToUse = ["R_SFE", "R_SAA", "R_HR", "R_EB", "R_WR", "R_WFE", "R_WAA"]
 
-home_pose = np.array([np.pi/4, 0.0, 0.0, np.pi/4, -np.pi/2, np.pi/2, np.pi/2])
+home_pose = np.array([np.pi/4, 0.0, 0.0, np.pi/4, -np.pi/2, np.pi/2, np.pi/2])  # modelled
+home_pose = np.array([np.pi/4, 0.0, 0.0, np.pi/4, np.pi/2, np.pi/2, np.pi/2])   # real model
 
 
 def ref_name_to_index(posture):
@@ -160,9 +161,9 @@ class MyApollo:
             # collect helpers
             dP_N_vec[i+1] = 0
         if x0 is not None:
-            return thetas_s, vel_s, acc_s, dP_N_vec
+            return thetas_s, vel_s, acc_s, dP_N_vec, u
         else:
-            return thetas_s[1:], vel_s[1:], acc_s[1:],dP_N_vec[1:]
+            return thetas_s[1:], vel_s[1:], acc_s[1:],dP_N_vec[1:], u
 
     def go_to_speed_array(self, speeds, nb_iterations, bursting):
         """Move right arm to a certain joint configuration and reset pinocchio jointstates.
@@ -191,6 +192,13 @@ class MyApollo:
         observation = go_to_posture(posture_dict, nb_iterations, bursting)
         obs_np = self.obs_to_numpy(observation)
         return obs_np
+    
+    def go_to_home_position(self, zero_pose=False):
+        if zero_pose:
+            self.go_to_posture_array(np.zeros_like(home_pose), 3000, False)
+        else:
+            self.go_to_posture_array(home_pose, 3000, False)
+        
 
 
 def plot_simulation(dt, u, thetas_s, vel_s, acc_s, dP_N_vec=None, thetas_s_des=None, title=None, vertical_lines=None, horizontal_lines=None):
@@ -223,7 +231,7 @@ def plot_simulation(dt, u, thetas_s, vel_s, acc_s, dP_N_vec=None, thetas_s_des=N
 
 def main():
     # go_to_posture_array([np.pi/4, 0.0, np.pi/4, np.pi/4, 3*np.pi/4, 3*np.pi/4, 0.0], 2000, False)
-
+    rep = 2
     N = 2000
     dt = 0.004
     timesteps = np.arange(0.0, dt*N,dt)
@@ -233,24 +241,20 @@ def main():
     inputs[:,4] = 0.3 * np.sin(timesteps)
     inputs[:,6] = 0.3 * np.sin(timesteps)
 
-    # r_arm = MyApollo(r_arm=True)
-    # r_arm.go_to_posture_array([0.0, 0.0, -np.pi/4, np.pi/2, np.pi/2, np.pi/2, 0.0], 2000, False)
+    r_arm = MyApollo(r_arm=True)
+    print("GOING HOME!")
+    r_arm.go_to_home_position(True)
+    
+    if False:
+        # Run apollo
+        poses, velocities, acc, _, u = r_arm.apollo_run_one_iteration(dt, T=dt*len(timesteps), u=inputs, repetitions=rep)
 
-    # poses, velocities, acc, _ = r_arm.apollo_run_one_iteration(dt, T=dt*len(timesteps), u=inputs)
+        # Test plot_simulation
+        # poses = np.random.rand(*inputs.shape)
+        # velocities = np.random.rand(*inputs.shape)
+        # acc = np.random.rand(*inputs.shape)
 
-    # plt.figure()
-    # plt.plot(timesteps, poses[:, 0], label='angle')
-    # plt.plot(timesteps, velocities[:, 0], label='velocity')
-    # plt.plot(timesteps, inputs[:, 0], label='des_velocity')
-    # plt.plot(timesteps, acc[:, 0], label='acc')
-    # plt.legend()
-    # plt.show()
-
-    poses = np.random.rand(*inputs.shape)
-    velocities = np.random.rand(*inputs.shape)
-    acc = np.random.rand(*inputs.shape)
-
-    plot_simulation(dt, inputs, poses, velocities, acc)
+        plot_simulation(dt, u, poses, velocities, acc)
 
 if __name__ == "__main__":
     main()
