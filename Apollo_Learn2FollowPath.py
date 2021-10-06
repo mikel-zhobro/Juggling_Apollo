@@ -73,20 +73,19 @@ for ilc in my_ilcs:
 
 # Data collection
 # System Trajectories
-x_p_vec = np.zeros([ILC_it, N_1+1], dtype='float')
-u_p_vec = np.zeros([ILC_it, N_1+1], dtype='float')
-x_b_vec = np.zeros([ILC_it, N_1+1, N_joints], dtype='float')
-u_b_vec = np.zeros([ILC_it, N_1+1, N_joints], dtype='float')
+joints_q_vec  = np.zeros([ILC_it, N_1+1, N_joints], dtype='float')
+joints_vq_vec = np.zeros([ILC_it, N_1+1, N_joints], dtype='float')
+joints_aq_vec = np.zeros([ILC_it, N_1+1, N_joints], dtype='float')
+xyz_vec       = np.zeros([ILC_it, N_1+1, 3], dtype='float')
 # ILC Trajectories
-d_vec = np.zeros([ILC_it, N_1], dtype='float')
-u_ff_vec = np.zeros([ILC_it, N_1], dtype='float')
+joints_d_vec  = np.zeros([ILC_it, N_1+1, N_joints], dtype='float')
+u_ff_vec      = np.zeros([ILC_it, N_1+1, N_joints], dtype='float')
 # Measurments
-u_throw_vec = np.zeros([ILC_it, 1], dtype='float')
+torque_vec    = np.zeros([ILC_it, N_1+1, N_joints], dtype='float')
 
 # ILC Loop
-u_ff =None
-y_meas = None
-d_T_catch_1 = 0
+uff = [None] * N_joints
+y_meas = [None] * N_joints
 
 # Min Jerk Params
 # new MinJerk
@@ -105,41 +104,48 @@ if True:
   position_traj = np.zeros((thetas.size, 3))
   position_traj[:,0] = xvaj[0] + home_position[0].T
   position_traj[:,1:] = home_position[1:].T
-  joints_traj = CartesianMinJerk2JointSpace(position_traj, thetas, home_pose)
+  joints_traj = CartesianMinJerk2JointSpace(position_traj, thetas, home_pose)  # [N, 7]
   plt.plot(np.arange(thetas.size), joints_traj[:, 0])
+  plt.figure()
+  lines = plt.plot(joints_traj/np.pi*180.0)
+  plt.legend(iter(lines), ('th1', 'th2', 'th3', 'th4', 'th5', 'th6', 'th7'))
   plt.show()
 
 
-ub_throw2 = ub_throw
 extra_rep = 2
+
+
+# Min jerk trajectories (out of the loop since trajectory doesn't change)
+y_des, velo, accel, jerk = get_minjerk_trajectory(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=xx, uu=uu)
+# Transform minjerk to jointspace (out of the loop since trajectory doesn't change)
+thetas = np.zeros_like(y_des)
+position_traj = np.zeros((thetas.size, 3)); position_traj[:,1:] = home_position[1:].T; position_traj[:,0] = y_des + home_position[0].T
+joints_traj_des = CartesianMinJerk2JointSpace(position_traj, thetas, home_pose)  # [N, 7]
+
 for j in range(ILC_it):
   # Learn feed-forward signal
-  uu[1] = ub_throw  # update
-  uu[3] = ub_throw2  # update
-  y_des, velo, accel, jerk = get_minjerk_trajectory(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=xx, uu=uu)
-  u_ff = my_ilc.learnWhole(u_ff_old=u_ff, y_des=y_des, y_meas=y_meas)
+  u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=joints_traj_des, y_meas=y_meas) for i, ilc in enumerate(my_ilcs)]
+  u_arr = np.array(uff, dtype='float').reshape(N_joints, -1).T
 
   # Main Simulation
-  x000[0][1] = H  # update
-  [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, F_vec] = \
-    sim.simulate_one_iteration(dt=dt, T=T_FULL, x0=x000, u=u_ff, d=disturbance, it=j)
+  q_s, q_v_s, q_a_s, dP_N_vec = r_arm.apollo_run_one_iteration(dt=dt, T=T_FULL, u=u_arr, x0=home_pose, repetitions=1, it=j)
 
   # Extra to catch the ball
-  [x_b_ex, u_b_ex, x_p_ex, u_p_ex, dP_N_vec_ex, gN_vec_ex, F_vec_ex] = \
-    sim.simulate_one_iteration(dt=dt, T=T_hand+T_empty, u=u_ff[N_throw_empty:], d=disturbance[N_throw_empty:], it=j, repetitions=extra_rep)
+  q_s_ex, q_v_s_ex, q_a_s_ex, dP_N_vec_ex = r_arm.apollo_run_one_iteration(dt=dt, T=T_hand+T_empty, u=u_arr[N_throw_empty:], x0=home_pose, repetitions=extra_rep)
 
-  # Measurments
-  gN_vec_full = np.append(gN_vec, gN_vec_ex, 0)
-  gN_vec_full_1 = gN_vec_full[:,0]
-  gN_vec_full_2 = gN_vec_full[:,1]  # released_ball
   # a. System output
-  y_meas = x_p[1:]
+  y_meas = q_s[1:]
+
   # 5. Collect data for plotting
-  d_vec[j, :] = np.squeeze(y_des[1:]-np.squeeze(y_meas[:]))
-  x_p_vec[j, :] = np.squeeze(x_p)
-  u_p_vec[j, :] = np.squeeze(u_p)
-  u_ff_vec[j, :] = np.squeeze(u_ff)
-  u_throw_vec[j] = ub_throw
+  joints_q_vec[j, ] =  q_s
+  joints_vq_vec[j, ] = q_v_s
+  joints_aq_vec[j, ] = q_a_s
+  # xyz_vec[j, ] = FK(joints_q_vec)
+
+  joints_d_vec[j, ] = np.squeeze(joints_traj_des[1:]-y_meas)
+  u_ff_vec[j, ] = u_arr
+  torque_vec[j, ] = dP_N_vec
+
   print("ITERATION: " + str(j+1)
         + ", \n\Trajectory_track_error_norm: " + str(np.linalg.norm(y_meas-y_des))
         )
@@ -150,15 +156,14 @@ for j in range(ILC_it):
 # Evauluate last iteration
 # if j%(ILC_it-1)==0:
 if True:
-  gN_vec_full =   np.append(gN_vec[1:], gN_vec_ex, 0)
-  x_b_vec_full =  np.append(x_b[1:], x_b_ex, 0)
-  x_p_vec_full =  np.append(x_p[1:], x_p_ex, 0)
-  u_b_vec_full =  np.append(u_b[1:], u_b_ex, 0)
-  u_p_vec_full =  np.append(u_p[1:], u_p_ex, 0)
-  dP_N_vec_full = np.append(dP_N_vec[1:], dP_N_vec_ex, 0)
-  F_vec_full =    np.append(F_vec, F_vec_ex, 0)
-  # y_des = np.append(y_des, np.append(y_des[N_throw_empty+1:], y_des[N_throw_empty+1:]))
-  y_dess = np.append(y_des[1:], np.tile(y_des[N_throw_empty+1:], extra_rep))
+  q_s_full =   np.append(q_s[1:], q_s_ex, 0)
+  q_v_s_full =   np.append(q_v_s[1:], q_v_s_ex, 0)
+  q_a_s_full =   np.append(q_a_s[1:], q_a_s_ex, 0)
+  dP_N_vec_full =  np.append(dP_N_vec[1:], dP_N_vec_ex, 0)
+  dP_N_vec_full =  np.append(dP_N_vec[1:], dP_N_vec_ex, 0)
+  u_vec_full =    np.append(u_arr, u_arr[N_throw_empty:], 0)
+  y_dess = np.append(y_des[1:], np.tile(y_des[N_throw_empty+1:], extra_rep), 0)
+
   plot_simulation(dt,
                   F_vec_full, x_b_vec_full, u_b_vec_full, x_p_vec_full,
                   u_p_vec_full, dP_N_vec_full, gN_vec_full, y_dess,
@@ -171,27 +176,4 @@ if True:
 # plotIterations(d_vec.T, "Error on plate trajectory", dt, every_n=2)
 # plotIterations(x_p_vec.T, "Plate trajectory", dt, every_n=2)
 # plotIterations(u_throw_vec, "ub0", every_n=1)
-plt.show()
-
-# %% Simulate
-visual = False
-[x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, F_vec] = \
-  sim.simulate_one_iteration(dt=dt, T=T_FULL, x0=x000, u=u_ff, d=disturbance, it=j, repetitions=1, visual=visual)
-
-# Extra to catch the ball
-extra_rep = 155
-[x_b_ex, u_b_ex, x_p_ex, u_p_ex, dP_N_vec_ex, gN_vec_ex, F_vec_ex] = \
-  sim.simulate_one_iteration(dt=dt, T=T_hand+T_empty, u=u_ff[N_throw_empty:], d=disturbance[N_throw_empty:], it=j, repetitions=extra_rep, visual=visual)
-
-
-gN_vec_full =   np.append(gN_vec[1:], gN_vec_ex, 0)
-x_b_vec_full =  np.append(x_b[1:], x_b_ex, 0)
-x_p_vec_full =  np.append(x_p[1:], x_p_ex, 0)
-u_b_vec_full =  np.append(u_b[1:], u_b_ex, 0)
-u_p_vec_full =  np.append(u_p[1:], u_p_ex, 0)
-dP_N_vec_full = np.append(dP_N_vec[1:], dP_N_vec_ex, 0)
-F_vec_full =    np.append(F_vec, F_vec_ex, 0)
-y_dess = np.append(y_des[1:], np.tile(y_des[N_throw_empty:-1], extra_rep))
-
-plot_simulation(dt, F_vec_full, x_b_vec_full, u_b_vec_full, x_p_vec_full, u_p_vec_full, dP_N_vec_full, gN_vec_full, y_dess, title="Iteration: " + str(ILC_it))
 plt.show()
