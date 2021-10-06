@@ -41,7 +41,7 @@ print('T_fly: ' + str(T_fly))
 y_home = 0.0 # starting position for the hand
 # create r_arm and go to home position
 r_arm = MyApollo(r_arm=True)
-home_pose = np.array([np.pi/4, 0.0, 0.0, np.pi/4, -np.pi/2, np.pi/2, np.pi/2])  # TODO
+home_pose = np.array([np.pi/4, 0.0, 0.0, np.pi/4, -np.pi/2, np.pi/2, np.pi/2])
 # r_arm.go_to_posture_array(home_pose, 2000, False)  # TODO
 home_T = FK(*home_pose)
 home_position = home_T[:3, 3:]
