@@ -92,15 +92,14 @@ def FK(q1, q2, q3, q4, q5, q6, q7):
                      Za*c7 + Zb*s7], dtype='float')
 
 
-    s0_7 = np.array([-Aa12*s6 - Aa2*c6,
-                     -Bb12*s6 - Bb2*c6,
-                     -Cc1*s6 - C2*c6], dtype='float')
-
-
-
-    a0_7 = np.array([-Xa*s7 + Xb*c7,
+    s0_7 = np.array([-Xa*s7 + Xb*c7,
                      -Ya*s7 + Yb*c7,
                      -Za*s7 + Zb*c7], dtype='float')
+
+
+    a0_7 = -np.array([-Aa12*s6 - Aa2*c6,
+                      -Bb12*s6 - Bb2*c6,
+                      -Cc1*s6 - C2*c6], dtype='float')
 
 
     p0_7 = np.array([P7a*d7 + Aa2*d5 + c1*s2*d3,
