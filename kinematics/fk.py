@@ -3,6 +3,13 @@ import numpy as np
 from math import cos, sin, acos, atan2, sqrt
 from scipy.linalg import logm
 
+# Define position/orientation of base from of kuka arm to the world frame
+c = cos(np.pi/6) s = sin(np.pi/6)
+R_origin_base = np.array([[1.0, 0.0, 0.0],
+                          [0.0,  c,  -s],
+                          [0.0,  s,   c]], dtype='float')
+p_origin_base = np.array([1.0, 0.0, 0.0], dtype='float').reshape(3,1)
+
 d1 = 0.2
 d3 = 0.4
 d5 = 0.39
@@ -387,14 +394,12 @@ def CartesianMinJerk2JointSpace(position_traj, thetas, q_joints_state_start):
     R_goal_start = np.array([[-s,    0.0,    c],
                              [ 0.0,  1.0,  0.0],
                              [-c,    0.0,   -s]], dtype='float')
-    assert np.allclose(T_start[:3, :3], R_goal_start), "Make sure the home position matches the position and thetas of the trajectory"
+    assert np.allclose(T_start[:3, :3], R_goal_start), "Home position must match the start theta of the trajectory"
+    assert np.allclose(T_start[:3, -1], position_traj[0,:]), "Home position must match the start position of the trajectory"
+    ## If needed to corrects
+    ## a. Update joint_start so that the home position/orientation matches the first position/orientation of the trajectory
     # q_joints_state_start = IK(T_start[:3, 3:], R_goal_start, q_joints_state_start.copy())
-    # 2. Update the position_traj with the relative position of the hand at q_joints_state_start
-    # T_start = FK(*q_joints_state_start.copy())
-    # position_traj += T_start[:3, 3:].T
 
-
-    # TODO1: make sure the first pose(position_traj[0] and thetas[0]) corresponds to q_joint_state_start
     N = position_traj.shape[0]
     joints_traj = np.zeros((N, q_joints_state_start.size))
     joints_traj[0] = q_joints_state_start
