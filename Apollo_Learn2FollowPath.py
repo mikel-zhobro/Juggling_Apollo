@@ -11,6 +11,13 @@ from juggling_apollo.Apollo_It import MyApollo, plot_simulation
 from kinematics.fk import FK, CartesianMinJerk2JointSpace
 
 
+def plot_joints(ys):
+  plt.figure()
+  lines = plt.plot(ys)
+  plt.legend(iter(lines), ("th: {}".format(i) for i in range(len(lines))))
+  plt.show()
+
+
 print("juggling_apollo")
 
 # 1. Compute juggling params for given E, tau and
@@ -39,10 +46,10 @@ print('T_fly: ' + str(T_fly))
 
 # Init state  ([{ 1-Dim }])
 y_home = 0.0 # starting position for the hand
+home_pose = np.array([np.pi/4, 0.0, 0.0, np.pi/4, np.pi/2, np.pi/2, -np.pi/2])
 # create r_arm and go to home position
 r_arm = MyApollo(r_arm=True)
-home_pose = np.array([np.pi/4, 0.0, 0.0, np.pi/4, np.pi/2, np.pi/2, -np.pi/2])
-# r_arm.go_to_posture_array(home_pose, 2000, False)  # TODO
+r_arm.go_to_home_position(home_pose)
 home_T = FK(*home_pose)
 home_position = home_T[:3, 3:]
 home_R = home_T[:3, 3:]
@@ -109,7 +116,7 @@ if False:
   plt.plot(np.arange(thetas.size), joints_traj[:, 0])
   plt.figure()
   lines = plt.plot(joints_traj/np.pi*180.0)
-  plt.legend(iter(lines), ('th1', 'th2', 'th3', 'th4', 'th5', 'th6', 'th7'))
+  plt.legend(iter(lines), ("th: {}".format(i) for i in range(len(lines))))
   plt.show()
 
 
@@ -131,9 +138,6 @@ for j in range(ILC_it):
   # Main Simulation
   q_s, q_v_s, q_a_s, dP_N_vec, u_vec = r_arm.apollo_run_one_iteration(dt=dt, T=T_FULL, u=u_arr, x0=home_pose, repetitions=1, it=j)
 
-  # Extra to catch the ball
-  q_s_ex, q_v_s_ex, q_a_s_ex, dP_N_vec_ex, u_vec_arr = r_arm.apollo_run_one_iteration(dt=dt, T=T_hand+T_empty - T_throw_first, u=u_arr[N_throw_empty:], x0=home_pose, repetitions=extra_rep)
-
   # a. System output
   y_meas = q_s[1:]
 
@@ -143,16 +147,18 @@ for j in range(ILC_it):
   joints_aq_vec[j, ] = q_a_s
   # xyz_vec[j, ] = FK(joints_q_vec)
 
-  joints_d_vec[j, ] = np.squeeze(joints_traj_des[1:]-y_meas)
-  u_ff_vec[j, ] = u_vec
+  joints_d_vec[j, 1:] = np.squeeze(joints_traj_des[1:]-y_meas)
+  u_ff_vec[j, :-1] = u_vec
   torque_vec[j, ] = dP_N_vec
 
   print("ITERATION: " + str(j+1)
-        + ", \n\Trajectory_track_error_norm: " + str(np.linalg.norm(y_meas-y_des))
+        + ", \n\Trajectory_track_error_norm: " + str(np.linalg.norm(joints_d_vec[j]))
         )
 
 
 # %%
+# Extra to catch the ball
+q_s_ex, q_v_s_ex, q_a_s_ex, dP_N_vec_ex, u_vec_arr = r_arm.apollo_run_one_iteration(dt=dt, T=T_FULL, u=u_arr, x0=home_pose, repetitions=5, it=j)
 
 # Evauluate last iteration
 # if j%(ILC_it-1)==0:

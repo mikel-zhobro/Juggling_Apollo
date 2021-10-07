@@ -84,7 +84,7 @@ class ILC:
   def learnWhole(self, y_des, u_ff_old=None, y_meas=None):
     # 1. Throw
     if u_ff_old is not None:  # we are calculating u_ff for the first time
-      self.kf_dpn.updateStep(u_ff_old, y_meas)  # estimate dpn disturbance
+      self.kf_dpn.updateStep(u_ff_old.reshape(-1, 1), y_meas.reshape(-1, 1))  # estimate dpn disturbance
 
     # title = "Min-Jerk trajectory with " +  ("" if smooth_acc else "non") +"-smoothed acceleration."
     # plotMinJerkTraj(y_des, v, a, j, self.dt, title, tt=tt[0:4], xx=xx[0:4], uu=uu[0:4])

@@ -125,6 +125,6 @@ class ApolloDynSys(DynamicSystem):
                    dt*self.alpha], dtype='float').reshape(2,1)
     Cd = np.array([1.0, 0.0], dtype='float').reshape(1,2)
     S = np.array([1.0, 0.0], dtype='float').reshape(2,1)
-    c = np.array([1.0, 0.0], dtype='float').reshape(2,1)
+    c = np.array([0.0, 0.0], dtype='float').reshape(2,1)
 
     return Ad, Bd, Cd, S, c

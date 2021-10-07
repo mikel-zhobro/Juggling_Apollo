@@ -143,13 +143,12 @@ class MyApollo:
         # Vectors to collect the history of the system states
         N = N0 * repetitions + 1
         n_joints = 7
-        thetas_s = np.zeros((N, n_joints));  # x_b[0] = x0
+        thetas_s = np.zeros((N, n_joints));  thetas_s[0] = x0
         vel_s = np.zeros((N,n_joints))
         acc_s = np.zeros((N,n_joints))
         dP_N_vec = np.zeros_like(thetas_s)  # TODO: hand torque sensor
 
         # Action Loop
-        # dt = 0.004
         delta_it = int(1000*dt)
         for i in range(N-1):
             # one step simulation
@@ -193,11 +192,11 @@ class MyApollo:
         obs_np = self.obs_to_numpy(observation)
         return obs_np
     
-    def go_to_home_position(self, home_pose=home_pose, zero_pose=False):
+    def go_to_home_position(self, home_pose=home_pose, it_time=3000, zero_pose=False):
         if zero_pose:
-            self.go_to_posture_array(np.zeros_like(home_pose), 3000, False)
+            self.go_to_posture_array(np.zeros_like(home_pose), it_time, False)
         else:
-            self.go_to_posture_array(home_pose, 3000, False)
+            self.go_to_posture_array(home_pose, it_time, False)
         
 
 
