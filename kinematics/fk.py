@@ -4,7 +4,7 @@ from math import cos, sin, acos, atan2, sqrt
 from scipy.linalg import logm
 
 # Define position/orientation of base from of kuka arm to the world frame
-c = cos(np.pi/6) s = sin(np.pi/6)
+c = cos(np.pi/6); s = sin(np.pi/6)
 R_origin_base = np.array([[1.0, 0.0, 0.0],
                           [0.0,  c,  -s],
                           [0.0,  s,   c]], dtype='float')
@@ -290,7 +290,7 @@ def orientation_error(R_i, R_goal):
     n_e = np.array([wx, wy, wz]).reshape(3,1)
     return n_e
 
-def IK(pos_goal, R_goal, q_joints_state, verbose=False):
+def IK(pos_goal, R_goal, q_joints_state, max_steps=1000, verbose=False):
     """ Calculates the IK from a certain joint configuration.
 
     Args:
@@ -298,7 +298,7 @@ def IK(pos_goal, R_goal, q_joints_state, verbose=False):
         R_goal ([np.array]): [nx, ny, nz] unit vector showing the goal orientaiton of TCP in base frame
         q_joints_state ([np.array]): [q1, q2, q3, q4, q5, q6, q7] actual joint conifguration
     """
-    max_steps = 1000
+    # max_steps = 1000
     v_step_size = 0.05  # 5mm
     vn_step_size = 0.0031  # 0.01 rad ~ 2grad
     theta_max_step = 0.04
@@ -391,9 +391,9 @@ def CartesianMinJerk2JointSpace(position_traj, thetas, q_joints_state_start):
     # 1. Make sure the home position of the hand matches the start theta of the trajectory
     T_start = FK(*q_joints_state_start.copy())
     s = sin(thetas[0]); c = cos(thetas[0])
-    R_goal_start = np.array([[-s,    0.0,    c],
-                             [ 0.0,  1.0,  0.0],
-                             [-c,    0.0,   -s]], dtype='float')
+    R_goal_start = np.array([[ s,   c,  0.0,],
+                             [0.0, 0.0, 1.0,],
+                             [-c,   s,  0.0,]], dtype='float')
     assert np.allclose(T_start[:3, :3], R_goal_start), "Home position must match the start theta of the trajectory"
     assert np.allclose(T_start[:3, -1], position_traj[0,:]), "Home position must match the start position of the trajectory"
     ## If needed to corrects
@@ -408,9 +408,9 @@ def CartesianMinJerk2JointSpace(position_traj, thetas, q_joints_state_start):
     q_joint_state_i = q_joints_state_start.copy()
     for i, (pos_goal_i, theta_i) in enumerate(zip(position_traj[1:], thetas[1:])):
         s = sin(theta_i); c = cos(theta_i)
-        R_goal_i = np.array([[-s,    0.0,    c],
-                             [ 0.0,  1.0,  0.0],
-                             [-c,    0.0,   -s]], dtype='float')
+        R_goal_i = np.array([[ s,   c,  0.0,],
+                             [0.0, 0.0, 1.0,],
+                             [-c,   s,  0.0,]], dtype='float')
         q_joint_state_i = IK(pos_goal_i.reshape(3,1), R_goal_i, q_joint_state_i.copy(), verbose=False)
         joints_traj[i+1,:] = q_joint_state_i.T
     return joints_traj
@@ -421,8 +421,8 @@ def CartesianMinJerk2JointSpace(position_traj, thetas, q_joints_state_start):
 if __name__ == '__main__':
     np.set_printoptions(precision=3, suppress=True)
     home_pose = np.array([np.pi/4, 0.0, 0.0, np.pi/4, np.pi/2, np.pi/2, -np.pi/2])
-    print(FK(*home_pose))
-    print(FK_DH(home_pose))
+    # print(FK(*home_pose))
+    # print(FK_DH(home_pose))
     
     
     
@@ -436,3 +436,20 @@ if __name__ == '__main__':
     # q = IK(pos_goal, R_goal, q_joints_state)
     # print(T_goal)
     # print(FK(*q))
+    
+    # home_new = np.array([0.0, -1.0, 3.0, -np.pi/4, -np.pi/4, np.pi/2, 0.0])
+    home_new = np.array([np.pi/4, -0.4, 0.0, np.pi/4, np.pi/2, np.pi/2, -np.pi/2])
+    T = FK(*home_new)
+    print(T)
+    pos_goal = T[:3, 3:]
+    R = T[:3, :3]
+    R[0,0:2] = 0.0
+    R[:,0] /= np.linalg.norm(R[:,0])
+    R[:,1] /= np.linalg.norm(R[:,1])
+    R[:,2]  = np.array([1.0,  0.0,  0.0], dtype='float').T
+    print(R, np.linalg.norm(R[:,0]), np.linalg.norm(R[:,1]))
+
+    R_goal = np.array([ [0.0,  0.0,  1.0],
+                        [0.0,  1.0,  0.0],
+                        [-1.0, 0.0,  0.0]], dtype='float')
+    print(IK(pos_goal, R, home_new, max_steps=10000, verbose=False))

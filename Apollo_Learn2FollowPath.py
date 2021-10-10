@@ -7,7 +7,7 @@ from juggling_apollo.settings import dt, ABS, g, ABS
 from juggling_apollo.ILC import ILC
 from juggling_apollo.MinJerk import plotMJ, get_minjerk_trajectory
 from juggling_apollo.DynamicSystem import ApolloDynSys
-from juggling_apollo.Apollo_It import MyApollo, plot_simulation
+from apollo_interface.Apollo_It import MyApollo, plot_simulation
 from kinematics.fk import FK, CartesianMinJerk2JointSpace
 
 
@@ -46,7 +46,7 @@ print('T_fly: ' + str(T_fly))
 
 # Init state  ([{ 1-Dim }])
 y_home = 0.0 # starting position for the hand
-home_pose = np.array([np.pi/4, 0.0, 0.0, np.pi/4, np.pi/2, np.pi/2, -np.pi/2])
+home_pose = np.array([np.pi/4, 0.0, 0.0, np.pi/4, -2*np.pi/3, np.pi/2, -np.pi/2])
 # create r_arm and go to home position
 r_arm = MyApollo(r_arm=True)
 r_arm.go_to_home_position(home_pose)

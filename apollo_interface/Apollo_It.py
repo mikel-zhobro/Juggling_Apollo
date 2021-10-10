@@ -26,8 +26,25 @@ jointsToIndexDict = {
 
 jointsToUse = ["R_SFE", "R_SAA", "R_HR", "R_EB", "R_WR", "R_WFE", "R_WAA"]
 
-home_pose = np.array([np.pi/4, 0.0, 0.0, np.pi/4, -np.pi/2, np.pi/2, np.pi/2])  # modelled
-home_pose = np.array([np.pi/4, 0.0, 0.0, np.pi/4, np.pi/2, np.pi/2, -np.pi/2])   # real model
+home_pose = np.array([np.pi/8, 0.0, 0.0, 3*np.pi/8, np.pi/2, 0.0, -np.pi/2])  # real model
+
+JOINTS_LIMITS = {
+    "R_SFE":(-2.96,2.96),
+    "R_SAA":(-3.1,-0.1),
+    "R_HR": (-1.9,4.0),
+    "R_EB": (-2.09,2.09),
+    "R_WR": (-3.1,1.35),
+    "R_WFE":(-2.09,2.09),
+    "R_WAA":(-2.96,2.96),
+
+    "L_SFE":(-2.96,2.96),
+    "L_SAA":(-3.1,-0.1),
+    "L_HR": (-1.9,4.0),
+    "L_EB": (-2.09,2.09),
+    "L_WR": (-3.1,1.35),
+    "L_WFE":(-2.09,2.09),
+    "L_WAA":(-2.96,2.96)
+}
 
 
 def ref_name_to_index(posture):
@@ -192,11 +209,15 @@ class MyApollo:
         obs_np = self.obs_to_numpy(observation)
         return obs_np
     
-    def go_to_home_position(self, home_pose=home_pose, it_time=3000, zero_pose=False):
+    def calibration(self):
+        # 1. Measure offsets at 00 position
+        zero_conf = self.go_to_home_position(zero_pose=True)
+        
+    def go_to_home_position(self, home_pose=home_pose, it_time=4000, zero_pose=False):
         if zero_pose:
-            self.go_to_posture_array(np.zeros_like(home_pose), it_time, False)
+            return self.go_to_posture_array(np.zeros_like(home_pose), it_time, False)
         else:
-            self.go_to_posture_array(home_pose, it_time, False)
+            return self.go_to_posture_array(home_pose, it_time, False)
         
 
 
@@ -242,7 +263,8 @@ def main():
 
     r_arm = MyApollo(r_arm=True)
     print("GOING HOME!")
-    r_arm.go_to_home_position(True)
+    r_arm.calibration()
+    r_arm.go_to_home_position(zero_pose=True)
     
     if False:
         # Run apollo

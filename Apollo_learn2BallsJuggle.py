@@ -7,7 +7,7 @@ from juggling_apollo.settings import dt, ABS, g, ABS
 from juggling_apollo.ILC import ILC
 from juggling_apollo.MinJerk import plotMJ, get_minjerk_trajectory
 from juggling_apollo.DynamicSystem import ApolloDynSys
-from juggling_apollo.Apollo_It import MyApollo, plot_simulation
+from apollo_interface.Apollo_It import MyApollo, plot_simulation
 from kinematics.fk import FK, IK
 
 # create r_arm and go to home position

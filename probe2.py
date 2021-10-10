@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from juggling_apollo.Apollo_It import MyApollo
+from apollo_interface.Apollo_It import MyApollo
 
 def main():
 
