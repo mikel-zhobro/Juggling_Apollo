@@ -8,13 +8,14 @@ from settings import R_joints, L_joints, TCP, FILENAME, JOINTS_LIMITS
 np.set_printoptions(precision=3, suppress=True)
 pin.switchToNumpyMatrix()  # https://github.com/stack-of-tasks/pinocchio/issues/802
 
+
 # inv kinematics params
 IT_MAX = 10200
 eps_pos    = 1e-3
 eps_orient    = 1e-2
 DT     = 10e-4
 damp   = 1e-12
-    
+
 class PinRobot():
     def __init__(self, r_arm=True):
         """ Initialize pinocchio dependent models/variables: model, data, joint_states
@@ -22,14 +23,18 @@ class PinRobot():
         """
         self.joints_list = R_joints if r_arm else L_joints
 
-        
+
         self.model = reduce_model(FILENAME, jointsToUse=self.joints_list)
         self.data = self.model.createData()  # information that changes according to joint configuration etc
                                              # Only used as internal state(still all functions should be called with certain joint_state as input)
-        
+
         # Use "BASE" instead of "ORIGIN" as world coordinate frame
         self.SE3_world_origin = pin.SE3(np.eye(3), np.zeros((3,1)))
         self.SE3_world_origin = self.FK(pin.neutral(self.model), "BASE").inverse()
+    def limit_joints(self, Q):
+        for i, name in enumerate(self.joints_list):
+            Q[i, 0] = np.clip(Q[i, 0], *JOINTS_LIMITS[name])
+        return Q
 
     def FK(self, q, frameName=TCP):
         """
@@ -62,14 +67,14 @@ class PinRobot():
         Returns:
             [list]: joint configuration to achieve desired endeffector position/orientation
         """
-        
+
         # Desired TCP cartesian position
         goal_p = np.array(goal_p).reshape(3,1)
         goal_R = goal_R if goal_R is not None else np.eye(3)[:,[2,0,1]]
         SE3_world_goal = pin.SE3(goal_R, goal_p)
         print("GOAL")
         print(SE3_world_goal)
-        
+
         def get_se3_error(SE3_world_tcp_i):
             dMi = SE3_world_goal.actInv(SE3_world_tcp_i)
             err = pin.log(dMi).vector
@@ -86,22 +91,23 @@ class PinRobot():
 
             # Calc cartesian errors
             err = get_se3_error(SE3_world_tcp_i)
-            
+
             # 1 Calc qoint velocities
             qv = - J_world_tcp.T.dot(solve(J_world_tcp.dot(J_world_tcp.T) + damp * np.eye(6), err))
-            
+
             # 2
             # J_invj = np.linalg.pinv(J_world_tcp)
             # qv = -np.matmul(J_invj, err)
-            
+
             # Update joint_states
             Q_i = pin.integrate(self.model, Q_i, qv*DT)
             Q_i = modrad(Q_i)
+            Q_i = self.limit_joints(Q_i)
 
 
             i += 1
-            
-            
+
+
             pos_norm_err = np.linalg.norm(err[:3])
             orient_norm_err = np.linalg.norm(err[3:])
             converged = pos_norm_err<eps_pos and orient_norm_err<eps_orient
@@ -130,11 +136,11 @@ if __name__ == "__main__":
     home_new = np.array([np.pi/8, -0.4, 0.0, 3*np.pi/8, 0.0, 0.0, 0.0]).reshape(-1, 1)
     SE3_w_tcp = pin_rob.FK(home_new)
     q_goal = pin_rob.ik_apollo(home_new, SE3_w_tcp.translation-0.3, SE3_w_tcp.rotation[:,[1,2,0]], plot=True)
-    
+
     print(q_goal.T)
     print()
     print(home_new.T)
-    
+
 
     # pin_rob = PinRobot(False)
     # home_pose = np.array([np.pi/8, 0.0, 0.0, 3*np.pi/8, 0.0, 0.0, 0.0]).reshape(-1,1)
@@ -162,10 +168,10 @@ if __name__ == "__main__":
     # pin.updateFramePlacement(pin_rob.model, pin_rob.data, frame_id) # updates data
     # # pin.updateFramePlacements(pin_rob.model,pin_rob.data)
     # J = pin.computeFrameJacobian(pin_rob.model, pin_rob.data, q, frame_id)
-    
+
     # print(J)
     # print()
-    
+
     # # 1
     # pin.forwardKinematics(pin_rob.model,pin_rob.data,q,v)
     # pin.computeJointJacobians(pin_rob.model,pin_rob.data,q)
