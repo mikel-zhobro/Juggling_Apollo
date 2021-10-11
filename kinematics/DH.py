@@ -1,4 +1,5 @@
 import numpy as np
+from utilities import ContinuousSet, skew, vec, clip_c
 from math import sin, cos, atan, acos, asin, sqrt, atan2
 # from numpy import sin, cos, sqrt, arctan2, arccos
 # from numpy import arctan2 as atan2
@@ -8,19 +9,12 @@ np.set_printoptions(precision=4, suppress=True)
 
 
 pi2 = np.pi/2
-d_bs = 0.1; d_se = 0.4; d_ew = 0.4; d_wt = 0.1
+d_bs = 0.1; d_se = 0.4; d_ew = 0.3; d_wt = 0.1
 a_s            = [0.0] * 7
 alpha_s        = [-pi2, pi2, -pi2, pi2, -pi2, pi2, 0.0]
 d_s            = [d_bs, 0.0, d_se, 0.0, d_ew, 0.0, d_wt]
 theta_offset_s = [0.0] * 7
 
-def skew(v):
-    return np.array([[ 0.0,   -v[2],  v[1]],
-                     [ v[2],   0.0,  -v[0]],
-                     [-v[1],   v[0],  0.0]], dtype='float')
-
-def vec(elems):
-    return np.array(elems, dtype='float').reshape(-1, 1)
 
 class DH_revolut():
     n_joints = 0
@@ -92,10 +86,8 @@ class DH_revolut():
     def get_i_p_j(self, Q):
         pass
 
-def clip_c(v):
-    return np.clip(v, -1.0, 1.0)
 
-def IK_anallytical(p07_d, R07_d, DH_model):
+def IK_anallytical(p07_d, R07_d, DH_model, verbose=False):
     """
         Implementation from paper: "Analytical Inverse Kinematic Computation for 7-DOF Redundant Manipulators...
         With Joint Limits and Its Application to Redundancy Resolution",
@@ -114,9 +106,11 @@ def IK_anallytical(p07_d, R07_d, DH_model):
     x0sw = p07_d - l0bs - R07_d.dot(l7wt)
 
     # Elbow joint
-    c_th4 = (np.linalg.norm(x0sw)**2 - d_se**2 - d_ew**2) / (2*d_se*d_ew)
+    c_th4 = clip_c((np.linalg.norm(x0sw)**2 - d_se**2 - d_ew**2) / (2*d_se*d_ew))
     th4 = acos(c_th4)
-    print('Theta4:', th4)
+    if verbose:
+        print('Theta4:', th4)
+    assert (d_se**2 + d_ew**2 + (2*d_se*d_ew)*c_th4 - np.linalg.norm(x0sw)**2) <= 1e-6, 'Should have used -sqrt(aa) maybe'
 
     # Shoulder joints (reference plane)
     R23_ref = DH_model.get_i_R_j(2,3, [0.0])
@@ -127,12 +121,13 @@ def IK_anallytical(p07_d, R07_d, DH_model):
     d13_2 = d[0,0]**2 + d[2,0]**2
     aa = d13_2 - x0sw[2,0]**2
 
-    s2 = (sqrt(aa) * d[2,0] - x0sw[2,0]*d[0,0]) / d13_2
-    c2 = (s2*d[0,0] + x0sw[2,0])/ d[2,0]
+    s2 = clip_c((sqrt(aa) * d[2,0] - x0sw[2,0]*d[0,0]) / d13_2)
+    c2 = clip_c((s2*d[0,0] + x0sw[2,0])/ d[2,0])
     assert (s2*d[0,0] - c2*d[2,0] + x0sw[2,0]) <= 1e-6, 'Should have used -sqrt(aa) maybe'
-    print('Theta2', atan2(s2, c2))
+    if verbose:
+        print('Theta2', atan2(s2, c2))
 
-    if( (p07_d[0,0])<1e-6 and (p07_d[1,0])<1e-6 ):
+    if( abs(p07_d[0,0])<1e-6 and abs(p07_d[1,0])<1e-6 ):
         s1 = 0.0
         c1 = 1.0
     else:
@@ -140,7 +135,8 @@ def IK_anallytical(p07_d, R07_d, DH_model):
         s1 = clip_c((x0sw[1,0]*(c2*d[0,0] + s2*d[2,0]) - d[1,0]*x0sw[0,0]) / x12_2)
         c1 = clip_c((x0sw[0,0]*(c2*d[0,0] + s2*d[2,0]) - d[1,0]*x0sw[1,0]) / x12_2)
         assert (-s1*x0sw[0,0] + c1*x0sw[1,0] - d[1,0]) <= 1e-6, "s1,c1 wrongly calculated"
-        print('Theta1', atan2(s1, c1))
+    if verbose:
+        print('Theta1', atan2(s1, c1), s1, c1)
 
 
     R03_ref = np.array([[ c1*c2,  -c1*s2,  -s1],
@@ -178,54 +174,78 @@ def IK_anallytical(p07_d, R07_d, DH_model):
     t71 = lambda psi: (  Aw[2,1]*sin(psi)  + Bw[2,1]*cos(psi) + Cw[2,1] )
     t72 = lambda psi: ( Aw[2,0]*sin(psi)  + Bw[2,0]*cos(psi) + Cw[2,0] )
 
-    print()
-
-    # return lambda psi: np.array([atan(t11(psi)/t12(psi)), acos(c22(psi)),
-    #                              atan(t31(psi)/t32(psi)), th4,
-    #                              atan(t51(psi)/t52(psi)), acos(c6(psi)),
-    #                              atan(t71(psi)/t72(psi))]).reshape(-1,1)
     return lambda psi: np.array([atan2(-t11(psi), -t12(psi) ), acos(c22(psi)),
                                  atan2(t31(psi), -t32(psi) ), th4,
                                  atan2(t51(psi), t52(psi) ), acos(c6(psi)),
                                  atan2(t71(psi), -t72(psi) )]).reshape(-1,1)
 
 
+def tangent_type(an, bn, cn, ad, bd, cd):
+    at = bd*cn - bn*cd; at_2 = at**2
+    bt = an*cd - ad*cn; bt_2 = bt**2
+    ct = an*bd - ad*bn; ct_2 = ct**2
+
+    if at_2 + bt_2 - ct_2 > 1e-6:  # cyclic profile
+        ss = at_2 + bt_2 - ct_2
+        psi_min = 2 * atan2( at - sqrt(ss), bt-ct )
+        psi_max = 2 * atan2( at + sqrt(ss), bt-ct )
+    elif at_2 + bt_2 - ct_2 < 1e-6:  # monotonic profile
+        pass
+    else:  # discontinuous profile (2 possibilities)
+        psi_stationary = 2 * atan2(at, bt-ct)
+        psi_s_neg = atan2(-1/ct*(at*bn - bt*an), -1/ct*(at*bd - bt*ad))
+        psi_s_neg = atan2(1/ct*(at*bn - bt*an), 1/ct*(at*bd - bt*ad))
 
 
 
+def cosine_type(a, b, c):
+    a_2 = a**2
+    b_2 = b**2
+    c_2 = c**2
+
+    psi_stat_neg = 2 * atan2(-b - sqrt(a_2+b_2), a)
+    psi_stat_neg = 2 * atan2(-b + sqrt(a_2+b_2), a)
+
+    if (a_2 + b_2 - (c-1)**2) < 1e-6:  # cyclic jumping gradient1
+        psi0 = 2 * atan2(a, b - (c-1))
+        grad_neg = -sqrt(1-c)
+        grad_pos = sqrt(1-c)
+        pass
+    elif (a_2 + b_2 - (c+1)**2) < 1e-6:  # cyclic jumping gradient2
+        psi0 = 2 * atan2(a, b - (c+1))
+        grad_neg = sqrt(1+c)
+        grad_pos = -sqrt(1+c)
+        pass
+    else:  # cyclic diffable
+        pass
+
+# Create Robot
 my_fk_dh = DH_revolut()
 for a, alpha, d, theta in zip(a_s, alpha_s, d_s, theta_offset_s):
     my_fk_dh.add_joint(a, alpha, d, theta)
 
-home_new = np.array([0.0, np.pi/2, 0.0, np.pi/4, 0.0, 0.0, 0.0])
-home_new = np.array([0.0, 0.0, 0.0, np.pi/2, 0.0, 0.0, 0.0])
 
-T07_home = my_fk_dh.FK(home_new)
-R07 = T07_home[:3, :3]
-p07 = T07_home[:3, 3:4]
 
-print(home_new)
-print()
-print(T07_home)
-solu = IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh)
-print()
-
-psi_s = [0.0, 0.5, 1.0, -0.5, -1.0]
-print(my_fk_dh.get_i_T_j(0,7, home_new))
-
-for f in np.arange(-np.pi, np.pi, 0.1):
-    s = solu(f)
-    # s[2] = -s[0]
-    # print(s.T)
-    # print()
-    # print(my_fk_dh.FK(solu(f*np.pi)))
-    # print()
-    # print(my_fk_dh.get_i_T_j(0,7, s))
-    nrr = np.linalg.norm(T07_home-my_fk_dh.get_i_T_j(0,7, s))
-    if nrr >1e-6:
-        print('PSI: {} pi'.format(f))
-        print('------------')
-        print(nrr)
+# Test with random goal poses
+if False:
+    for i in range(100):
+        home_new = np.random.rand(7,1)*np.pi
+        T07_home = my_fk_dh.FK(home_new)
+        R07 = T07_home[:3, :3]
+        p07 = T07_home[:3, 3:4]
+        for f in np.arange(-1.0, 1.0, 0.02):
+            solu = IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh)
+            s = solu(f*np.pi)
+            nrr = np.linalg.norm(T07_home-my_fk_dh.get_i_T_j(0,7, s))
+            if nrr >1e-6:
+                solu = IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, verbose=True)
+                s = solu(f*np.pi)
+                print('PSI: {} pi'.format(f))
+                print('------------')
+                print('ERR', nrr)
+                print('pgoal', p07.T)
+                print(home_new.T)
+                print(s.T)
 
 
 # solu[-1] = -solu[-3]
