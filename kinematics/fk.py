@@ -10,7 +10,7 @@ R_origin_base = np.array([[1.0, 0.0, 0.0],
                           [0.0,  s,   c]], dtype='float')
 p_origin_base = np.array([1.0, 0.0, 0.0], dtype='float').reshape(3,1)
 
-d1 = 0.2
+d1 = 0.1
 d3 = 0.4
 d5 = 0.39
 d7 = 0.1
@@ -48,7 +48,7 @@ def FK_DH(q):
     T0_7 = np.eye(4)
     for i in range(7):
         T0_7 = T0_7.dot(getT(i))
-    
+
     # Make up for axes mismatch to real apollo  x_apollo->x_dh, y_apollo->z_dh, z_apollo-> -y_dh
     T0_7 = T0_7[:, [0, 2, 1, -1]]
     T0_7[:,2] *= -1
@@ -423,9 +423,9 @@ if __name__ == '__main__':
     home_pose = np.array([np.pi/4, 0.0, 0.0, np.pi/4, np.pi/2, np.pi/2, -np.pi/2])
     # print(FK(*home_pose))
     # print(FK_DH(home_pose))
-    
-    
-    
+
+
+
     # q_joints_goal = np.array([0.2, 1.21, 1.1, pi_2/2, 1.1, 0.2, 0.2]).reshape(-1, 1)
     # T_goal = FK(*q_joints_goal)
     # q_joints_state = np.array([0, 1.0, 0, pi_2/2, 0, 0, 0]).reshape(-1, 1)
@@ -436,7 +436,7 @@ if __name__ == '__main__':
     # q = IK(pos_goal, R_goal, q_joints_state)
     # print(T_goal)
     # print(FK(*q))
-    
+
     # home_new = np.array([0.0, -1.0, 3.0, -np.pi/4, -np.pi/4, np.pi/2, 0.0])
     home_new = np.array([np.pi/4, -0.4, 0.0, np.pi/4, np.pi/2, np.pi/2, -np.pi/2])
     T = FK(*home_new)
