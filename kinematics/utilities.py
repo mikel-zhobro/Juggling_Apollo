@@ -1,6 +1,12 @@
+import os, sys
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+sys.path.append(PROJECT_ROOT)
+
+from sortedcontainers import SortedList, SortedSet
 import numpy as np
 import math
 import pinocchio as pin
+from apollo_interface.Apollo_It import JOINTS_LIMITS, R_joints, L_joints
 
 
 def reduce_model(FILENAME, jointsToUse):
@@ -39,6 +45,7 @@ def euler_to_quaternion(r):
     qw = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
     return [qx, qy, qz, qw]
 
+
 def euler_from_quaternion(x, y, z, w):
         """
         Convert a quaternion into euler angles (roll, pitch, yaw)
@@ -61,22 +68,36 @@ def euler_from_quaternion(x, y, z, w):
 
         return roll_x, pitch_y, yaw_z # in radians
 
+class ContinuousRange():
+    def __init__(self, start=None, end=None, start_include=True, end_include=True):
+        correct = start < end  # sort the range if given out of order
+        if correct:
+            self.a = start
+            self.b = end if correct else start
+            self.a_incl = start_include
+            self.b_incl = end_include
+        else:
+            self.a = end
+            self.b = start
+            self.a_incl = end_include
+            self.b_incl = start_include
 
-class ContinuousSet():
-    def __init__(self, start, end, start_include=True, end_include=True):
-        self.a = start
-        self.b = end
-        self.a_incl = start_include
-        self.b_incl = end_include
+    def __add__(self, other): # TODO, can return more than 1 set
+        if self.empty:
+            return other
+        if other.empty:
+            return self
 
-    def __add__(self, other):
+        if self.a > other.b or self.b < other.a:
+            return ContinuousSet(set(self, other))
+
         if self.a < other.a:
             start = self.a
             start_include = self.a_incl
         else:
             start = other.a
-            if abs(self.a - other.a) < 1e-7:
-                end_include = self.a_incl or other.a_incl
+            if abs(self.a - other.a) < 1e-7:  # equal
+                start_include = self.a_incl or other.a_incl
             else:
                 start_include = other.a_incl
 
@@ -86,13 +107,16 @@ class ContinuousSet():
         else:
             end = self.b
             if abs(self.b - other.b) < 1e-7:
-                end_include = self.a_incl or other.a_incl
+                end_include = self.b_incl or other.b_incl
             else:
                 end_include = self.b_incl
 
         return ContinuousSet(start, end, start_include, end_include)
 
     def __sub__(self, other):
+        if self.empty or other.empty:
+            return ContinuousRange()  # empty range
+
         if self.a < other.a:
             start = other.a
             start_include = other.a_incl
@@ -109,14 +133,107 @@ class ContinuousSet():
         else:
             end = other.b
             if abs(self.b - other.b) < 1e-7:
-                end_include = self.a_incl and other.a_incl
+                end_include = self.b_incl and other.b_incl
             else:
                 end_include = other.b_incl
 
-        return ContinuousSet(start, end, start_include, end_include)
+        return ContinuousRange(start, end, start_include, end_include)
 
-    def __str__(self):
+    def __repr__(self):
         return '{}{}, {}{}'.format('[' if self.a_incl else '(', self.a, self.b, ']' if self.b_incl else ')')
+
+    @property
+    def empty(self):
+        return self.a == None or self.b==None
+
+    def __lt__(self, other):
+        lower = False
+        if self.a == other.a:
+            lower = self.b < other.b
+        else:
+            lower = self.a < other.a
+        return lower
+
+class ContinuousSet():
+    def __init__(self, c_ranges=SortedList()):
+        c_ranges = SortedList(c_ranges)
+        self.c_ranges = SortedList()  # set of ContinuousRanges
+        for c_r in c_ranges:
+            self.add(c_r)
+
+    def add(self, c_range):
+        self.c_ranges = self._add(c_range)
+        pass
+
+    def _add(self, c_range):
+        c_ranges_new = self.c_ranges.copy()
+        startt = c_range
+        endd = c_range
+        # Find the start and end overlaping intervals
+        to_remove = set()
+        for cr in self:
+            if c_range.a < cr.a and c_range.b > cr.b:
+                to_remove.add(cr)
+            if cr.a <= c_range.a <= cr.b:
+                startt = cr
+                to_remove.add(cr)
+            if cr.a <= c_range.b <= cr.b:
+                endd = cr
+                to_remove.add(cr)
+                break
+
+        # Remove continuous ranges in between
+        for cr in to_remove:
+            c_ranges_new.discard(cr)
+        a_incl = startt.a_incl or c_range.a_incl if abs(startt.a-c_range.a)<1e-8 else startt.a_incl
+        b_incl = endd.b_incl or c_range.b_incl if abs(endd.b-c_range.b)<1e-8 else endd.b_incl
+
+        # Add the new range
+        c_ranges_new.add(ContinuousRange(startt.a, endd.b, a_incl, b_incl))
+        return c_ranges_new
+
+    def __add__(self, other):
+        ret_set = ContinuousSet()
+        ret_set.c_ranges = self.c_ranges.copy()
+        for cr in other:
+            ret_set.c_ranges = ret_set._add(cr)
+        return ret_set
+
+    def __iter__(self):
+        for c_r in self.c_ranges:
+            yield c_r
+
+    def _sub(self, new_range):
+        c_ranges_new = SortedList()
+        # Find the start and end overlaping intervals
+        for cr in self:
+            if new_range.a < cr.a and new_range.b > cr.b:  # range included in new range
+                c_ranges_new.add(cr)
+
+            if cr.a <= new_range.a < cr.b:
+                a_incl = cr.a and new_range.a if abs(cr.a - new_range.a) < 1e-7 else new_range.a
+                if new_range.b > cr.b:  # only start of new range included in range
+                    c_ranges_new.add(ContinuousRange(new_range.a, cr.b, a_incl, cr.b_incl))
+                else:
+                    b_incl = cr.b and new_range.b if abs(cr.b - new_range.b) < 1e-7 else new_range.b
+                    c_ranges_new.add(ContinuousRange(new_range.a, new_range.b, a_incl, b_incl))
+
+            elif cr.a < new_range.b <= cr.b and new_range.a < cr.a: # only end of new range included in range
+                a_incl = cr.a and new_range.a if abs(cr.a - new_range.a) < 1e-7 else new_range.a
+                b_incl = cr.b and new_range.b if abs(cr.b - new_range.b) < 1e-7 else new_range.b
+                c_ranges_new.add(ContinuousRange(cr.a, new_range.b, a_incl, b_incl))
+
+        return c_ranges_new
+
+    def __sub__(self, other):
+        ret_set = ContinuousSet()
+        for o_r in other.c_ranges:
+            ret_set += self._sub(o_r)
+        return ret_set
+
+    def __repr__(self):
+        return str([c_r for c_r in self.c_ranges])
+
 def skew(v):
     return np.array([[ 0.0,   -v[2],  v[1]],
                      [ v[2],   0.0,  -v[0]],
@@ -129,3 +246,33 @@ def vec(elems):
 
 def clip_c(v):
     return np.clip(v, -1.0, 1.0)
+
+
+
+# a = ContinuousSet()
+# a.add(ContinuousRange(2,3))
+# print(a)
+
+ss = ContinuousSet()
+
+ss.add(ContinuousRange(2,3, False))
+ss.add(ContinuousRange(2.1,3.1))
+ss.add(ContinuousRange(4,15, False))
+ss.add(ContinuousRange(12,5))
+ss.add(ContinuousRange(4,5))
+ss.add(ContinuousRange(5,6))
+
+ss2 = ContinuousSet()
+
+ss2.add(ContinuousRange(2.4,3.4))
+ss2.add(ContinuousRange(122, 13.9))
+ss2.add(ContinuousRange(2.1,3.5))
+ss2.add(ContinuousRange(4.2,13.8))
+ss2.add(ContinuousRange(5, 11, False, False))
+
+
+print('ss', ss)
+print('ss2', ss2)
+print('+', ss + ss2)
+print('-', ss - ss2)
+# print(ss)

@@ -1,5 +1,6 @@
 import numpy as np
 from utilities import ContinuousSet, skew, vec, clip_c
+from utilities import JOINTS_LIMITS, R_joints, L_joints
 from math import sin, cos, atan, acos, asin, sqrt, atan2
 # from numpy import sin, cos, sqrt, arctan2, arccos
 # from numpy import arctan2 as atan2
@@ -19,19 +20,31 @@ theta_offset_s = [0.0] * 7
 class DH_revolut():
     n_joints = 0
     class Joint():
-        def __init__(self, a, alpha, d, theta):
+        def __init__(self, a, alpha, d, theta, name):
             self.a = a
             self.alpha = alpha
             self.d = d
             self.theta = theta
+            self.name = name
             self.index = DH_revolut.n_joints
             DH_revolut.n_joints += 1
+
+        @property
+        def limit_range(self):
+            return ContinuousSet(JOINTS_LIMITS[self.name][0], JOINTS_LIMITS[self.name][1], False, False)
+
+        def __repr__(self):
+            return '{}. {}: a({}), b({}), d({}), theta({})'.format(self.index, self.name, self.a, self.alpha, self.d, self.theta)
 
     def __init__(self):
         self.joints = []
 
-    def add_joint(self, a, alpha, d, theta):
-        self.joints.append(self.Joint(a, alpha, d, theta))
+    @property
+    def joint(self, i):
+        return self.joints[i]
+
+    def add_joint(self, a, alpha, d, theta, name):
+        self.joints.append(self.Joint(a, alpha, d, theta, name))
 
     def getT(self, j, theta):
         c_th = cos(theta - j.theta); s_th = sin(theta - j.theta)
@@ -160,10 +173,25 @@ def IK_anallytical(p07_d, R07_d, DH_model, verbose=False):
     Bw = np.matmul(R34.T, Bs.T.dot(R07_d))
     Cw = np.matmul(R34.T, Cs.T.dot(R07_d))
 
+
+    joint_sets = [None] * 7
+
+    joint_sets[0] = tangent_type(-As[1,1], -Bs[1,1], -Cs[1,1], -As[0,1], -Bs[0,1], -Cs[0,1], DH_model.joint(0))
+    joint_sets[1] = cosine_type(-As[2,1], -Bs[2,1], -Cs[2,1], DH_model.joint(1))
+    joint_sets[2] = tangent_type(As[2,2], Bs[2,2], Cs[2,2], -As[2,0], -Bs[2,0], -Cs[2,0], DH_model.joint(2))
+    joint_sets[3] = ContinuousSet(-np.pi, np.pi, False, True)
+    joint_sets[4] = tangent_type(Aw[1,2], Bw[1,2], Cw[1,2], Aw[0,2], Bw[0,2], Cw[0,2], DH_model.joint(4))
+    joint_sets[5] = cosine_type(Aw[2,2], Bw[2,2], Cw[2,2], DH_model.joint(5))
+    joint_sets[6] = tangent_type(Aw[2,1], Bw[2,1], Cw[2,1], -Aw[2,0], -Bw[2,0], -Cw[2,0], DH_model.joint(6))
+
+    feasible_set = ContinuousSet(-np.pi, np.pi, False, True)
+    for j_set in joint_sets:
+        feasible_set = feasible_set - j_set
+
     # 1. shoulder solutions
     t11 = lambda psi: ( As[1,1]*sin(psi)  + Bs[1,1]*cos(psi) + Cs[1,1] )
     t12 = lambda psi: ( As[0,1]*sin(psi)  + Bs[0,1]*cos(psi) + Cs[0,1] )
-    c22 = lambda psi:   clip_c(-As[2,1]*sin(psi)  - Bs[2,1]*cos(psi) - Cs[2,1])
+    c22 = lambda psi:   clip_c(-As[2,1]*sin(psi) - Bs[2,1]*cos(psi) - Cs[2,1])
     t31 = lambda psi: (  As[2,2]*sin(psi)  + Bs[2,2]*cos(psi) + Cs[2,2] )
     t32 = lambda psi: ( As[2,0]*sin(psi)  + Bs[2,0]*cos(psi) + Cs[2,0] )
 
@@ -180,7 +208,69 @@ def IK_anallytical(p07_d, R07_d, DH_model, verbose=False):
                                  atan2(t71(psi), -t72(psi) )]).reshape(-1,1)
 
 
-def tangent_type(an, bn, cn, ad, bd, cd):
+def bisection_method(f, value, interval, eps=1e-12):
+    """ Finds the root of f(psi) - value
+
+    Args:
+        f ([function]):  f(psi)
+        value ([float]): value = f(psi0)
+        interval ([ContinuousSet]): interval of psi to look into
+    Returns:
+        [float]: root of f(psi) - value
+    """
+    min_r = interval.a
+    max_r = interval.b
+
+    increasing = f(min_r) <= value <= f(max_r)
+    decreasing = f(min_r) >= value >= f(max_r)
+    assert increasing or decreasing, 'Make sure that value exist in the given interval'
+
+    start = min_r
+    endd = max_r
+    err = 1.0
+    while abs(err) > eps:
+        psi = (start + endd) / 2.0
+        err = f(psi) - value
+
+        if increasing:
+            if err > 0.0:
+                endd = psi
+            else:
+                start = psi
+        else:
+            if err > 0.0:
+                start = psi
+            else:
+                endd = psi
+    return psi
+
+
+def feasible_set_for_monotonic_function(f, FeasibleOutRange, InputRange):
+    """Find feasible input range that satisfies the feasible_out_range
+
+    Args:
+        f ([function]): f(in) = out
+        FeasibleOutRange ([ContinuousSet]): out in FeasibleOutRange
+        InputRange ([ContinuousSet]): in in InputRange
+
+    Returns:
+        [ContinuousSet]: Feasible Input Range
+    """
+    PossibleOutRange = ContinuousSet(f(InputRange.a), f(InputRange.b), InputRange.a_incl, InputRange.b_incl)
+    FeasiblePossibleOutRange = FeasibleOutRange - PossibleOutRange
+    assert not FeasiblePossibleOutRange.empty(), 'No feasible region exists for output range {} in the input range {}'.format(FeasibleOutRange, InputRange)
+
+    psi0 = bisection_method(f, value=FeasiblePossibleOutRange.a, interval=InputRange)
+    psi1 = bisection_method(f, value=FeasiblePossibleOutRange.b, interval=InputRange)
+
+    FeasibleInRange = InputRange - ContinuousSet(psi0, psi1)
+    return FeasibleInRange
+
+
+def tangent_type(an, bn, cn, ad, bd, cd, j):
+    tan_f = lambda psi: atan2(an*sin(psi) + bn*cos(psi) + cn,
+                              ad*sin(psi) + bd*cos(psi) + cd)
+
     at = bd*cn - bn*cd; at_2 = at**2
     bt = an*cd - ad*cn; bt_2 = bt**2
     ct = an*bd - ad*bn; ct_2 = ct**2
@@ -189,16 +279,17 @@ def tangent_type(an, bn, cn, ad, bd, cd):
         ss = at_2 + bt_2 - ct_2
         psi_min = 2 * atan2( at - sqrt(ss), bt-ct )
         psi_max = 2 * atan2( at + sqrt(ss), bt-ct )
+
     elif at_2 + bt_2 - ct_2 < 1e-6:  # monotonic profile
-        pass
+        feas_psi = feasible_set_for_monotonic_function(tan_f, j.limit_range, ContinuousSet(-np.pi, np.pi, False))
+
     else:  # discontinuous profile (2 possibilities)
-        psi_stationary = 2 * atan2(at, bt-ct)
+        psi_stationary = 2 * atan2(at, bt-ct) # should be avoided
         psi_s_neg = atan2(-1/ct*(at*bn - bt*an), -1/ct*(at*bd - bt*ad))
         psi_s_neg = atan2(1/ct*(at*bn - bt*an), 1/ct*(at*bd - bt*ad))
 
-
-
-def cosine_type(a, b, c):
+def cosine_type(a, b, c, j):
+    cos_f = lambda psi: acos(a*sin(psi) + b*cos(psi) + c)
     a_2 = a**2
     b_2 = b**2
     c_2 = c**2
@@ -211,21 +302,30 @@ def cosine_type(a, b, c):
         grad_neg = -sqrt(1-c)
         grad_pos = sqrt(1-c)
         pass
+
     elif (a_2 + b_2 - (c+1)**2) < 1e-6:  # cyclic jumping gradient2
         psi0 = 2 * atan2(a, b - (c+1))
         grad_neg = sqrt(1+c)
         grad_pos = -sqrt(1+c)
         pass
+
     else:  # cyclic diffable
         pass
 
 # Create Robot
 my_fk_dh = DH_revolut()
-for a, alpha, d, theta in zip(a_s, alpha_s, d_s, theta_offset_s):
-    my_fk_dh.add_joint(a, alpha, d, theta)
+for a, alpha, d, theta, name in zip(a_s, alpha_s, d_s, theta_offset_s, R_joints):
+    my_fk_dh.add_joint(a, alpha, d, theta, name)
 
 
+# print(my_fk_dh.joints)
 
+f = lambda x: x**2
+
+# x0 = bisection_method(f, f(2.11), (0, 6), eps=1e-18)
+print(ContinuousSet(2.0,8.0, False))
+print(feasible_set_for_monotonic_function(f, ContinuousSet(16.0, 128.0), ContinuousSet(2.0,8.0, False, False)))
+# print(x0, abs(x0-2.11), f(x0))
 # Test with random goal poses
 if False:
     for i in range(100):

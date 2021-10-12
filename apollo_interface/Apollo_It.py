@@ -1,6 +1,10 @@
+from sys import exec_prefix
 import numpy as np
-import O8O_apollo as apollo
 import matplotlib.pyplot as plt
+try:
+    import O8O_apollo as apollo
+except:
+    pass
 
 
 # List of all joints(motors) for Apollo.
@@ -208,17 +212,17 @@ class MyApollo:
         observation = go_to_posture(posture_dict, nb_iterations, bursting)
         obs_np = self.obs_to_numpy(observation)
         return obs_np
-    
+
     def calibration(self):
         # 1. Measure offsets at 00 position
         zero_conf = self.go_to_home_position(zero_pose=True)
-        
+
     def go_to_home_position(self, home_pose=home_pose, it_time=4000, zero_pose=False):
         if zero_pose:
             return self.go_to_posture_array(np.zeros_like(home_pose), it_time, False)
         else:
             return self.go_to_posture_array(home_pose, it_time, False)
-        
+
 
 
 def plot_simulation(dt, u, thetas_s, vel_s, acc_s, dP_N_vec=None, thetas_s_des=None, title=None, vertical_lines=None, horizontal_lines=None):
@@ -265,7 +269,7 @@ def main():
     print("GOING HOME!")
     r_arm.calibration()
     r_arm.go_to_home_position(zero_pose=True)
-    
+
     if False:
         # Run apollo
         poses, velocities, acc, _, u = r_arm.apollo_run_one_iteration(dt, T=dt*len(timesteps), u=inputs, repetitions=rep)
