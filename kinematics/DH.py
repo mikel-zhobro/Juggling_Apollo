@@ -1,5 +1,6 @@
 import numpy as np
-from utilities import ContinuousSet, skew, vec, clip_c
+from utilities import skew, vec, clip_c
+from utilities import ContinuousSet
 from utilities import JOINTS_LIMITS, R_joints, L_joints
 from math import sin, cos, atan, acos, asin, sqrt, atan2
 # from numpy import sin, cos, sqrt, arctan2, arccos
@@ -173,9 +174,7 @@ def IK_anallytical(p07_d, R07_d, DH_model, verbose=False):
     Bw = np.matmul(R34.T, Bs.T.dot(R07_d))
     Cw = np.matmul(R34.T, Cs.T.dot(R07_d))
 
-
     joint_sets = [None] * 7
-
     joint_sets[0] = tangent_type(-As[1,1], -Bs[1,1], -Cs[1,1], -As[0,1], -Bs[0,1], -Cs[0,1], DH_model.joint(0))
     joint_sets[1] = cosine_type(-As[2,1], -Bs[2,1], -Cs[2,1], DH_model.joint(1))
     joint_sets[2] = tangent_type(As[2,2], Bs[2,2], Cs[2,2], -As[2,0], -Bs[2,0], -Cs[2,0], DH_model.joint(2))
@@ -186,26 +185,28 @@ def IK_anallytical(p07_d, R07_d, DH_model, verbose=False):
 
     feasible_set = ContinuousSet(-np.pi, np.pi, False, True)
     for j_set in joint_sets:
-        feasible_set = feasible_set - j_set
+        feasible_set -= j_set
 
-    # 1. shoulder solutions
-    t11 = lambda psi: ( As[1,1]*sin(psi)  + Bs[1,1]*cos(psi) + Cs[1,1] )
-    t12 = lambda psi: ( As[0,1]*sin(psi)  + Bs[0,1]*cos(psi) + Cs[0,1] )
-    c22 = lambda psi:   clip_c(-As[2,1]*sin(psi) - Bs[2,1]*cos(psi) - Cs[2,1])
-    t31 = lambda psi: (  As[2,2]*sin(psi)  + Bs[2,2]*cos(psi) + Cs[2,2] )
-    t32 = lambda psi: ( As[2,0]*sin(psi)  + Bs[2,0]*cos(psi) + Cs[2,0] )
+    return feasible_set
 
-    # 2. wrist solutions
-    t51 = lambda psi: ( Aw[1,2]*sin(psi)  + Bw[1,2]*cos(psi) + Cw[1,2] )
-    t52 = lambda psi: ( Aw[0,2]*sin(psi)  + Bw[0,2]*cos(psi) + Cw[0,2] )
-    c6 =  lambda psi:   clip_c(Aw[2,2]*sin(psi)  + Bw[2,2]*cos(psi) + Cw[2,2])
-    t71 = lambda psi: (  Aw[2,1]*sin(psi)  + Bw[2,1]*cos(psi) + Cw[2,1] )
-    t72 = lambda psi: ( Aw[2,0]*sin(psi)  + Bw[2,0]*cos(psi) + Cw[2,0] )
+    # # 1. shoulder solutions
+    # t11 = lambda psi: ( As[1,1]*sin(psi)  + Bs[1,1]*cos(psi) + Cs[1,1] )
+    # t12 = lambda psi: ( As[0,1]*sin(psi)  + Bs[0,1]*cos(psi) + Cs[0,1] )
+    # c22 = lambda psi:   clip_c(-As[2,1]*sin(psi) - Bs[2,1]*cos(psi) - Cs[2,1])
+    # t31 = lambda psi: (  As[2,2]*sin(psi)  + Bs[2,2]*cos(psi) + Cs[2,2] )
+    # t32 = lambda psi: ( As[2,0]*sin(psi)  + Bs[2,0]*cos(psi) + Cs[2,0] )
 
-    return lambda psi: np.array([atan2(-t11(psi), -t12(psi) ), acos(c22(psi)),
-                                 atan2(t31(psi), -t32(psi) ), th4,
-                                 atan2(t51(psi), t52(psi) ), acos(c6(psi)),
-                                 atan2(t71(psi), -t72(psi) )]).reshape(-1,1)
+    # # 2. wrist solutions
+    # t51 = lambda psi: ( Aw[1,2]*sin(psi)  + Bw[1,2]*cos(psi) + Cw[1,2] )
+    # t52 = lambda psi: ( Aw[0,2]*sin(psi)  + Bw[0,2]*cos(psi) + Cw[0,2] )
+    # c6 =  lambda psi:   clip_c(Aw[2,2]*sin(psi)  + Bw[2,2]*cos(psi) + Cw[2,2])
+    # t71 = lambda psi: (  Aw[2,1]*sin(psi)  + Bw[2,1]*cos(psi) + Cw[2,1] )
+    # t72 = lambda psi: ( Aw[2,0]*sin(psi)  + Bw[2,0]*cos(psi) + Cw[2,0] )
+
+    # return lambda psi: np.array([atan2(-t11(psi), -t12(psi) ), acos(c22(psi)),
+    #                              atan2(t31(psi), -t32(psi) ), th4,
+    #                              atan2(t51(psi), t52(psi) ), acos(c6(psi)),
+    #                              atan2(t71(psi), -t72(psi) )]).reshape(-1,1)
 
 
 def bisection_method(f, value, interval, eps=1e-12):
@@ -258,7 +259,7 @@ def feasible_set_for_monotonic_function(f, FeasibleOutRange, InputRange):
     """
     PossibleOutRange = ContinuousSet(f(InputRange.a), f(InputRange.b), InputRange.a_incl, InputRange.b_incl)
     FeasiblePossibleOutRange = FeasibleOutRange - PossibleOutRange
-    assert not FeasiblePossibleOutRange.empty(), 'No feasible region exists for output range {} in the input range {}'.format(FeasibleOutRange, InputRange)
+    assert not FeasiblePossibleOutRange.empty, 'No feasible region exists for output range {} in the input range {}'.format(FeasibleOutRange, InputRange)
 
     psi0 = bisection_method(f, value=FeasiblePossibleOutRange.a, interval=InputRange)
     psi1 = bisection_method(f, value=FeasiblePossibleOutRange.b, interval=InputRange)
