@@ -78,7 +78,7 @@ def clip_c(v):
 
 
 class ContinuousRange():
-    def __init__(self, start=None, end=None, start_include=True, end_include=True):
+    def __init__(self, start, end, start_include=True, end_include=True):
         correct = start < end  # sort the range if given out of order
         if correct:
             self.a = start
@@ -103,13 +103,41 @@ class ContinuousRange():
         return lower
 
 class ContinuousSet():
-    def __init__(self, c_ranges=SortedList()):
-        c_ranges = SortedList(c_ranges)
+    def __init__(self, start=None, end=None, start_include=True, end_include=True):
         self.c_ranges = SortedList()  # set of ContinuousRanges
-        for c_r in c_ranges:
-            self.add(c_r)
 
-    def add(self, c_range):
+        if not(start==None or end==None):
+            assert start!=end, 'Continuous set cannot have only one value'
+            cr = ContinuousRange(start, end, start_include=True, end_include=True)
+            self.add_c_range(cr)
+
+    def assert_range(self):
+        assert len(self.c_ranges) == 1, 'Make sure that only one range interval is present in the set!'
+    @property
+    def a(self):
+        self.assert_range()
+        return self.c_ranges[0].a
+
+    @property
+    def b(self):
+        self.assert_range()
+        return self.c_ranges[0].b
+
+    @property
+    def a_incl(self):
+        self.assert_range()
+        return self.c_ranges[0].a_incl
+
+    @property
+    def b_incl(self):
+        self.assert_range()
+        return self.c_ranges[0].b_incl
+
+    @property
+    def empty(self):
+        return len(self.c_ranges)==0
+
+    def add_c_range(self, c_range):
         self.c_ranges = self._add(c_range)
         pass
 
@@ -174,7 +202,7 @@ class ContinuousSet():
             elif cr.a < new_range.b <= cr.b and new_range.a < cr.a:
                 # 3. only end of new range included in range
                 b_incl = cr.b_incl and new_range.b_incl if abs(cr.b - new_range.b) < 1e-7 else new_range.b_incl
-                c_ranges_new.add(ContinuousRange(cr.a, new_range.b, a_incl, b_incl))
+                c_ranges_new.add(ContinuousRange(cr.a, new_range.b, new_range.a_incl, b_incl))
 
         return c_ranges_new
 
@@ -191,22 +219,26 @@ class ContinuousSet():
 # test the sets #TODO: add proper testing
 ss = ContinuousSet()
 
-ss.add(ContinuousRange(2,3,))
-ss.add(ContinuousRange(2.1,3.1))
-ss.add(ContinuousRange(4,15, False, False))
-ss.add(ContinuousRange(12,5))
-ss.add(ContinuousRange(4,5))
-ss.add(ContinuousRange(5,6))
+ss += ContinuousSet(2,3,)
+ss.add_c_range(ContinuousRange(2.1,3.1))
+ss.add_c_range(ContinuousRange(4,15, False, False))
+ss.add_c_range(ContinuousRange(12,5))
+ss.add_c_range(ContinuousRange(4,5))
+ss.add_c_range(ContinuousRange(5,6))
 
 ss2 = ContinuousSet()
 
-ss2.add(ContinuousRange(2, 3.4, False))
-ss2.add(ContinuousRange(122, 13.9, False))
-ss2.add(ContinuousRange(2.1,3.5))
-ss2.add(ContinuousRange(4.2,13.8))
-ss2.add(ContinuousRange(5, 11, False, False))
+ss2.add_c_range(ContinuousRange(2, 3.4, False))
+ss2.add_c_range(ContinuousRange(122, 13.9, False))
+ss2.add_c_range(ContinuousRange(2.1,3.5))
+ss2.add_c_range(ContinuousRange(4.2,13.8))
+ss2.add_c_range(ContinuousRange(5, 11, False, False))
 
 
+ss3 = ContinuousSet(2,1)
+ss4 = ContinuousSet(2,3)
+
+print('s34', ss3 - ss4)
 print('ss', ss)
 print('ss2', ss2)
 print('+', ss + ss2)
