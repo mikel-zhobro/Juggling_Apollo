@@ -82,69 +82,8 @@ class ContinuousRange():
             self.a_incl = end_include
             self.b_incl = start_include
 
-    def __add__(self, other): # TODO, can return more than 1 set
-        if self.empty:
-            return other
-        if other.empty:
-            return self
-
-        if self.a > other.b or self.b < other.a:
-            return ContinuousSet(set(self, other))
-
-        if self.a < other.a:
-            start = self.a
-            start_include = self.a_incl
-        else:
-            start = other.a
-            if abs(self.a - other.a) < 1e-7:  # equal
-                start_include = self.a_incl or other.a_incl
-            else:
-                start_include = other.a_incl
-
-        if self.b < other.b:
-            end = other.b
-            end_include = other.b_incl
-        else:
-            end = self.b
-            if abs(self.b - other.b) < 1e-7:
-                end_include = self.b_incl or other.b_incl
-            else:
-                end_include = self.b_incl
-
-        return ContinuousSet(start, end, start_include, end_include)
-
-    def __sub__(self, other):
-        if self.empty or other.empty:
-            return ContinuousRange()  # empty range
-
-        if self.a < other.a:
-            start = other.a
-            start_include = other.a_incl
-        else:
-            start = self.a
-            if abs(self.a - other.a) < 1e-7:
-                start_include = self.a_incl and other.a_incl
-            else:
-                start_include = self.a_incl
-
-        if self.b < other.b:
-            end = self.b
-            end_include = self.b_incl
-        else:
-            end = other.b
-            if abs(self.b - other.b) < 1e-7:
-                end_include = self.b_incl and other.b_incl
-            else:
-                end_include = other.b_incl
-
-        return ContinuousRange(start, end, start_include, end_include)
-
     def __repr__(self):
         return '{}{}, {}{}'.format('[' if self.a_incl else '(', self.a, self.b, ']' if self.b_incl else ')')
-
-    @property
-    def empty(self):
-        return self.a == None or self.b==None
 
     def __lt__(self, other):
         lower = False
@@ -207,20 +146,25 @@ class ContinuousSet():
         c_ranges_new = SortedList()
         # Find the start and end overlaping intervals
         for cr in self:
-            if new_range.a < cr.a and new_range.b > cr.b:  # range included in new range
+            if new_range.a < cr.a and new_range.b > cr.b:
+                # 1. new range includes range
                 c_ranges_new.add(cr)
 
             if cr.a <= new_range.a < cr.b:
-                a_incl = cr.a and new_range.a if abs(cr.a - new_range.a) < 1e-7 else new_range.a
-                if new_range.b > cr.b:  # only start of new range included in range
+                # 2. start of new range is in range (and end of new range can be either in(2.1) or out(2.2))
+                a_incl = cr.a_incl and new_range.a_incl if abs(cr.a - new_range.a) < 1e-6 else new_range.a_incl
+                if new_range.b > cr.b:
+                    # 2.1. only start of new range included in range
                     c_ranges_new.add(ContinuousRange(new_range.a, cr.b, a_incl, cr.b_incl))
+
                 else:
-                    b_incl = cr.b and new_range.b if abs(cr.b - new_range.b) < 1e-7 else new_range.b
+                    # 2.2. new range included in range
+                    b_incl = cr.b_incl and new_range.b_incl if abs(cr.b - new_range.b) < 1e-7 else new_range.b_incl
                     c_ranges_new.add(ContinuousRange(new_range.a, new_range.b, a_incl, b_incl))
 
-            elif cr.a < new_range.b <= cr.b and new_range.a < cr.a: # only end of new range included in range
-                a_incl = cr.a and new_range.a if abs(cr.a - new_range.a) < 1e-7 else new_range.a
-                b_incl = cr.b and new_range.b if abs(cr.b - new_range.b) < 1e-7 else new_range.b
+            elif cr.a < new_range.b <= cr.b and new_range.a < cr.a:
+                # 3. only end of new range included in range
+                b_incl = cr.b_incl and new_range.b_incl if abs(cr.b - new_range.b) < 1e-7 else new_range.b_incl
                 c_ranges_new.add(ContinuousRange(cr.a, new_range.b, a_incl, b_incl))
 
         return c_ranges_new
@@ -255,17 +199,17 @@ def clip_c(v):
 
 ss = ContinuousSet()
 
-ss.add(ContinuousRange(2,3, False))
+ss.add(ContinuousRange(2,3,))
 ss.add(ContinuousRange(2.1,3.1))
-ss.add(ContinuousRange(4,15, False))
+ss.add(ContinuousRange(4,15, False, False))
 ss.add(ContinuousRange(12,5))
 ss.add(ContinuousRange(4,5))
 ss.add(ContinuousRange(5,6))
 
 ss2 = ContinuousSet()
 
-ss2.add(ContinuousRange(2.4,3.4))
-ss2.add(ContinuousRange(122, 13.9))
+ss2.add(ContinuousRange(2, 3.4, False))
+ss2.add(ContinuousRange(122, 13.9, False))
 ss2.add(ContinuousRange(2.1,3.5))
 ss2.add(ContinuousRange(4.2,13.8))
 ss2.add(ContinuousRange(5, 11, False, False))
