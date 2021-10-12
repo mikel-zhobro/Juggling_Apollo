@@ -26,7 +26,6 @@ def reduce_model(FILENAME, jointsToUse):
     print("    " + str(sorted_jn_index))
     return model_reduced
 
-
 def modrad(q):
     """Limit q between where q is an numpy array"""
     res = q.copy()
@@ -36,7 +35,6 @@ def modrad(q):
         res = np.where(q<-np.pi, q+2*np.pi, res)
     return res
 
-
 def euler_to_quaternion(r):
     (yaw, pitch, roll) = (r[0], r[1], r[2])
     qx = np.sin(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) - np.cos(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
@@ -44,7 +42,6 @@ def euler_to_quaternion(r):
     qz = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
     qw = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
     return [qx, qy, qz, qw]
-
 
 def euler_from_quaternion(x, y, z, w):
         """
@@ -67,6 +64,18 @@ def euler_from_quaternion(x, y, z, w):
         yaw_z = math.atan2(t3, t4)
 
         return roll_x, pitch_y, yaw_z # in radians
+
+def skew(v):
+    return np.array([[ 0.0,   -v[2],  v[1]],
+                     [ v[2],   0.0,  -v[0]],
+                     [-v[1],   v[0],  0.0]], dtype='float')
+
+def vec(elems):
+    return np.array(elems, dtype='float').reshape(-1, 1)
+
+def clip_c(v):
+    return np.clip(v, -1.0, 1.0)
+
 
 class ContinuousRange():
     def __init__(self, start=None, end=None, start_include=True, end_include=True):
@@ -178,25 +187,8 @@ class ContinuousSet():
     def __repr__(self):
         return str([c_r for c_r in self.c_ranges])
 
-def skew(v):
-    return np.array([[ 0.0,   -v[2],  v[1]],
-                     [ v[2],   0.0,  -v[0]],
-                     [-v[1],   v[0],  0.0]], dtype='float')
 
-
-def vec(elems):
-    return np.array(elems, dtype='float').reshape(-1, 1)
-
-
-def clip_c(v):
-    return np.clip(v, -1.0, 1.0)
-
-
-
-# a = ContinuousSet()
-# a.add(ContinuousRange(2,3))
-# print(a)
-
+# test the sets #TODO: add proper testing
 ss = ContinuousSet()
 
 ss.add(ContinuousRange(2,3,))
