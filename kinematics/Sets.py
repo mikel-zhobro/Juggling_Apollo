@@ -149,6 +149,19 @@ class ContinuousSet():
         self.assert_range()
         return self.c_ranges[0].a < key < self.c_ranges[0].b
 
+    def inverse(self, lower_lim, higher_lim):
+        ret_set = ContinuousSet()
+        start_r = ContinuousRange(lower_lim-2, lower_lim, False, False)
+        for cr in self.c_ranges:
+            if cr.a > start_r.b:
+                ret_set.c_ranges.add(ContinuousRange(start_r.b, cr.a, start_r.b_incl, cr.a_incl ))
+                start_r = cr
+            else:
+                start_r = cr
+        if start_r.b < higher_lim:
+            ret_set.c_ranges.add(ContinuousRange(start_r.b, higher_lim, start_r.b_incl))
+
+        return ret_set
 
 
 ##############################################################################
@@ -176,12 +189,15 @@ if __name__ == "__main__":
 
     ss3 = ContinuousSet(2,1)
     ss4 = ContinuousSet(2,3)
+
+
     ss4.sub_c_range(2.1, 4.5, False)
 
     print('ss4', ss4)
     print('s34', ss3 - ss4, (ss3-ss4).empty)
     print('ss', ss)
     print('ss2', ss2)
+    print('ss2_inverse06',ss2.inverse(0, 6))
     print('+', ss + ss2)
     print('-', ss - ss2)
     # print(ss)
