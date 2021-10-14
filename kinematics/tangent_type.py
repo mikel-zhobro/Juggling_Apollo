@@ -4,18 +4,16 @@ import numpy as np
 from utilities import ContinuousSet
 from random import random
 
-
+# TODO: Still problems locating singularities.
 
 eps_psi = 1e-4
 delta_psi = 15.0/180*np.pi
 print('Delta psi:' + str(eps_psi))
 def tangent_type(an, bn, cn, ad, bd, cd):
-    feasible_set = ContinuousSet(-np.pi, np.pi, False, True)
+    feasible_set = ContinuousSet(-np.pi, np.pi, False, True)  # here we capture the feasible set of psi
 
     theta_f = lambda psi: atan2(an*sin(psi) + bn*cos(psi) + cn,
                               ad*sin(psi) + bd*cos(psi) + cd)
-
-    tan_theta = lambda psi: (an*sin(psi) + bn*cos(psi) + cn) / (ad*sin(psi) + bd*cos(psi) + cd)
 
     fn = lambda psi: an*sin(psi) + bn*cos(psi) + cn
     fd = lambda psi: ad*sin(psi) + bd*cos(psi) + cd
@@ -27,15 +25,15 @@ def tangent_type(an, bn, cn, ad, bd, cd):
     ct = an*bd - ad*bn; ct_2 = ct**2
 
     ss = at_2 + bt_2 - ct_2
-    # print('ss' + str(ss))
-    stat_psi = list()
 
-    # if abs(ss) > eps_psi+1e-7:
-    #     return
+    stat_psi = list()
+    if abs(ss) > 1e-6:
+        return
     print('an, bn, cn, ad, bd, cd')
     print(an, bn, cn, ad, bd, cd)
     print('at, bt, ct')
     print(at, bt, ct)
+    singular_feasible_set = ContinuousSet()
     if ss > eps_psi:  # cyclic profile
         # The idea is to split the cyclic profile in sub-intervals of monotonic profile
         print('Stationary points(cyclic): ss>0')
@@ -45,12 +43,10 @@ def tangent_type(an, bn, cn, ad, bd, cd):
 
     elif ss < -eps_psi:  # monotonic profile
         print('No Stationary points(monotonic): ss<0')
-
         # feas_psi = feasible_set_for_monotonic_function(tan_f, j.limit_range, ContinuousSet(-np.pi, np.pi, False))
 
     else:  # discontinuous profile (2 possibilities)
         print('Singularity: ss={}'.format(ss))
-        singular_feasible_set = ContinuousSet()
         theta_s_neg = atan((at*bn - bt*an) / (at*bd - bt*ad))
         psi_singular = 2 * atan(at/ (bt-ct)) # should be avoided
         if psi_singular + delta_psi > np.pi:
@@ -65,64 +61,65 @@ def tangent_type(an, bn, cn, ad, bd, cd):
         print(singular_feasible_set)
         feasible_set -= singular_feasible_set
         print(feasible_set)
-
-        # singular_theta = [theta_f(psi) for psi in singular_psi]
         print('theta_neg:'+ str(theta_s_neg))
         print('theta_pos:'+ str(theta_s_neg + (np.pi if theta_s_neg < 0.0 else  -np.pi)))
-        # singular_theta.append(theta_s_neg)
-        # singular_theta.append(theta_s_neg + (np.pi if theta_s_neg < 0.0 else  -np.pi))
-        # singular_theta.append(0.0)
 
 
 
     # Joint Limits
-    # theta_max = -2.2
 
-    # Lower Lim
-    theta_min = -1.2
-    ap = (cd-bd)*tan(theta_min) + (bn-cn)
-    bp = 2*(ad*tan(theta_min) - an)
-    cp = (bd+cd)*tan(theta_min) - (bn+cn)
+    def find_root(theta, lower_lim):
+        class Root():
+            def __init__(self, root, lower_lim):
+                self.root = root
+                self.lower_lim = lower_lim
+                self.grad = grad_theta_f(root)
 
-    tt = bp**2 - 4*ap*cp
-    psi0s = list()
-    lower_limit_feasible_set = ContinuousSet()
-    if tt < 0.0:
-        print('NO ROOTS FOR THETA_MIN = {}'.format(theta_min))
-    else:
-        psi0 = 2*atan( (-bp + sqrt(tt)) / (2*ap) )
-        grad_psi0 = grad_theta_f(psi0)
-        psi1 = 2*atan( (-bp - sqrt(tt)) / (2*ap) )
-        grad_psi1 = grad_theta_f(psi1)
-        psi0s =  sorted([psi for psi in [psi0, psi1] if abs(theta_f(psi)-theta_min) < 1e-6])
+            @property
+            def enters(self):
+                return (self.grad>0.0 and self.lower_lim) or (self.grad<0.0 and (not self.lower_lim))
 
-        if len(psi0s) == 2:
-            psi0 = psi0s[0]
-            psi1 = psi0s[1]
-            if grad_theta_f(psi0) > 0:
-                assert grad_theta_f(psi1) <= 0, 'The other gradient should be neg'
-                lower_limit_feasible_set.add_c_range(psi0, psi1)  # entering in psi0, leaving in psi1
-            else:
-                assert grad_theta_f(psi1) >= 0, 'The other gradient should be pos'
-                lower_limit_feasible_set.add_c_range(-np.pi, psi0)  # leaving in psi0
-                lower_limit_feasible_set.add_c_range(psi1, np.pi)  # re-entering in psi1
-        elif len(psi0s)==1:
-            psi0 = psi0s[0]
-            if grad_theta_f(psi0) > 0:
-                lower_limit_feasible_set.add_c_range(psi0, np.pi)
-            else:
-                lower_limit_feasible_set.add_c_range(-np.pi, psi0)
+            def __repr__(self):
+                return str(self.root) + '~' + ('l' if self.lower_lim else 'u')
+                # return '{}: root({}), grad({})'.format('lower_lim' if self.lower_lim else 'upper_lim', self.root, self.grad)
+
+        ap = (cd-bd)*tan(theta) + (bn-cn)
+        bp = 2*(ad*tan(theta) - an)
+        cp = (bd+cd)*tan(theta) - (bn+cn)
+
+        tt = bp**2 - 4*ap*cp
+        roots = list()
+        if tt < 0.0:
+            print('NO ROOTS FOR THETA_LIMIT = {}'.format(theta))
         else:
-            # if nullstellen, either every psi is in feasible set or none of them
-            # sample to psi and check if feasible
-            if theta_f(2*random()*np.pi - np.pi) >= theta_min and theta_f(2*random()*np.pi - np.pi) >= theta_min:
-                lower_limit_feasible_set.add_c_range(-np.pi, np.pi)
+            psi0 = 2*atan( (-bp + sqrt(tt)) / (2*ap) )
+            psi1 = 2*atan( (-bp - sqrt(tt)) / (2*ap) )
+            roots = [Root(psi, lower_lim) for psi in [psi0, psi1] if abs(theta_f(psi)-theta) < 1e-6]
+        return roots
+
+    # Consider Limitss
+    theta_max = 2.2
+    theta_min = -2.2
+    roots = sorted(find_root(theta_min, True) + find_root(theta_max, False), key=lambda r: r.root)
+    print('roots', roots)
+
+    # The idea is to go through all the roots and capture the feasible regions
+    # of roots entering the limits. If the last root entered, the rest is feasible set.
+    prev_entering = -np.pi
+    limits_feasible_set = ContinuousSet()
+    if len(roots)>0:
+        for i, r in enumerate(roots):
+            if r.enters:
+                prev_entering = r.root
             else:
-                lower_limit_feasible_set.add_c_range(-66, -66)
+                limits_feasible_set.add_c_range(prev_entering, r.root)
+        if roots[-1].enters:
+            limits_feasible_set.add_c_range(prev_entering, np.pi)
+    else:
+        if  theta_min <= theta_f(2*random()*np.pi - np.pi) <= theta_max and theta_min <= theta_f(2*random()*np.pi - np.pi) <= theta_max:
+            limits_feasible_set.add_c_range(-np.pi, np.pi)
 
-        feasible_set -= lower_limit_feasible_set
-
-
+    feasible_set -= limits_feasible_set
 
     psi_s =  np.linspace(-np.pi, np.pi, np.pi/0.01)
     thetas =   [theta_f(psi) for psi in psi_s]
@@ -133,14 +130,25 @@ def tangent_type(an, bn, cn, ad, bd, cd):
     for v in stat_psi:
         plt.scatter(v, theta_f(v), c='b')
     # Roots for theta_min
-    for psi0 in psi0s:
-        plt.scatter(psi0, theta_f(psi0), c='r')
+    for r in roots:
+        plt.scatter(r.root, theta_f(r.root), c='r')
     # Singular poinrs
     for psi in feasible_set.c_ranges:
         plt.axvspan(psi.a, psi.b, color='green', alpha=0.3)
     plt.axhline(theta_min, color='k')
+    plt.axhline(theta_max, color='k')
     plt.xlabel(r'$\psi$')
     plt.ylabel(r'$\theta_i$')
+    plt.legend()
+
+    # Add a bar in the polar coordinates
+    plt.figure()
+    plt.subplot(111, polar=True)
+    for psi in feasible_set.c_ranges:
+        # plt.axvspan(psi.a, psi.b, color='green', alpha=0.3)
+        plt.bar(psi.a, height=1, width=psi.b-psi.a, bottom=0, align='edge', color='green', alpha=0.3, label='feasible')
+    for psi in singular_feasible_set.inverse(-np.pi, np.pi):
+        plt.bar(psi.a, height=1, width=psi.b-psi.a, bottom=0, align='edge', color='red', alpha=0.3, label='singularity')
     plt.legend()
     plt.show()
     return ss
@@ -157,5 +165,6 @@ cds = []
 
 while True:
     params = np.random.rand(6)*2.0 - 1.0
-    # params = (0.7842348, 0.66533477, 0.48922079, 0.04910175, 0.04834799, 0.02821791)
+    # params = np.array([0.7929975479199824, -0.12073775406644871, 0.3583786736074317, -0.39867446984385113, 0.06133818255627177, -0.1799557103119096])
     tangent_type(*params)
+    # break
