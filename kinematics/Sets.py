@@ -1,5 +1,5 @@
 from sortedcontainers import SortedList, SortedSet
-
+from random import random
 
 class ContinuousRange():
     def __init__(self, start, end, start_include=True, end_include=True):
@@ -14,6 +14,14 @@ class ContinuousRange():
             self.b = start
             self.a_incl = end_include
             self.b_incl = start_include
+
+    @property
+    def middle(self):
+        return (self.a + self.b)/2
+
+    def sample(self):
+        return self.a + (self.b-self.a) * random()
+
 
     def __repr__(self):
         return '{}{}, {}{}'.format('[' if self.a_incl else '(', self.a, self.b, ']' if self.b_incl else ')')
@@ -61,8 +69,16 @@ class ContinuousSet():
         return self.c_ranges[0].b_incl
 
     @property
+    def middle(self):
+        return (self.a + self.b)/2
+
+    @property
     def empty(self):
         return len(self.c_ranges)==0
+
+    def sample(self):
+        self.assert_range()
+        return self.c_ranges[0].sample()
 
     def add_c_range(self, start, end, start_include=True, end_include=True):
         self.c_ranges = self._add(ContinuousRange(start, end, start_include, end_include))

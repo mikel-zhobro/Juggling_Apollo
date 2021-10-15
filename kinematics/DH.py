@@ -1,12 +1,12 @@
 import numpy as np
-from utilities import skew, vec, clip_c
+import matplotlib.pyplot as plt
+from utilities import skew, vec, clip_c, modrad
 from utilities import ContinuousSet
 from utilities import JOINTS_LIMITS, R_joints, L_joints
 from math import sin, cos, atan, acos, asin, sqrt, atan2
-# from numpy import sin, cos, sqrt, arctan2, arccos
-# from numpy import arctan2 as atan2
-# from numpy import arccos as acos
-# from kinematics.fk import FK
+from tangent_type import tangent_type
+from cosine_type import cosine_type
+
 np.set_printoptions(precision=4, suppress=True)
 
 
@@ -40,7 +40,6 @@ class DH_revolut():
     def __init__(self):
         self.joints = []
 
-    @property
     def joint(self, i):
         return self.joints[i]
 
@@ -100,8 +99,13 @@ class DH_revolut():
     def get_i_p_j(self, Q):
         pass
 
+    def plot(self):
+        T0wshoulder = self.get_i_T_j(0, 2)
+        T0wselbo    = self.get_i_T_j(0, 4)
+        T0wswrist   = self.get_i_T_j(0, 6)
+        pass
 
-def IK_anallytical(p07_d, R07_d, DH_model, verbose=False):
+def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=False):
     """
         Implementation from paper: "Analytical Inverse Kinematic Computation for 7-DOF Redundant Manipulators...
         With Joint Limits and Its Application to Redundancy Resolution",
@@ -111,6 +115,13 @@ def IK_anallytical(p07_d, R07_d, DH_model, verbose=False):
         o_p_goal ([R^3]): the goal position in base frame [3x1]
         o_R_goal ([SO3]): the goal orientation in origin frame [3x3]
     """
+    GC2  = np.sign((DH_model.joint(1).limit_range.a + DH_model.joint(1).limit_range.b)/2)
+    GC4  = np.sign((DH_model.joint(3).limit_range.a + DH_model.joint(3).limit_range.b)/2)
+    GC6  = np.sign((DH_model.joint(5).limit_range.a + DH_model.joint(5).limit_range.b)/2)
+
+    GC2 = -1.0 if GC2==0.0 else GC2
+    GC4 = -1.0 if GC4==0.0 else GC4
+    GC6 = -1.0 if GC6==0.0 else GC6
     l0bs = vec([0,   0,     d_bs])
     l3se = vec([0,  -d_se,  0])
     l4ew = vec([0,   0,     d_ew])
@@ -121,9 +132,7 @@ def IK_anallytical(p07_d, R07_d, DH_model, verbose=False):
 
     # Elbow joint
     c_th4 = clip_c((np.linalg.norm(x0sw)**2 - d_se**2 - d_ew**2) / (2*d_se*d_ew))
-    th4 = acos(c_th4)
-    if verbose:
-        print('Theta4:', th4)
+    th4 = GC4*acos(c_th4)
     assert (d_se**2 + d_ew**2 + (2*d_se*d_ew)*c_th4 - np.linalg.norm(x0sw)**2) <= 1e-6, 'Should have used -sqrt(aa) maybe'
 
     # Shoulder joints (reference plane)
@@ -138,8 +147,6 @@ def IK_anallytical(p07_d, R07_d, DH_model, verbose=False):
     s2 = clip_c((sqrt(aa) * d[2,0] - x0sw[2,0]*d[0,0]) / d13_2)
     c2 = clip_c((s2*d[0,0] + x0sw[2,0])/ d[2,0])
     assert (s2*d[0,0] - c2*d[2,0] + x0sw[2,0]) <= 1e-6, 'Should have used -sqrt(aa) maybe'
-    if verbose:
-        print('Theta2', atan2(s2, c2))
 
     if( abs(p07_d[0,0])<1e-6 and abs(p07_d[1,0])<1e-6 ):
         s1 = 0.0
@@ -151,13 +158,14 @@ def IK_anallytical(p07_d, R07_d, DH_model, verbose=False):
         assert (-s1*x0sw[0,0] + c1*x0sw[1,0] - d[1,0]) <= 1e-6, "s1,c1 wrongly calculated"
     if verbose:
         print('Theta1', atan2(s1, c1), s1, c1)
+        print('Theta2', atan2(s2, c2))
+        print('Theta4:', th4)
 
 
     R03_ref = np.array([[ c1*c2,  -c1*s2,  -s1],
                         [ s1*c2,  -s1*s2,   c1],
                         [-s2,     -c2,      0.0]], dtype='float')
     # R03_ref = DH_model.get_i_R_j(0,3, [atan2(c1, s1), atan2(c2, s2), 0.0])
-
 
 
     u0sw = x0sw/np.linalg.norm(x0sw)
@@ -174,39 +182,69 @@ def IK_anallytical(p07_d, R07_d, DH_model, verbose=False):
     Bw = np.matmul(R34.T, Bs.T.dot(R07_d))
     Cw = np.matmul(R34.T, Cs.T.dot(R07_d))
 
-    joint_sets = [None] * 7
-    joint_sets[0] = tangent_type(-As[1,1], -Bs[1,1], -Cs[1,1], -As[0,1], -Bs[0,1], -Cs[0,1], DH_model.joint(0))
-    joint_sets[1] = cosine_type(-As[2,1], -Bs[2,1], -Cs[2,1], DH_model.joint(1))
-    joint_sets[2] = tangent_type(As[2,2], Bs[2,2], Cs[2,2], -As[2,0], -Bs[2,0], -Cs[2,0], DH_model.joint(2))
-    joint_sets[3] = ContinuousSet(-np.pi, np.pi, False, True)
-    joint_sets[4] = tangent_type(Aw[1,2], Bw[1,2], Cw[1,2], Aw[0,2], Bw[0,2], Cw[0,2], DH_model.joint(4))
-    joint_sets[5] = cosine_type(Aw[2,2], Bw[2,2], Cw[2,2], DH_model.joint(5))
-    joint_sets[6] = tangent_type(Aw[2,1], Bw[2,1], Cw[2,1], -Aw[2,0], -Bw[2,0], -Cw[2,0], DH_model.joint(6))
+    feasible_sets = [None]*7
+    feasible_sets[0] = tangent_type(-As[1,1], -Bs[1,1], -Cs[1,1], -As[0,1], -Bs[0,1], -Cs[0,1], DH_model.joint(0).limit_range, verbose)
+    feasible_sets[1] = cosine_type(-As[2,1], -Bs[2,1], -Cs[2,1], DH_model.joint(1).limit_range, verbose=verbose)
+    feasible_sets[2] = tangent_type(As[2,2], Bs[2,2], Cs[2,2], -As[2,0], -Bs[2,0], -Cs[2,0], DH_model.joint(2).limit_range, verbose)
+    feasible_sets[3] = ContinuousSet(-np.pi, np.pi, False, True) if th4 in DH_model.joint(3).limit_range else ContinuousSet()
+    feasible_sets[4] = tangent_type(Aw[1,2], Bw[1,2], Cw[1,2], Aw[0,2], Bw[0,2], Cw[0,2], DH_model.joint(4).limit_range, verbose)
+    feasible_sets[5] = cosine_type(Aw[2,2], Bw[2,2], Cw[2,2], DH_model.joint(5).limit_range, verbose=verbose)
+    feasible_sets[6] = tangent_type(Aw[2,1], Bw[2,1], Cw[2,1], -Aw[2,0], -Bw[2,0], -Cw[2,0], DH_model.joint(6).limit_range, verbose)
+    psi_feasible_set = ContinuousSet(-np.pi, np.pi)
+    for fs in feasible_sets:
+        psi_feasible_set -= fs
 
-    feasible_set = ContinuousSet(-np.pi, np.pi, False, True)
-    for j_set in joint_sets:
-        feasible_set -= j_set
+    # 1. shoulder solutions
+    t11 = lambda psi: -GC2*( As[1,1]*sin(psi)  + Bs[1,1]*cos(psi) + Cs[1,1] )
+    t12 = lambda psi: -GC2*( As[0,1]*sin(psi)  + Bs[0,1]*cos(psi) + Cs[0,1] )
+    c22 = lambda psi:  clip_c( -As[2,1]*sin(psi) - Bs[2,1]*cos(psi) - Cs[2,1] )
+    t31 = lambda psi:  GC2*( As[2,2]*sin(psi)  + Bs[2,2]*cos(psi) + Cs[2,2] )
+    t32 = lambda psi: -GC2*( As[2,0]*sin(psi)  + Bs[2,0]*cos(psi) + Cs[2,0] )
 
-    return feasible_set
+    # 2. wrist solutions
+    t51 = lambda psi: GC6*( Aw[1,2]*sin(psi)  + Bw[1,2]*cos(psi) + Cw[1,2] )
+    t52 = lambda psi: GC6*( Aw[0,2]*sin(psi)  + Bw[0,2]*cos(psi) + Cw[0,2] )
+    c6 =  lambda psi: clip_c( Aw[2,2]*sin(psi)  + Bw[2,2]*cos(psi) + Cw[2,2] )
+    t71 = lambda psi: GC6*(  Aw[2,1]*sin(psi)  + Bw[2,1]*cos(psi) + Cw[2,1] )
+    t72 = lambda psi: -GC6*( Aw[2,0]*sin(psi)  + Bw[2,0]*cos(psi) + Cw[2,0] )
 
-    # # 1. shoulder solutions
-    # t11 = lambda psi: ( As[1,1]*sin(psi)  + Bs[1,1]*cos(psi) + Cs[1,1] )
-    # t12 = lambda psi: ( As[0,1]*sin(psi)  + Bs[0,1]*cos(psi) + Cs[0,1] )
-    # c22 = lambda psi:   clip_c(-As[2,1]*sin(psi) - Bs[2,1]*cos(psi) - Cs[2,1])
-    # t31 = lambda psi: (  As[2,2]*sin(psi)  + Bs[2,2]*cos(psi) + Cs[2,2] )
-    # t32 = lambda psi: ( As[2,0]*sin(psi)  + Bs[2,0]*cos(psi) + Cs[2,0] )
+    th1 = lambda psi: atan2(t11(psi), t12(psi))
+    th2 = lambda psi: GC2*acos(c22(psi))
+    th3 = lambda psi: atan2(t31(psi),t32(psi))
+    th5 = lambda psi: atan2(t51(psi), t52(psi))
+    th6 = lambda psi: GC6*acos(c6(psi))
+    th7 = lambda psi: atan2(t71(psi), t72(psi))
 
-    # # 2. wrist solutions
-    # t51 = lambda psi: ( Aw[1,2]*sin(psi)  + Bw[1,2]*cos(psi) + Cw[1,2] )
-    # t52 = lambda psi: ( Aw[0,2]*sin(psi)  + Bw[0,2]*cos(psi) + Cw[0,2] )
-    # c6 =  lambda psi:   clip_c(Aw[2,2]*sin(psi)  + Bw[2,2]*cos(psi) + Cw[2,2])
-    # t71 = lambda psi: (  Aw[2,1]*sin(psi)  + Bw[2,1]*cos(psi) + Cw[2,1] )
-    # t72 = lambda psi: ( Aw[2,0]*sin(psi)  + Bw[2,0]*cos(psi) + Cw[2,0] )
+    print('FEASIBLE SET', psi_feasible_set)
+    if not psi_feasible_set.empty:
+        plt.figure()
+        plt.subplot(111, polar=True)
+        for psi in psi_feasible_set.c_ranges:
+            plt.bar(psi.a, height=1, width=psi.b-psi.a, bottom=0, align='edge', color='green', alpha=0.3, label='feasible')
+        plt.title('Final Feasible Set [GC2({}), GC4({}), GC6({}])'.format(GC2, GC4, GC6))
+        plt.show()
 
-    # return lambda psi: np.array([atan2(-t11(psi), -t12(psi) ), acos(c22(psi)),
-    #                              atan2(t31(psi), -t32(psi) ), th4,
-    #                              atan2(t51(psi), t52(psi) ), acos(c6(psi)),
-    #                              atan2(t71(psi), -t72(psi) )]).reshape(-1,1)
+    return (lambda psi: np.array([ th1(psi), th2(psi), th3(psi), th4, th5(psi), th6(psi), th7(psi)]).reshape(-1,1), psi_feasible_set)
+
+
+def IK(p07_d, R07_d, DH_model, vis=False):
+    feasible_armangles = list()
+    solu, psi_feasible_set = IK_anallytical(p07_d, R07_d, DH_model)
+
+    if vis:
+        p = [plt.plot(vals, qs[:, i], label=r'$\theta_{}$'.format(i)) for i, joint in enumerate(DH_model.joints)]
+        plt.axhspan(DH_model.joints[1].limit_range.a, DH_model.joints[1].limit_range.b, color=p[1][0].get_color(), alpha=0.3)
+        plt.legend()
+        plt.xlabel(r'$\psi$')
+        plt.ylabel(r'$\theta_i$')
+        plt.show()
+    for v, q in zip(vals, qs):
+        feasible = [q[i] in joint.limit_range for i, joint in enumerate(DH_model.joints)]
+        # print(feasible)
+        if all(feasible):
+            feasible_armangles.append(v)
+
+    return feasible_armangles, solu
 
 
 def bisection_method(f, value, interval, eps=1e-12):
@@ -268,79 +306,55 @@ def feasible_set_for_monotonic_function(f, FeasibleOutRange, InputRange):
     return FeasibleInRange
 
 
-def tangent_type(an, bn, cn, ad, bd, cd, j):
-    tan_f = lambda psi: atan2(an*sin(psi) + bn*cos(psi) + cn,
-                              ad*sin(psi) + bd*cos(psi) + cd)
-
-    at = bd*cn - bn*cd; at_2 = at**2
-    bt = an*cd - ad*cn; bt_2 = bt**2
-    ct = an*bd - ad*bn; ct_2 = ct**2
-
-    if at_2 + bt_2 - ct_2 > 1e-6:  # cyclic profile
-        ss = at_2 + bt_2 - ct_2
-        psi_min = 2 * atan2( at - sqrt(ss), bt-ct )
-        psi_max = 2 * atan2( at + sqrt(ss), bt-ct )
-
-    elif at_2 + bt_2 - ct_2 < 1e-6:  # monotonic profile
-        feas_psi = feasible_set_for_monotonic_function(tan_f, j.limit_range, ContinuousSet(-np.pi, np.pi, False))
-
-    else:  # discontinuous profile (2 possibilities)
-        psi_stationary = 2 * atan2(at, bt-ct) # should be avoided
-        psi_s_neg = atan2(-1/ct*(at*bn - bt*an), -1/ct*(at*bd - bt*ad))
-        psi_s_neg = atan2(1/ct*(at*bn - bt*an), 1/ct*(at*bd - bt*ad))
-
-def cosine_type(a, b, c, j):
-    cos_f = lambda psi: acos(a*sin(psi) + b*cos(psi) + c)
-    a_2 = a**2
-    b_2 = b**2
-    c_2 = c**2
-
-    psi_stat_neg = 2 * atan2(-b - sqrt(a_2+b_2), a)
-    psi_stat_neg = 2 * atan2(-b + sqrt(a_2+b_2), a)
-
-    if (a_2 + b_2 - (c-1)**2) < 1e-6:  # cyclic jumping gradient1
-        psi0 = 2 * atan2(a, b - (c-1))
-        grad_neg = -sqrt(1-c)
-        grad_pos = sqrt(1-c)
-        pass
-
-    elif (a_2 + b_2 - (c+1)**2) < 1e-6:  # cyclic jumping gradient2
-        psi0 = 2 * atan2(a, b - (c+1))
-        grad_neg = sqrt(1+c)
-        grad_pos = -sqrt(1+c)
-        pass
-
-    else:  # cyclic diffable
-        pass
-
 # Create Robot
 my_fk_dh = DH_revolut()
 for a, alpha, d, theta, name in zip(a_s, alpha_s, d_s, theta_offset_s, R_joints):
     my_fk_dh.add_joint(a, alpha, d, theta, name)
 
 
-# print(my_fk_dh.joints)
-
-f = lambda x: x**2
-
-# x0 = bisection_method(f, f(2.11), (0, 6), eps=1e-18)
-print(ContinuousSet(2.0,8.0, False))
-print(feasible_set_for_monotonic_function(f, ContinuousSet(16.0, 128.0), ContinuousSet(2.0,8.0, False, False)))
-# print(x0, abs(x0-2.11), f(x0))
 # Test with random goal poses
 if False:
-    for i in range(100):
-        home_new = np.random.rand(7,1)*np.pi
+    import matplotlib.pyplot as plt
+    for i in range(1):
+        home_new = np.random.rand(7,1)*np.pi/2
+        home_new[1] = -1
         T07_home = my_fk_dh.FK(home_new)
         R07 = T07_home[:3, :3]
         p07 = T07_home[:3, 3:4]
+        print(home_new.T)
+
+        feasible_set, solu = IK(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, vis=True)
+        feasible_solutions = np.array([solu(v) for v in feasible_set]).squeeze()
+        for sv in feasible_solutions:
+            nrr = np.linalg.norm(T07_home-my_fk_dh.FK(sv))
+            # print(nrr)
+            if nrr > 1e-6:
+                print('ERROR', nrr)
+        if feasible_solutions.size ==0:
+            print('NO SOLUTIONS')
+        else:
+            for i in range(7):
+                plt.plot(feasible_set, feasible_solutions[:,i], label ='joint_{}'.format(i+1))
+            plt.legend()
+            plt.show()
+
+if True:
+    GCs = [(i, ii, iii) for i in [-1.0, 1.0] for ii in [-1.0, 1.0] for iii in [-1.0, 1.0]]
+    for i in range(10000):
+        home_new = np.random.rand(7,1)*np.pi
+
+        home_new = np.array([ j.limit_range.sample() for j in my_fk_dh.joints ]).reshape(7,1)
+        print(home_new.T)
+        T07_home = my_fk_dh.FK(home_new)
+        R07 = T07_home[:3, :3]
+        p07 = T07_home[:3, 3:4]
+
+        # for GC2, GC4, GC6 in GCs:
+        solu, feasible_set = IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, verbose=True)
         for f in np.arange(-1.0, 1.0, 0.02):
-            solu = IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh)
             s = solu(f*np.pi)
-            nrr = np.linalg.norm(T07_home-my_fk_dh.get_i_T_j(0,7, s))
+            nrr = np.linalg.norm(T07_home-my_fk_dh.FK(s))
             if nrr >1e-6:
-                solu = IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, verbose=True)
-                s = solu(f*np.pi)
                 print('PSI: {} pi'.format(f))
                 print('------------')
                 print('ERR', nrr)
@@ -349,5 +363,49 @@ if False:
                 print(s.T)
 
 
-# solu[-1] = -solu[-3]
-# print(my_fk_dh.FK(solu))
+if False:
+    import matplotlib.pyplot as plt
+    for i in range(1000):
+        home_new = np.random.rand(7,1)*np.pi
+        T07_home = my_fk_dh.FK(home_new)
+        R07 = T07_home[:3, :3]
+        p07 = T07_home[:3, 3:4]
+
+        solu, coefs = IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh)
+        vals = np.linspace(-np.pi, np.pi, np.pi/0.01, endpoint=True)
+        solu_v = np.array([solu(v) for v in vals]).squeeze()
+        for sv in solu_v:
+            nrr = np.linalg.norm(T07_home-my_fk_dh.FK(sv))
+            if nrr > 1e-6:
+                print('ERROR')
+
+        fig, axs = plt.subplots(2, 1, figsize=(12, 8))
+        for i in range(6):
+            if i in [0, 2, 4, 6]:
+                coef = coefs[i]
+                ss, ret_vl, ret_fl = tangent_type(*coef)
+                typ = None
+                if ss<-1e-3:
+                    typ = 'cont'
+                elif ss>1e-3:
+                    typ = 'cyclic'
+                else:
+                    typ = 'jump'
+                axs[0].plot(vals, solu_v[:, i], label='{}. [{}] ss={}'.format(i,  typ, ss))
+                axs[0].scatter(ret_vl, ret_fl)
+            elif i !=3:
+                axs[1].plot(vals, solu_v[:, i], label='costype, start-end: {}'.format(solu_v[:, i][0] -solu_v[:, i][-1]))
+
+            # plt.plot(vals, solu_v[:, [0,2,6]])
+        axs[0].legend()
+        axs[1].legend()
+        plt.show()
+
+
+
+
+
+# f = lambda x: x**2
+# # x0 = bisection_method(f, f(2.11), (0, 6), eps=1e-18)
+# print(ContinuousSet(2.0,8.0, False))
+# print(feasible_set_for_monotonic_function(f, ContinuousSet(16.0, 128.0), ContinuousSet(2.0,8.0, False, False)))

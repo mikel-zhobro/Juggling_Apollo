@@ -7,10 +7,14 @@ from random import random
 # TODO: Still problems locating singularities.
 
 eps_psi = 1e-4
-delta_psi = 15.0/180*np.pi
-print('Delta psi:' + str(eps_psi))
-def tangent_type(an, bn, cn, ad, bd, cd):
+delta_psi = 5.0/180*np.pi
+# print('Delta psi:' + str(eps_psi))
+
+
+def tangent_type(an, bn, cn, ad, bd, cd, theta_lim_range, verbose=False):
     feasible_set = ContinuousSet(-np.pi, np.pi, False, True)  # here we capture the feasible set of psi
+    singular_feasible_set = ContinuousSet()
+    stat_psi = list()
 
     theta_f = lambda psi: atan2(an*sin(psi) + bn*cos(psi) + cn,
                               ad*sin(psi) + bd*cos(psi) + cd)
@@ -24,29 +28,27 @@ def tangent_type(an, bn, cn, ad, bd, cd):
     bt = an*cd - ad*cn; bt_2 = bt**2
     ct = an*bd - ad*bn; ct_2 = ct**2
 
+    if verbose:
+        print('an, bn, cn, ad, bd, cd')
+        print(an, bn, cn, ad, bd, cd)
+        print('at, bt, ct')
+        print(at, bt, ct)
+
     ss = at_2 + bt_2 - ct_2
 
-    stat_psi = list()
-    if abs(ss) > 1e-6:
-        return
-    print('an, bn, cn, ad, bd, cd')
-    print(an, bn, cn, ad, bd, cd)
-    print('at, bt, ct')
-    print(at, bt, ct)
-    singular_feasible_set = ContinuousSet()
     if ss > eps_psi:  # cyclic profile
         # The idea is to split the cyclic profile in sub-intervals of monotonic profile
-        print('Stationary points(cyclic): ss>0')
         psi_min = 2*atan( (at - sqrt(ss)) / (bt-ct) )
         psi_max = 2*atan( (at + sqrt(ss)) / (bt-ct) )
         stat_psi = [psi_min, psi_max]
+        if verbose:
+            print('Stationary points(cyclic): ss>0')
 
     elif ss < -eps_psi:  # monotonic profile
-        print('No Stationary points(monotonic): ss<0')
+        if verbose:
+            print('No Stationary points(monotonic): ss<0')
         # feas_psi = feasible_set_for_monotonic_function(tan_f, j.limit_range, ContinuousSet(-np.pi, np.pi, False))
-
     else:  # discontinuous profile (2 possibilities)
-        print('Singularity: ss={}'.format(ss))
         theta_s_neg = atan((at*bn - bt*an) / (at*bd - bt*ad))
         psi_singular = 2 * atan(at/ (bt-ct)) # should be avoided
         if psi_singular + delta_psi > np.pi:
@@ -57,14 +59,14 @@ def tangent_type(an, bn, cn, ad, bd, cd):
             singular_feasible_set.add_c_range(-np.pi, psi_singular-delta_psi)
             singular_feasible_set.add_c_range(psi_singular+delta_psi, np.pi)
 
-
-        print(singular_feasible_set)
         feasible_set -= singular_feasible_set
-        print(feasible_set)
-        print('theta_neg:'+ str(theta_s_neg))
-        print('theta_pos:'+ str(theta_s_neg + (np.pi if theta_s_neg < 0.0 else  -np.pi)))
 
-
+        if verbose:
+            print('Singularity: ss={}'.format(ss))
+            print(singular_feasible_set)
+            print(feasible_set)
+            print('theta_neg:'+ str(theta_s_neg))
+            print('theta_pos:'+ str(theta_s_neg + (np.pi if theta_s_neg < 0.0 else  -np.pi)))
 
     # Joint Limits
 
@@ -90,7 +92,8 @@ def tangent_type(an, bn, cn, ad, bd, cd):
         tt = bp**2 - 4*ap*cp
         roots = list()
         if tt < 0.0:
-            print('NO ROOTS FOR THETA_LIMIT = {}'.format(theta))
+            if verbose:
+                print('NO ROOTS FOR THETA_LIMIT = {}'.format(theta))
         else:
             psi0 = 2*atan( (-bp + sqrt(tt)) / (2*ap) )
             psi1 = 2*atan( (-bp - sqrt(tt)) / (2*ap) )
@@ -98,10 +101,11 @@ def tangent_type(an, bn, cn, ad, bd, cd):
         return roots
 
     # Consider Limitss
-    theta_max = 2.2
-    theta_min = -2.2
+    theta_min = theta_lim_range.a
+    theta_max = theta_lim_range.b
     roots = sorted(find_root(theta_min, True) + find_root(theta_max, False), key=lambda r: r.root)
-    print('roots', roots)
+    if verbose:
+        print('roots', roots)
 
     # The idea is to go through all the roots and capture the feasible regions
     # of roots entering the limits. If the last root entered, the rest is feasible set.
@@ -124,47 +128,45 @@ def tangent_type(an, bn, cn, ad, bd, cd):
     psi_s =  np.linspace(-np.pi, np.pi, np.pi/0.01)
     thetas =   [theta_f(psi) for psi in psi_s]
     grad_thetas =   [grad_theta_f(psi) for psi in psi_s]
-    plt.plot(psi_s, thetas)
-    plt.plot(psi_s, grad_thetas/np.max(np.abs(grad_thetas)), label='grad')
-    # Stationary points
-    for v in stat_psi:
-        plt.scatter(v, theta_f(v), c='b')
-    # Roots for theta_min
-    for r in roots:
-        plt.scatter(r.root, theta_f(r.root), c='r')
-    # Singular poinrs
-    for psi in feasible_set.c_ranges:
-        plt.axvspan(psi.a, psi.b, color='green', alpha=0.3)
-    plt.axhline(theta_min, color='k')
-    plt.axhline(theta_max, color='k')
-    plt.xlabel(r'$\psi$')
-    plt.ylabel(r'$\theta_i$')
-    plt.legend()
 
-    # Add a bar in the polar coordinates
-    plt.figure()
-    plt.subplot(111, polar=True)
-    for psi in feasible_set.c_ranges:
-        # plt.axvspan(psi.a, psi.b, color='green', alpha=0.3)
-        plt.bar(psi.a, height=1, width=psi.b-psi.a, bottom=0, align='edge', color='green', alpha=0.3, label='feasible')
-    for psi in singular_feasible_set.inverse(-np.pi, np.pi):
-        plt.bar(psi.a, height=1, width=psi.b-psi.a, bottom=0, align='edge', color='red', alpha=0.3, label='singularity')
-    plt.legend()
-    plt.show()
-    return ss
+    # Ploting
+    if verbose:
+        # Theta(psi)
+        plt.figure(figsize=(12, 6))
+        plt.subplot(121)
+        plt.axhline(theta_min, color='k')
+        plt.axhline(theta_max, color='k')
+        plt.plot(psi_s, thetas, label=r'$\theta_i = f(\psi)$')
+        plt.plot(psi_s, grad_thetas/np.max(np.abs(grad_thetas)), label=r'$\frac{d\theta_i}{d\psi} = g(\psi)$')
+        # Stationary points
+        for v in stat_psi:
+            plt.scatter(v, theta_f(v), c='b')
+        # Roots for theta_min
+        for r in roots:
+            plt.scatter(r.root, theta_f(r.root), c='r')
+        # Singular poinrs
+        for psi in feasible_set.c_ranges:
+            plt.axvspan(psi.a, psi.b, color='green', alpha=0.3)
+        plt.xlabel(r'$\psi$')
+        plt.ylabel(r'$\theta_i$')
+        plt.legend(loc=1)
+
+        # Psi in polar coordinates
+        plt.subplot(122, polar=True)
+        for psi in feasible_set.c_ranges:
+            plt.bar(psi.a, height=1, width=psi.b-psi.a, bottom=0, align='edge', color='green', alpha=0.3, label='feasible')
+        if not singular_feasible_set.empty:
+            for psi in singular_feasible_set.inverse(-np.pi, np.pi):
+                plt.bar(psi.a, height=1, width=psi.b-psi.a, bottom=0, align='edge', color='red', alpha=0.3, label='singularity')
+        plt.legend(loc=1)
+        plt.show()
+
+    return feasible_set
 
 
-
-ans = []
-bns = []
-cns = []
-
-ads = []
-bds = []
-cds = []
-
-while True:
-    params = np.random.rand(6)*2.0 - 1.0
-    # params = np.array([0.7929975479199824, -0.12073775406644871, 0.3583786736074317, -0.39867446984385113, 0.06133818255627177, -0.1799557103119096])
-    tangent_type(*params)
-    # break
+if __name__ == "__main__":
+    while True:
+        params = np.random.rand(6)*2.0 - 1.0
+        # params = np.array([0.7929975479199824, -0.12073775406644871, 0.3583786736074317, -0.39867446984385113, 0.06133818255627177, -0.1799557103119096])
+        tangent_type(*params, theta_lim_range=ContinuousSet(-1.2, 2.2), verbose=True)
+        # break
