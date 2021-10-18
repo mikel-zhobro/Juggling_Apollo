@@ -20,11 +20,8 @@ class DH_revolut():
             self.theta = theta
             self.name = name
             self.index = DH_revolut.n_joints
+            self.limit_range = ContinuousSet(JOINTS_LIMITS[self.name][0], JOINTS_LIMITS[self.name][1], False, False)
             DH_revolut.n_joints += 1
-
-        @property
-        def limit_range(self):
-            return ContinuousSet(JOINTS_LIMITS[self.name][0], JOINTS_LIMITS[self.name][1], False, False)
 
         def __repr__(self):
             return '{}. {}: a({}), b({}), d({}), theta({})'.format(self.index, self.name, self.a, self.alpha, self.d, self.theta)

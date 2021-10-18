@@ -104,14 +104,14 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
 
 
     feasible_sets = [None]*7
-    # feasible_sets[0] = tangent_type(-As[1,1], -Bs[1,1], -Cs[1,1], -As[0,1], -Bs[0,1], -Cs[0,1], theta_lim_range=DH_model.joint(0).limit_range, verbose=verbose)
-    feasible_sets[0] = tangent_type(*S1, theta_lim_range=DH_model.joint(0).limit_range, verbose=verbose)
-    feasible_sets[1] = cosine_type(*S2, theta_lim_range=DH_model.joint(1).limit_range, verbose=verbose)
-    feasible_sets[2] = tangent_type(*S3, theta_lim_range=DH_model.joint(2).limit_range, verbose=verbose)
+    # feasible_sets[0] = tangent_type(-As[1,1], -Bs[1,1], -Cs[1,1], -As[0,1], -Bs[0,1], -Cs[0,1], joint=DH_model.joint(0).limit_range, verbose=verbose)
+    feasible_sets[0] = tangent_type(*S1, joint=DH_model.joint(0), verbose=verbose)
+    feasible_sets[1] = cosine_type(*S2, joint=DH_model.joint(1), verbose=verbose)
+    feasible_sets[2] = tangent_type(*S3, joint=DH_model.joint(2), verbose=verbose)
     feasible_sets[3] = ContinuousSet(-np.pi, np.pi, False, True) if th4 in DH_model.joint(3).limit_range else ContinuousSet()
-    feasible_sets[4] = tangent_type(*W5, theta_lim_range=DH_model.joint(4).limit_range, verbose=verbose)
-    feasible_sets[5] = cosine_type(*W6, theta_lim_range=DH_model.joint(5).limit_range, verbose=verbose)
-    feasible_sets[6] = tangent_type(*W7, theta_lim_range=DH_model.joint(6).limit_range, verbose=verbose)
+    feasible_sets[4] = tangent_type(*W5, joint=DH_model.joint(4), verbose=verbose)
+    feasible_sets[5] = cosine_type(*W6, joint=DH_model.joint(5), verbose=verbose)
+    feasible_sets[6] = tangent_type(*W7, joint=DH_model.joint(6), verbose=verbose)
     psi_feasible_set = ContinuousSet(-np.pi, np.pi)
     for fs in feasible_sets:
         psi_feasible_set -= fs
@@ -183,27 +183,27 @@ if __name__ == "__main__":
     if True:
         GCs = [(i, ii, iii) for i in [-1.0, 1.0] for ii in [-1.0, 1.0] for iii in [-1.0, 1.0]]
         for i in range(1200):
-            home_new = np.random.rand(7,1)*np.pi
+            home_new = 2*(np.random.rand(7,1)-0.5)*np.pi
 
-            home_new = np.array([ j.limit_range.sample() for j in my_fk_dh.joints ]).reshape(7,1)
+            # home_new = np.array([ j.limit_range.sample() for j in my_fk_dh.joints ]).reshape(7,1)
             # print(home_new.T)
             T07_home = my_fk_dh.FK(home_new)
             R07 = T07_home[:3, :3]
             p07 = T07_home[:3, 3:4]
 
-            # for GC2, GC4, GC6 in GCs:
-            solu, feasible_set = IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, verbose=False)
-            for f in np.arange(-1.0, 1.0, 0.02):
-                s = solu(f*np.pi)
-                nrr = np.linalg.norm(T07_home-my_fk_dh.FK(s))
-                if nrr >1e-6:
-                    print('PSI: {} pi'.format(f))
-                    print('------------')
-                    print('ERR', nrr)
-                    print('pgoal', p07.T)
-                    print(home_new.T)
-                    print(s.T)
-                    break
+            for GC2, GC4, GC6 in GCs:
+                solu, feasible_set = IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, GC2=GC2, GC4=GC4, GC6=GC6, verbose=True)
+                for f in np.arange(-1.0, 1.0, 0.02):
+                    s = solu(f*np.pi)
+                    nrr = np.linalg.norm(T07_home-my_fk_dh.FK(s))
+                    if nrr >1e-6:
+                        print('PSI: {} pi'.format(f))
+                        print('------------')
+                        print('ERR', nrr)
+                        print('pgoal', p07.T)
+                        print(home_new.T)
+                        print(s.T)
+                        break
 
     if False:
         import matplotlib.pyplot as plt
