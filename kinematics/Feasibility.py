@@ -1,4 +1,4 @@
-from math import sin, cos, tan, atan2, atan, sqrt, acos
+from math import sin, cos, tan, atan2, atan, sqrt, acos, asin
 import matplotlib.pyplot as plt
 import numpy as np
 from utilities import ContinuousSet, clip_c
@@ -7,15 +7,22 @@ from random import random
 
 eps_psi = 1e-4
 delta_psi = 5.0/180*np.pi
-# print('Delta psi:' + str(eps_psi))
+
 
 def cosine_type(a, b, c, joint, GC=1.0, verbose=False, sine_type=False):
     feasible_set = ContinuousSet(-np.pi, np.pi, False, True)  # here we capture the feasible set of psi
     stat_psi = list()
     psi_singular = False
-
-    theta_f = lambda psi: GC * acos( clip_c(a*sin(psi) + b*cos(psi) + c))
-    grad_theta_f = lambda psi: -GC * (a*cos(psi) - b*sin(psi))/ sin(theta_f(psi)) if theta_f(psi) != 0.0 else 1.0
+    if sine_type:
+        if GC>0.0:
+            theta_f = lambda psi: asin( clip_c(a*sin(psi) + b*cos(psi) + c))
+            grad_theta_f = lambda psi: GC * (a*cos(psi) - b*sin(psi))/ cos(theta_f(psi)) if theta_f(psi) != 0.0 else 1.0
+        else:
+            theta_f = lambda psi: np.pi - asin( clip_c(a*sin(psi) + b*cos(psi) + c))
+            grad_theta_f = lambda psi: -GC * (a*cos(psi) - b*sin(psi))/ cos(theta_f(psi)) if theta_f(psi) != 0.0 else 1.0
+    else:
+        theta_f = lambda psi: GC * acos( clip_c(a*sin(psi) + b*cos(psi) + c))
+        grad_theta_f = lambda psi: -GC * (a*cos(psi) - b*sin(psi))/ sin(theta_f(psi)) if theta_f(psi) != 0.0 else 1.0
 
     at_2 = a**2
     bt_2 = b**2
@@ -38,12 +45,14 @@ def cosine_type(a, b, c, joint, GC=1.0, verbose=False, sine_type=False):
 
 
     # Joint Limits
-    if sine_type:
-        theta_min = joint.limit_range.a + np.pi/2 if GC > 0.0 else np.pi/2-joint.limit_range.b
-        theta_max = joint.limit_range.b + np.pi/2 if GC > 0.0 else np.pi/2-joint.limit_range.a
-    else:
-        theta_min = joint.limit_range.a
-        theta_max = joint.limit_range.b
+    theta_min = joint.limit_range.a
+    theta_max = joint.limit_range.b
+    # if sine_type:
+    #     theta_min = joint.limit_range.a + np.pi/2 if GC > 0.0 else np.pi/2-joint.limit_range.b
+    #     theta_max = joint.limit_range.b + np.pi/2 if GC > 0.0 else np.pi/2-joint.limit_range.a
+    # else:
+    #     theta_min = joint.limit_range.a
+    #     theta_max = joint.limit_range.b
 
     def find_root(theta, lower_lim):
         class Root():

@@ -101,7 +101,7 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
     if GC2 > 0.0:
         th2 = lambda psi: GC2* asin(clip_c( v(psi).dot(S2) ))
     else:
-        th2 = lambda psi: np.pi + GC2* asin(clip_c( v(psi).dot(S2) ))
+        th2 = lambda psi: np.pi + GC2 * asin(clip_c( v(psi).dot(S2) ))
     th1 = lambda psi: atan2(v(psi).dot(S1[0:3]), v(psi).dot(S1[3:]))
     th3 = lambda psi: atan2(v(psi).dot(S3[0:3]), v(psi).dot(S3[3:]))
     th5 = lambda psi: atan2(v(psi).dot(W5[0:3]), v(psi).dot(W5[3:]))
