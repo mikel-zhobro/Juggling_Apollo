@@ -11,17 +11,6 @@ from kinematics.utilities import ContinuousSet
 
 import matplotlib.pyplot as plt
 
-
-# GC2  = np.sign((DH_model.joint(1).limit_range.a + DH_model.joint(1).limit_range.b)/2)
-# GC4  = np.sign((DH_model.joint(3).limit_range.a + DH_model.joint(3).limit_range.b)/2)
-# GC6  = np.sign((DH_model.joint(5).limit_range.a + DH_model.joint(5).limit_range.b)/2)
-
-# GC2 = -1.0 if GC2==0.0 else GC2
-# GC4 = -1.0 if GC4==0.0 else GC4
-# GC6 = -1.0 if GC6==0.0 else GC6
-# GC2 = 1.0
-# GC4 = 1.0
-
 def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=False, p06=None, p07=None):
     """
         Implementation from paper: "Analytical Inverse Kinematic Computation for 7-DOF Redundant Manipulators...
@@ -54,7 +43,7 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
 
     R03_ref = DH_model.get_i_R_j(0, 3, [th1_ref, th2_ref, -DH_model.joint(2).theta])
 
-    if False:
+    if verbose:
         print('Theta1', th1_ref)
         print('Theta2', th2_ref)
         print('Theta4:', th4)
@@ -67,7 +56,6 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
     # Shoulder
     As = u0sw_skew.dot(R03_ref)
     Bs = -np.matmul(u0sw_skew.dot(u0sw_skew), R03_ref)
-    # Cs = np.matmul(u0sw_skew.dot(u0sw_skew.T), R03_ref)
     Cs = R03_ref - Bs
     # Wrist
     Aw = np.matmul(R34.T, As.T.dot(R07_d))
@@ -78,31 +66,35 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
     S1 = GC2 * np.array([As[1,1],  Bs[1,1], Cs[1,1],  As[0,1],  Bs[0,1],  Cs[0,1]]).reshape(6,1)
     S2 =       np.array([As[2,1],  Bs[2,1], Cs[2,1]]).reshape(3,1)
     S3 = GC2 * np.array([As[2,0],  Bs[2,0], Cs[2,0],  As[2,2],  Bs[2,2],  Cs[2,2]]).reshape(6,1)
+    W5 = GC6 * np.array([Aw[0,2],  Bw[0,2], Cw[0,2], -Aw[1,2], -Bw[1,2], -Cw[1,2]]).reshape(6,1)
+    W6 =       np.array([Aw[2,2],  Bw[2,2], Cw[2,2]]).reshape(3,1)
+    W7 = GC6 * np.array([Aw[2,1],  Bw[2,1], Cw[2,1], -Aw[2,0], -Bw[2,0], -Cw[2,0]]).reshape(6,1)
 
-    W5 =  GC6 * np.array([Aw[0,2], Bw[0,2], Cw[0,2], -Aw[1,2], -Bw[1,2], -Cw[1,2]]).reshape(6,1)
-    W6 =        np.array([Aw[2,2], Bw[2,2], Cw[2,2]]).reshape(3,1)
-    W7 =  GC6 * np.array([Aw[2,1], Bw[2,1], Cw[2,1], -Aw[2,0], -Bw[2,0], -Cw[2,0]]).reshape(6,1)
-
-
+    # Feasible set satisfying the limits
     feasible_sets = [None]*7
-    feasible_sets[0] = tangent_type(*S1, joint=DH_model.joint(0), verbose=False)
-    feasible_sets[1] =  sine_type(*S2, joint=DH_model.joint(1), GC=GC2, verbose=verbose)
-    feasible_sets[2] = tangent_type(*S3, joint=DH_model.joint(2), verbose=False)
+    feasible_sets[0] = tangent_type(*S1, joint=DH_model.joint(0), verbose=verbose)
+    feasible_sets[1] =    sine_type(*S2, joint=DH_model.joint(1), GC=GC2, verbose=verbose)
+    feasible_sets[2] = tangent_type(*S3, joint=DH_model.joint(2), verbose=verbose)
     feasible_sets[3] = ContinuousSet(-np.pi, np.pi, False, True) if th4 in DH_model.joint(3).limit_range else ContinuousSet()
-    feasible_sets[4] = tangent_type(*W5, joint=DH_model.joint(4), verbose=False)
-    feasible_sets[5] =  cosine_type(*W6, joint=DH_model.joint(5), GC=GC6, verbose=False)
-    feasible_sets[6] = tangent_type(*W7, joint=DH_model.joint(6), verbose=False)
+    feasible_sets[4] = tangent_type(*W5, joint=DH_model.joint(4), verbose=verbose)
+    feasible_sets[5] =  cosine_type(*W6, joint=DH_model.joint(5), GC=GC6, verbose=verbose)
+    feasible_sets[6] = tangent_type(*W7, joint=DH_model.joint(6), verbose=verbose)
     psi_feasible_set = ContinuousSet(-np.pi, np.pi)
     for fs in feasible_sets:
         psi_feasible_set -= fs
+        print('fs', fs)
+        print("feas" ,psi_feasible_set)
 
-    # 1. Solutions
+    # Lambda functions that deliver solutions for each joint given arm-angle psi
     v = lambda psi: np.array([sin(psi), cos(psi), 1.0]).reshape(1,3)
-    if GC2 > 0.0:
-        th2 = lambda psi: GC2* asin(clip_c( v(psi).dot(S2) ))
-    else:
-        th2 = lambda psi: np.pi + GC2 * asin(clip_c( v(psi).dot(S2) ))
     th1 = lambda psi: atan2(v(psi).dot(S1[0:3]), v(psi).dot(S1[3:]))
+
+    if GC2>0.0:
+        th2 = ( lambda psi: GC2* asin(clip_c( v(psi).dot(S2))) )
+    else:
+        th2 = lambda psi: ( np.pi - asin(clip_c( v(psi).dot(S2))) ) if asin(clip_c( v(psi).dot(S2))) > 0.0 else  ( -np.pi - asin(clip_c( v(psi).dot(S2))) )
+
+    # th2 = ( lambda psi: GC2* asin(clip_c( v(psi).dot(S2))) ) if GC2 > 0.0 else ( lambda psi: np.pi + GC2 * asin(clip_c( v(psi).dot(S2))) )
     th3 = lambda psi: atan2(v(psi).dot(S3[0:3]), v(psi).dot(S3[3:]))
     th5 = lambda psi: atan2(v(psi).dot(W5[0:3]), v(psi).dot(W5[3:]))
     th6 = lambda psi: GC6*acos(clip_c( v(psi).dot(W6) ))
@@ -115,7 +107,8 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
         p07_ref = DH_model.get_i_T_j(0, 7, [th1(0.0), th2(0.0), th3(0.0), th4, th5(0.0), th6(0.0), th7(0.0)])[:3, 3]
         assert np.linalg.norm(p07-p07_ref) < 1e-6
 
-    if False and not psi_feasible_set.empty:
+    if True:
+        print(psi_feasible_set)
         plt.figure()
         plt.subplot(111, polar=True)
         for psi in psi_feasible_set.c_ranges:
@@ -126,6 +119,33 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
     return (lambda psi: np.array([ th1(psi), th2(psi), th3(psi), th4, th5(psi), th6(psi), th7(psi)]).reshape(-1,1), psi_feasible_set)
 
 
+def IK_heuristic1(p07_d, R07_d, DH_model, verbose=False):
+    GC2_plus = ContinuousSet(-np.pi/2 , np.pi)
+    GC2_minus = ContinuousSet(-np.pi , -np.pi/2) + ContinuousSet(np.pi/2 , np.pi)
+
+    GC46_plus = ContinuousSet(0.0, np.pi)
+    GC46_minus = ContinuousSet(0.0, -np.pi)
+
+    GC2 = 1.0 if (GC2_plus - DH_model.joint(1).limit_range).size >= (GC2_minus - DH_model.joint(1).limit_range).size else -1.0
+    GC4 = 1.0 if (GC46_plus - DH_model.joint(3).limit_range).size >= (GC46_minus - DH_model.joint(3).limit_range).size else 1.0
+    GC6 = 1.0 if (GC46_plus - DH_model.joint(5).limit_range).size >= (GC46_minus - DH_model.joint(5).limit_range).size else -1.0
+
+    return IK_anallytical(p07_d, R07_d, DH_model, GC2=GC2, GC4=GC4, GC6=GC6, verbose=verbose, p06=None, p07=None)
+
+def IK_heuristic2(p07_d, R07_d, DH_model, verbose=False):
+    biggest_feasible_set = ContinuousSet()
+    GC2_final = 1.0
+    GC4_final = 1.0
+    GC6_final = 1.0
+    GCs = [(i, ii, iii) for i in [-1.0, 1.0] for ii in [-1.0, 1.0] for iii in [-1.0, 1.0]]
+    for GC2, GC4, GC6 in GCs:
+        _, psi_feasible_set = IK_anallytical(p07_d, R07_d, DH_model, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False, p06=None, p07=None)
+        if psi_feasible_set.size > biggest_feasible_set:
+            biggest_feasible_set = psi_feasible_set
+            GC2_final = GC2
+            GC4_final = GC4
+            GC6_final = GC6
+    return IK_anallytical(p07_d, R07_d, DH_model, GC2=GC2_final, GC4=GC4_final, GC6=GC6_final, verbose=verbose, p06=None, p07=None)
 
 
 pi2 = np.pi/2
@@ -179,23 +199,25 @@ if True:
         R07 = T07_home[:3, :3]
         p07 = T07_home[:3, 3:4]
 
-        for GC2, GC4, GC6 in GCs:
-            print(GC2, GC4, GC6)
+        # for GC2, GC4, GC6 in GCs:
+        #     print(GC2, GC4, GC6)
         #     IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, GC2=1, GC4=GC4, GC6=GC6, verbose=False, p06=my_fk_dh.get_i_T_j(0,6,home_new.flatten())[:3, 3], p07=my_fk_dh.get_i_T_j(0,7,home_new.flatten())[:3, 3])
         # continue
-            solu, feasible_set = IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, GC2=GC2, GC4=GC4, GC6=GC6, verbose=True, p06=my_fk_dh.get_i_T_j(0,6,home_new.flatten())[:3, 3])
-            for f in np.arange(-1.0, 1.0, 0.02):
-                s = solu(f*np.pi)
-                nrr = np.linalg.norm(T07_home-my_fk_dh.FK(s))
-                if nrr >1e-6:
-                    print('PSI: {} pi'.format(f))
-                    print('------------')
-                    print('ERR', nrr)
-                    print('pgoal', p07.T)
-                    print(home_new.T)
-                    print(s.T)
-                    # assert False
-                    break
+            # solu, feasible_set = IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, GC2=GC2, GC4=GC4, GC6=GC6, verbose=True, p06=my_fk_dh.get_i_T_j(0,6,home_new.flatten())[:3, 3])
+        solu, feasible_set = IK_heuristic2(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, verbose=True)
+
+        for f in np.arange(-1.0, 1.0, 0.02):
+            s = solu(f*np.pi)
+            nrr = np.linalg.norm(T07_home-my_fk_dh.FK(s))
+            if nrr >1e-6:
+                print('PSI: {} pi'.format(f))
+                print('------------')
+                print('ERR', nrr)
+                print('pgoal', p07.T)
+                print(home_new.T)
+                print(s.T)
+                # assert False
+                break
 if False:
     import matplotlib.pyplot as plt
     for i in range(1000):

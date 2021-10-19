@@ -80,6 +80,13 @@ class ContinuousSet():
         self.assert_range()
         return self.c_ranges[0].sample()
 
+    @property
+    def size(self):
+        s = 0.0
+        for cr in self:
+            s += cr.b - cr.a
+        return s
+
     def add_c_range(self, start, end, start_include=True, end_include=True):
         self.c_ranges = self._add(ContinuousRange(start, end, start_include, end_include))
 
@@ -217,3 +224,7 @@ if __name__ == "__main__":
     print('+', ss + ss2)
     print('-', ss - ss2)
     # print(ss)
+    print((ss-ss2).size)
+
+import numpy as np
+print(ContinuousSet(-np.pi , -np.pi/2) + ContinuousSet(np.pi/2 , np.pi))

@@ -1,14 +1,7 @@
 import numpy as np
-import matplotlib.pyplot as plt
-from utilities import skew, vec, clip_c, modrad
 from utilities import ContinuousSet
-from utilities import JOINTS_LIMITS, R_joints, L_joints
-from math import sin, cos, atan, acos, asin, sqrt, atan2
-from tangent_type import tangent_type
-from cosine_type import cosine_type
-
-np.set_printoptions(precision=4, suppress=True)
-
+from utilities import JOINTS_LIMITS
+from math import sin, cos
 
 class DH_revolut():
     n_joints = 0
@@ -34,6 +27,8 @@ class DH_revolut():
 
     def add_joint(self, a, alpha, d, theta, name):
         self.joints.append(self.Joint(a, alpha, d, theta, name))
+
+
 
     def getT(self, j, theta):
         c_th = cos(theta + j.theta); s_th = sin(theta + j.theta)
