@@ -10,10 +10,11 @@ R_origin_base = np.array([[1.0, 0.0, 0.0],
                           [0.0,  s,   c]], dtype='float')
 p_origin_base = np.array([1.0, 0.0, 0.0], dtype='float').reshape(3,1)
 
-d1 = 0.1
-d3 = 0.4
-d5 = 0.39
-d7 = 0.1
+d_bs = 0.1
+d_se = 0.4
+d_ew = 0.39
+d_wt = 0.1
+d_bs = 0.378724; d_se = 0.4; d_ew = 0.438; d_wt = 0.138
 
 pi_2 = np.pi/2
 off1 = 0.0
@@ -29,8 +30,7 @@ q3_fixed = 0.0
 q5_fixed = pi_2
 q7_fixed = -pi_2
 signs = [1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0]  # alphas in DH table 1 if pi/2, -1 if -pi/2
-ds = [d1, 0.0, d3, 0.0, d5, 0.0, d7]
-
+ds = [d_bs, 0.0, d_se, 0.0, d_ew, 0.0, d_wt]
 JOINTS_LIMITS = {
     "R_SFE":(-2.96,2.96),
     "R_SAA":(-3.1-off2, -0.1-off2),  # (-1.529, 1.47)
@@ -131,9 +131,9 @@ def FK(q1, q2, q3, q4, q5, q6, q7):
                       -Cc1*s6 - C2*c6], dtype='float')
 
 
-    p0_7 = np.array([P7a*d7 + Aa2*d5 + c1*s2*d3,
-                     P7b*d7 + Bb2*d5 + s1*s2*d3,
-                     P7c*d7 + C2*d5 - c2*d3 + d1], dtype='float')
+    p0_7 = np.array([P7a*d_wt + Aa2*d_ew + c1*s2*d_se,
+                     P7b*d_wt + Bb2*d_ew + s1*s2*d_se,
+                     P7c*d_wt + C2*d_ew - c2*d_se + d_bs], dtype='float')
 
     T =  np.vstack([np.vstack([n0_7, s0_7, a0_7, p0_7]).T, [0.0, 0.0, 0.0, 1.0]])
 
@@ -157,19 +157,19 @@ def FK_reduced_3(q1, q4, q6):
 def IK_reduced_3(x_TCP, y_TCP, theta_TCP):
     # The workspace is:
     #
-    x_j6 = x_TCP + d7*cos(theta_TCP)
-    y_j6 = y_TCP + d7*sin(theta_TCP)
+    x_j6 = x_TCP + d_wt*cos(theta_TCP)
+    y_j6 = y_TCP + d_wt*sin(theta_TCP)
 
     p_j6 = x_j6**2 + y_j6**2
-    d3_2 = d3**2
-    d5_2 = d5**2
+    d3_2 = d_se**2
+    d5_2 = d_ew**2
 
-    assert sqrt(p_j6) < d3 + d5, "The required position lies outside the reachable workspace of Apollo"
+    assert sqrt(p_j6) < d_se + d_ew, "The required position lies outside the reachable workspace of Apollo"
     # acos returns in range [0, pi]
-    q4 = acos((p_j6 - d3_2 - d5_2)/(2*d3*d5))
+    q4 = acos((p_j6 - d3_2 - d5_2)/(2*d_se*d_ew))
 
     # atan2 retunrs in range[-pi, pi] depending on the quadrant
-    q1 = atan2(y_j6, x_j6) + np.pi - acos((d3_2 - d5_2 + p_j6)/(2*d3*sqrt(p_j6)))
+    q1 = atan2(y_j6, x_j6) + np.pi - acos((d3_2 - d5_2 + p_j6)/(2*d_se*sqrt(p_j6)))
 
     q6 = theta_TCP - q1 - q4
     return q1, q4, q6
@@ -230,24 +230,24 @@ def J(q1, q2, q3, q4, q5, q6, q7):
     p0 = np.array([[0, 0, 0]], dtype='float').T
 
     z1 = np.array([[s1, -c1, 0]], dtype='float').T
-    p1 = np.array([[0, 0, d1]], dtype='float').T
+    p1 = np.array([[0, 0, d_bs]], dtype='float').T
 
     z2 = np.array([[c1*s2, s1*s2, -c2]], dtype='float').T
-    p2 = np.array([[0, 0, d1]], dtype='float').T
+    p2 = np.array([[0, 0, d_bs]], dtype='float').T
 
     z3 = np.array([[A2, B2, -s2*s3]], dtype='float').T
-    p3 = np.array([[c1*d3*s2,
-                   d3*s1*s2,
-                   -c2*d3 + d1]], dtype='float').T
+    p3 = np.array([[c1*d_se*s2,
+                   d_se*s1*s2,
+                   -c2*d_se + d_bs]], dtype='float').T
     z4 = np.array([[Aa2, Bb2, C2]], dtype='float').T
     p4 = p3
 
     z5 = np.array([[-Aa1*s5 + A2*c5,
                    -Bb1*s5 + B2*c5,
                    -C1*s5 - c5*s2*s3]], dtype='float').T
-    p5 = np.array([[Aa2*d5 + c1*d3*s2,
-                   Bb2*d5 + d3*s1*s2,
-                   C2*d5 - c2*d3 + d1]], dtype='float').T
+    p5 = np.array([[Aa2*d_ew + c1*d_se*s2,
+                   Bb2*d_ew + d_se*s1*s2,
+                   C2*d_ew - c2*d_se + d_bs]], dtype='float').T
 
     z6 = np.array([[P7a, P7b, P7c]], dtype='float').T
     p6 = p5
@@ -256,7 +256,7 @@ def J(q1, q2, q3, q4, q5, q6, q7):
     z7 = np.array([[-Xa*s7 + Xb*c7,
                    -Ya*s7 + Yb*c7,
                    -Za*s7 + Zb*c7]], dtype='float').T
-    p7 = np.array([[P7a*d7, P7b*d7, P7c*d7]], dtype='float').T + p5
+    p7 = np.array([[P7a*d_wt, P7b*d_wt, P7c*d_wt]], dtype='float').T + p5
 
     Jp1 = np.cross(z0, p7-p0, axis=0)
     Jp2 = np.cross(z1, p7-p1, axis=0)

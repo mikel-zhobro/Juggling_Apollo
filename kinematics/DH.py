@@ -3,6 +3,48 @@ from utilities import ContinuousSet
 from utilities import JOINTS_LIMITS
 from math import sin, cos
 
+
+# (-1, 'BASE', 'R_BASE')
+#   R =
+#    -0.5          0.866025    0.0
+#     0.866025     0.5         0.0
+#     0.0          0.0        -1.0
+#   R =
+#    -sin(pi/6)     cos(pi/6)    0.0
+#     cos(pi/6)     sin(pi/6)    0.0
+#     0.0           0.0         -1.0
+#   p = 0 0 0
+
+# (0, 'R_BASE', 'R_SFE')
+#   R =
+#     1.0    0.0   0.0
+#     0.0    0.0   1.0
+#     0.0   -1.0   0.0
+#   p = 0.0   0.16813   0.0
+
+spi6 = 0.5
+cpi6 = cos(np.pi/6)
+T_base_rbase_prim = np.array([  #
+    [-spi6, cpi6,  0.0,  0.0],
+    [ cpi6, spi6,  0.0,  0.0],
+    [ 0.0,  0.0,   1.0,  0.0],
+    [ 0.0,  0.0,   0.0,  1.0]], dtype = 'float')
+
+
+T_rbase_prim_rbase = np.array([   # R_rbase_tcpdh^T R_rbase_tcpDH
+    [ 0.0, 1.0, 0.0, 0.0],
+    [ 0.0, 0.0, 1.0, 0.0],
+    [-1.0, 0.0, 0.0, 0.0],
+    [ 0.0, 0.0, 0.0, 1.0]], dtype = 'float')
+
+
+T_tcpdh_tcppin = np.array([   # R_rbase_tcpdh^T R_rbase_tcpDH
+    [ 0.0, -spi6, cpi6, 0.0],
+    [ 0.0,  cpi6, spi6, 0.0],
+    [-1.0,  0.0,  0.0,  0.0],
+    [ 0.0,  0.0,  0.0,  1.0]], dtype = 'float')
+
+
 class DH_revolut():
     n_joints = 0
     class Joint():
@@ -28,8 +70,6 @@ class DH_revolut():
     def add_joint(self, a, alpha, d, theta, name):
         self.joints.append(self.Joint(a, alpha, d, theta, name))
 
-
-
     def getT(self, j, theta):
         c_th = cos(theta + j.theta); s_th = sin(theta + j.theta)
         if j.index==6:
@@ -51,7 +91,9 @@ class DH_revolut():
         T0_7 = np.eye(4)
         for j, theta_j in zip (self.joints, Q):
             T0_7 = T0_7.dot(self.getT(j, theta_j))
-        return T0_7
+        # return T_base_pin_dh.dot(T0_7)
+        # return T_base_rbase.dot(T0_7).dot(T_tcpdh_tcppin)
+        return T_base_rbase_prim.dot(T_rbase_prim_rbase.dot(T0_7))
 
     def get_i_R_j(self, i, j, Qi_j):
         # Qi_j: angles of joints from i to j

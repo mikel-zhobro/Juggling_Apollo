@@ -10,6 +10,9 @@ from kinematics.Feasibility import sine_type, cosine_type, tangent_type
 from kinematics.utilities import ContinuousSet
 
 import matplotlib.pyplot as plt
+np.set_printoptions(precision=4, suppress=True)
+
+
 
 def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=False, p06=None, p07=None):
     """
@@ -134,6 +137,7 @@ def IK_heuristic1(p07_d, R07_d, DH_model, verbose=False):
 
     return IK_anallytical(p07_d, R07_d, DH_model, GC2=GC2, GC4=GC4, GC6=GC6, verbose=verbose, p06=None, p07=None)
 
+
 def IK_heuristic2(p07_d, R07_d, DH_model, verbose=False):
     biggest_feasible_set = ContinuousSet()
     GC2_final = 1.0
@@ -151,7 +155,7 @@ def IK_heuristic2(p07_d, R07_d, DH_model, verbose=False):
 
 
 pi2 = np.pi/2
-d_bs = 0.1; d_se = 0.4; d_ew = 0.39; d_wt = 0.1
+d_bs = 0.378724; d_se = 0.4; d_ew = 0.39; d_wt = 0.186
 a_s            = [0.0] * 7
 alpha_s        = [pi2, pi2, -pi2, pi2, -pi2, pi2, 0.0]
 d_s            = [d_bs, 0.0, d_se, 0.0, d_ew, 0.0, d_wt]
@@ -162,9 +166,10 @@ my_fk_dh = DH_revolut()
 for a, alpha, d, theta, name in zip(a_s, alpha_s, d_s, theta_offset_s, R_joints):
     my_fk_dh.add_joint(a, alpha, d, theta, name)
 
-# Test with random goal poses
+print(my_fk_dh.FK(np.zeros((7,1))))
 
-if True:
+# Test with random goal poses
+if False:
     GCs = [(i, ii, iii) for i in [-1.0, 1.0] for ii in [-1.0, 1.0] for iii in [-1.0, 1.0]]
     for i in range(10000):
         # home_new = np.random.rand(7,1)*np.pi
@@ -199,13 +204,13 @@ if True:
 
 
 
-
-for i in range(122):
-    home_new = np.random.rand(7,1)*np.pi/2
-    T_1 = FK_DH(home_new.copy())
-    T_2 = my_fk_dh.FK(home_new.copy())
-    nrr = np.linalg.norm(T_1-T_2)
-    # print(T_1)
-    # print(T_2)
-    if nrr >1e-6:
-        print("ERROR")
+if False:
+    for i in range(122):
+        home_new = np.random.rand(7,1)*np.pi/2
+        T_1 = FK_DH(home_new.copy())
+        T_2 = my_fk_dh.FK(home_new.copy())
+        nrr = np.linalg.norm(T_1-T_2)
+        # print(T_1)
+        # print(T_2)
+        if nrr >1e-6:
+            print("ERROR")
