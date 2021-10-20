@@ -82,8 +82,9 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
     psi_feasible_set = ContinuousSet(-np.pi, np.pi)
     for fs in feasible_sets:
         psi_feasible_set -= fs
-        print('fs', fs)
-        print("feas" ,psi_feasible_set)
+        if verbose:
+            print('fs', fs)
+            print("feas" ,psi_feasible_set)
 
     # Lambda functions that deliver solutions for each joint given arm-angle psi
     v = lambda psi: np.array([sin(psi), cos(psi), 1.0]).reshape(1,3)
@@ -107,7 +108,7 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
         p07_ref = DH_model.get_i_T_j(0, 7, [th1(0.0), th2(0.0), th3(0.0), th4, th5(0.0), th6(0.0), th7(0.0)])[:3, 3]
         assert np.linalg.norm(p07-p07_ref) < 1e-6
 
-    if True:
+    if verbose:
         print(psi_feasible_set)
         plt.figure()
         plt.subplot(111, polar=True)
@@ -115,6 +116,7 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
             plt.bar(psi.a, height=1, width=psi.b-psi.a, bottom=0, align='edge', color='green', alpha=0.3, label='feasible')
         plt.title('Final Feasible Set [GC2({}), GC4({}), GC6({}])'.format(GC2, GC4, GC6))
         plt.show()
+    print(psi_feasible_set)
 
     return (lambda psi: np.array([ th1(psi), th2(psi), th3(psi), th4, th5(psi), th6(psi), th7(psi)]).reshape(-1,1), psi_feasible_set)
 
@@ -161,100 +163,39 @@ for a, alpha, d, theta, name in zip(a_s, alpha_s, d_s, theta_offset_s, R_joints)
     my_fk_dh.add_joint(a, alpha, d, theta, name)
 
 # Test with random goal poses
-if False:
-    import matplotlib.pyplot as plt
-    for i in range(1):
-        home_new = np.random.rand(7,1)*np.pi/2
-        home_new[1] = -1
-        T07_home = my_fk_dh.FK(home_new)
-        R07 = T07_home[:3, :3]
-        p07 = T07_home[:3, 3:4]
-        print(home_new.T)
-
-        feasible_set, solu = IK(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, vis=True)
-        feasible_solutions = np.array([solu(v) for v in feasible_set]).squeeze()
-        for sv in feasible_solutions:
-            nrr = np.linalg.norm(T07_home-my_fk_dh.FK(sv))
-            # print(nrr)
-            if nrr > 1e-6:
-                print('ERROR', nrr)
-        if feasible_solutions.size ==0:
-            print('NO SOLUTIONS')
-        else:
-            for i in range(7):
-                plt.plot(feasible_set, feasible_solutions[:,i], label ='joint_{}'.format(i+1))
-            plt.legend()
-            plt.show()
 
 if True:
     GCs = [(i, ii, iii) for i in [-1.0, 1.0] for ii in [-1.0, 1.0] for iii in [-1.0, 1.0]]
     for i in range(10000):
         # home_new = np.random.rand(7,1)*np.pi
-        home_new = 2*(np.random.rand(7,1)-0.5)*np.pi
+        # home_new = 2*(np.random.rand(7,1)-0.5)*np.pi
 
-        # home_new = np.array([ j.limit_range.sample() for j in my_fk_dh.joints ]).reshape(7,1)
+        home_new = np.array([ j.limit_range.sample() for j in my_fk_dh.joints ]).reshape(7,1)
 
-        # print(home_new.T)
+        print(home_new.T)
         T07_home = my_fk_dh.FK(home_new)
         R07 = T07_home[:3, :3]
         p07 = T07_home[:3, 3:4]
-
+        print(p07.T)
         # for GC2, GC4, GC6 in GCs:
         #     print(GC2, GC4, GC6)
         #     IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, GC2=1, GC4=GC4, GC6=GC6, verbose=False, p06=my_fk_dh.get_i_T_j(0,6,home_new.flatten())[:3, 3], p07=my_fk_dh.get_i_T_j(0,7,home_new.flatten())[:3, 3])
         # continue
             # solu, feasible_set = IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, GC2=GC2, GC4=GC4, GC6=GC6, verbose=True, p06=my_fk_dh.get_i_T_j(0,6,home_new.flatten())[:3, 3])
-        solu, feasible_set = IK_heuristic2(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, verbose=True)
+        solu, feasible_set = IK_heuristic1(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, verbose=True)
 
         for f in np.arange(-1.0, 1.0, 0.02):
             s = solu(f*np.pi)
             nrr = np.linalg.norm(T07_home-my_fk_dh.FK(s))
             if nrr >1e-6:
+                print('ERR', nrr)
                 print('PSI: {} pi'.format(f))
                 print('------------')
-                print('ERR', nrr)
                 print('pgoal', p07.T)
                 print(home_new.T)
                 print(s.T)
                 # assert False
                 break
-if False:
-    import matplotlib.pyplot as plt
-    for i in range(1000):
-        home_new = np.random.rand(7,1)*np.pi
-        T07_home = my_fk_dh.FK(home_new)
-        R07 = T07_home[:3, :3]
-        p07 = T07_home[:3, 3:4]
-
-        solu, coefs = IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh)
-        vals = np.linspace(-np.pi, np.pi, np.pi/0.01, endpoint=True)
-        solu_v = np.array([solu(v) for v in vals]).squeeze()
-        for sv in solu_v:
-            nrr = np.linalg.norm(T07_home-my_fk_dh.FK(sv))
-            if nrr > 1e-6:
-                print('ERROR')
-
-        fig, axs = plt.subplots(2, 1, figsize=(12, 8))
-        for i in range(6):
-            if i in [0, 2, 4, 6]:
-                coef = coefs[i]
-                ss, ret_vl, ret_fl = tangent_type(*coef)
-                typ = None
-                if ss<-1e-3:
-                    typ = 'cont'
-                elif ss>1e-3:
-                    typ = 'cyclic'
-                else:
-                    typ = 'jump'
-                axs[0].plot(vals, solu_v[:, i], label='{}. [{}] ss={}'.format(i,  typ, ss))
-                axs[0].scatter(ret_vl, ret_fl)
-            elif i !=3:
-                axs[1].plot(vals, solu_v[:, i], label='costype, start-end: {}'.format(solu_v[:, i][0] -solu_v[:, i][-1]))
-
-            # plt.plot(vals, solu_v[:, [0,2,6]])
-        axs[0].legend()
-        axs[1].legend()
-        plt.show()
 
 
 

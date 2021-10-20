@@ -138,7 +138,7 @@ def cosine_type(a, b, c, joint, GC=1.0, verbose=False, sine_type=False):
     jumpings = sorted(find_root(-np.pi+1e-8, True) + find_root(np.pi-1e-8, False), key=lambda r: r.root)
 
     # Joint Limits roots
-    limits = joint.limit_range - ContinuousSet(-np.pi, np.pi, False, True)
+    limits = joint.limit_range - ContinuousSet(-np.pi+eps_psi, np.pi-eps_psi, False, True)
     # theta_min = joint.limit_range.a
     # theta_max = joint.limit_range.b
     theta_min = limits.a
@@ -257,7 +257,7 @@ def tangent_type(an, bn, cn, ad, bd, cd, joint, verbose=False):
     jumpings = sorted(find_root(-np.pi+1e-8, True) + find_root(np.pi-1e-8, False), key=lambda r: r.root)
 
     # Joint Limits roots
-    limits = joint.limit_range - ContinuousSet(-np.pi, np.pi, False, True)
+    limits = joint.limit_range - ContinuousSet(-np.pi+eps_psi, np.pi-eps_psi, False, True)
     # theta_min = joint.limit_range.a
     # theta_max = joint.limit_range.b
     theta_min = limits.a
