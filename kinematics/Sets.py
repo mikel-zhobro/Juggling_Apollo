@@ -226,5 +226,5 @@ if __name__ == "__main__":
     # print(ss)
     print((ss-ss2).size)
 
-import numpy as np
-print(ContinuousSet(-np.pi , -np.pi/2) + ContinuousSet(np.pi/2 , np.pi))
+    import numpy as np
+    print(ContinuousSet(-np.pi , -np.pi/2) + ContinuousSet(np.pi/2 , np.pi))

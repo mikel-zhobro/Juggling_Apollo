@@ -1,7 +1,7 @@
 from math import sin, cos, tan, atan2, atan, sqrt
 import matplotlib.pyplot as plt
 import numpy as np
-from utilities import ContinuousSet
+from Sets import ContinuousSet
 from random import random
 
 # TODO: Still problems locating singularities.

@@ -1,19 +1,41 @@
 import numpy as np
-from utilities import ContinuousSet
+from Sets import ContinuousSet
 from utilities import JOINTS_LIMITS
 from math import sin, cos
+
+
+# (-1, 'BASE', 'R_BASE')
+#   R =
+#    -0.5          0.866025    0.0
+#     0.866025     0.5         0.0
+#     0.0          0.0        -1.0
+#   R =
+#    -sin(pi/6)     cos(pi/6)    0.0
+#     cos(pi/6)     sin(pi/6)    0.0
+#     0.0           0.0         -1.0
+#   p = 0 0 0
+
+spi6 = 0.5
+cpi6 = cos(np.pi/6)
+
+T_rbase_prim_rbase = np.array([  # Sets the Arm to the right base frame
+    [ 0.0, -1.0, 0.0, 0.0],
+    [ 0.0,  0.0, 1.0, 0.0],
+    [-1.0,  0.0, 0.0, 0.0],
+    [ 0.0,  0.0, 0.0, 1.0]], dtype = 'float')
 
 class DH_revolut():
     n_joints = 0
     class Joint():
-        def __init__(self, a, alpha, d, theta, name):
+        def __init__(self, a, alpha, d, theta, name="", offset=0.0):
             self.a = a
             self.alpha = alpha
             self.d = d
             self.theta = theta
             self.name = name
+            self.offset = offset
             self.index = DH_revolut.n_joints
-            self.limit_range = ContinuousSet(JOINTS_LIMITS[self.name][0], JOINTS_LIMITS[self.name][1], False, False)
+            self.limit_range = ContinuousSet(JOINTS_LIMITS[self.name][0]-offset, JOINTS_LIMITS[self.name][1]-offset, False, False)
             DH_revolut.n_joints += 1
 
         def __repr__(self):
@@ -25,17 +47,15 @@ class DH_revolut():
     def joint(self, i):
         return self.joints[i]
 
-    def add_joint(self, a, alpha, d, theta, name):
-        self.joints.append(self.Joint(a, alpha, d, theta, name))
-
-
+    def add_joint(self, a, alpha, d, theta, name="", offset=0.0):
+        self.joints.append(self.Joint(a, alpha, d, theta, name, offset))
 
     def getT(self, j, theta):
-        c_th = cos(theta + j.theta); s_th = sin(theta + j.theta)
+        c_th = cos(theta + j.theta + j.offset); s_th = sin(theta + j.theta + j.offset)
         if j.index==6:
             return np.array(
-                [[c_th,  -s_th,    0.0,  0.0],
-                [s_th,    c_th,    0.0,  0.0],
+                [[s_th,   c_th,    0.0,  0.0],
+                [-c_th,   s_th,    0.0,  0.0],
                 [0.0,     0.0,     1.0,  j.d],
                 [0.0,     0.0,     0.0,  1.0]], dtype='float')
         else:
@@ -51,7 +71,7 @@ class DH_revolut():
         T0_7 = np.eye(4)
         for j, theta_j in zip (self.joints, Q):
             T0_7 = T0_7.dot(self.getT(j, theta_j))
-        return T0_7
+        return T_rbase_prim_rbase.dot(T0_7)
 
     def get_i_R_j(self, i, j, Qi_j):
         # Qi_j: angles of joints from i to j
@@ -80,8 +100,10 @@ class DH_revolut():
             i_T_j = i_T_j.dot(self.getT(joint, th_j)[:a, :a])
         return i_T_j
 
-    def get_i_p_j(self, Q):
-        pass
+    def get_goal_in_base_frame(self, p, R):
+        R_ret = T_rbase_prim_rbase[:3,:3].T.dot(R)
+        p_ret = T_rbase_prim_rbase[:3,:3].T.dot(p) - T_rbase_prim_rbase[:3,3:4]
+        return p_ret, R_ret
 
     def plot(self):
         T0wshoulder = self.get_i_T_j(0, 2)
