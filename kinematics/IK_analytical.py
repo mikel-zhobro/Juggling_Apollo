@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from utilities import skew, vec, clip_c, modrad
-from utilities import ContinuousSet
+from utilities import skew, vec, clip_c
+from Sets import ContinuousSet
 from utilities import JOINTS_LIMITS, R_joints, L_joints
 from math import atan, sin, cos, acos, sqrt, atan2
 from tangent_type import tangent_type
@@ -192,7 +192,7 @@ if __name__ == "__main__":
             p07 = T07_home[:3, 3:4]
 
             for GC2, GC4, GC6 in GCs:
-                solu, feasible_set = IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, GC2=GC2, GC4=GC4, GC6=GC6, verbose=True)
+                solu, feasible_set = IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False)
                 for f in np.arange(-1.0, 1.0, 0.02):
                     s = solu(f*np.pi)
                     nrr = np.linalg.norm(T07_home-my_fk_dh.FK(s))

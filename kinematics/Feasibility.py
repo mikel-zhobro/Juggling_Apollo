@@ -1,7 +1,8 @@
 from math import sin, cos, tan, atan2, atan, sqrt, acos, asin
 import matplotlib.pyplot as plt
 import numpy as np
-from utilities import ContinuousSet, clip_c
+from utilities import clip_c
+from Sets import ContinuousSet
 from random import random
 from DH import DH_revolut
 
@@ -300,19 +301,6 @@ def sine_type(a, b, c, joint, GC=1.0, verbose=False):
     return cosine_type(a, b, c, joint, GC=GC, verbose=verbose, sine_type=True)
 
 
-
-def get_singular_tangent_type_params():
-    while True:
-        paramsn = np.random.rand(3,1)*2.0 - 1.0
-        paramsd = np.random.rand(3,1)*2.0 - 1.0
-        z = np.cross(paramsn, paramsd, axis=0)
-        if np.linalg.norm(z[0,0]**2 + z[1,0]**2 - z[2,0]**2) <1e-5:
-            break
-    params = np.zeros(6, dtype=float)
-    params[:3] = paramsn[:,0]
-    params[3:] = paramsd[:,0]
-    return params
-cosine = False
 if __name__ == "__main__":
     class Joint():
         def __init__(self, a, b, theta=0.0):
@@ -320,6 +308,20 @@ if __name__ == "__main__":
             self.index = DH_revolut.n_joints
             self.limit_range = ContinuousSet(a, b, False, False)
             DH_revolut.n_joints += 1
+
+    def get_singular_tangent_type_params():
+        while True:
+            paramsn = np.random.rand(3,1)*2.0 - 1.0
+            paramsd = np.random.rand(3,1)*2.0 - 1.0
+            z = np.cross(paramsn, paramsd, axis=0)
+            if np.linalg.norm(z[0,0]**2 + z[1,0]**2 - z[2,0]**2) <1e-5:
+                break
+        params = np.zeros(6, dtype=float)
+        params[:3] = paramsn[:,0]
+        params[3:] = paramsd[:,0]
+        return params
+
+    cosine = False
     while cosine:
         params = np.random.rand(3)
         cosine_type(*params, joint=Joint(-2.0, 2.0), verbose=True)

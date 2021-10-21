@@ -1,5 +1,5 @@
 import numpy as np
-from utilities import ContinuousSet
+from Sets import ContinuousSet
 from utilities import JOINTS_LIMITS
 from math import sin, cos
 
@@ -47,7 +47,7 @@ class DH_revolut():
     def joint(self, i):
         return self.joints[i]
 
-    def add_joint(self, a, alpha, d, theta, name, offset):
+    def add_joint(self, a, alpha, d, theta, name="", offset=0.0):
         self.joints.append(self.Joint(a, alpha, d, theta, name, offset))
 
     def getT(self, j, theta):

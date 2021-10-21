@@ -1,4 +1,3 @@
-from numpy.core.defchararray import join
 import pinocchio as pin
 import numpy as np
 from numpy.linalg import norm, solve

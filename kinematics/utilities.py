@@ -9,7 +9,6 @@ try:
     import pinocchio as pin
 except:
     pass
-from Sets import ContinuousSet
 
 def reduce_model(FILENAME, jointsToUse):
     model = pin.buildModelFromUrdf(FILENAME)

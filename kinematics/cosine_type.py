@@ -1,7 +1,8 @@
 from math import sin, cos, tan, atan2, atan, sqrt, acos
 import matplotlib.pyplot as plt
 import numpy as np
-from utilities import ContinuousSet, clip_c
+from Sets import ContinuousSet
+from utilities import clip_c
 from random import random
 
 

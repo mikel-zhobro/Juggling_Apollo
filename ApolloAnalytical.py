@@ -9,7 +9,7 @@ from kinematics.utilities import R_joints, L_joints
 from kinematics.fk import FK_DH
 from kinematics.utilities import skew, vec, clip_c
 from kinematics.Feasibility import sine_type, cosine_type, tangent_type
-from kinematics.utilities import ContinuousSet
+from kinematics.Sets import ContinuousSet
 
 
 th3_offset = np.pi/6
@@ -197,7 +197,7 @@ if True:
         #     print(GC2, GC4, GC6)
         #     IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, GC2=1, GC4=GC4, GC6=GC6, verbose=False, p06=my_fk_dh.get_i_T_j(0,6,home_new.flatten())[:3, 3], p07=my_fk_dh.get_i_T_j(0,7,home_new.flatten())[:3, 3])
         # continue
-            solu, feasible_set = IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False, p06=my_fk_dh.get_i_T_j(0,6,home_new.flatten())[:3, 3])
+            solu, feasible_set = IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, GC2=GC2, GC4=GC4, GC6=GC6, verbose=True, p06=my_fk_dh.get_i_T_j(0,6,home_new.flatten())[:3, 3])
         # solu, feasible_set = IK_heuristic1(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, verbose=False)
 
             for f in np.arange(-1.0, 1.0, 0.02):
