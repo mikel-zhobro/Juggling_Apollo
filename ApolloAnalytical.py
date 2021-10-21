@@ -23,7 +23,13 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
     Args:
         o_p_goal ([R^3]): the goal position in base frame [3x1]
         o_R_goal ([SO3]): the goal orientation in origin frame [3x3]
+
+    Considering the limits for each joints is considered in the analytical solution.
+    - One exception is the 3rd joint of apollo which has an offset of pi/6 (has to be rotated with pi/6 in order to match the real one).
+        * Offset the joint range accordingly
+        * Offset the solution accordingly
     """
+    p07_d, R07_d = DH_model.get_goal_in_base_frame(p07_d, R07_d)
     l0bs = vec([0,   0,     d_bs])
     l3se = vec([0,  -d_se,  0])
     l4ew = vec([0,   0,     d_ew])
@@ -98,7 +104,6 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
     else:
         th2 = lambda psi: ( np.pi - asin(clip_c( v(psi).dot(S2))) ) if asin(clip_c( v(psi).dot(S2))) > 0.0 else  ( -np.pi - asin(clip_c( v(psi).dot(S2))) )
 
-    # th2 = ( lambda psi: GC2* asin(clip_c( v(psi).dot(S2))) ) if GC2 > 0.0 else ( lambda psi: np.pi + GC2 * asin(clip_c( v(psi).dot(S2))) )
     th3 = lambda psi: atan2(v(psi).dot(S3[0:3]), v(psi).dot(S3[3:]))
     th5 = lambda psi: atan2(v(psi).dot(W5[0:3]), v(psi).dot(W5[3:]))
     th6 = lambda psi: GC6*acos(clip_c( v(psi).dot(W6) ))
@@ -166,10 +171,13 @@ my_fk_dh = DH_revolut()
 for a, alpha, d, theta, name in zip(a_s, alpha_s, d_s, theta_offset_s, R_joints):
     my_fk_dh.add_joint(a, alpha, d, theta, name)
 
-print(my_fk_dh.FK(np.zeros((7,1))))
+home_pose = np.array([0.0, -0.0, -np.pi/6, np.pi/2, 0.0, -0.0, 0.0]).reshape(-1,1)
+home_pose = np.array([1.0, 1.0, np.pi/6, 1.0, np.pi/4, 1.0, 2.0]).reshape(-1,1)
+
+print(my_fk_dh.FK(home_pose))
 
 # Test with random goal poses
-if False:
+if True:
     GCs = [(i, ii, iii) for i in [-1.0, 1.0] for ii in [-1.0, 1.0] for iii in [-1.0, 1.0]]
     for i in range(10000):
         # home_new = np.random.rand(7,1)*np.pi
@@ -187,7 +195,7 @@ if False:
         #     IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, GC2=1, GC4=GC4, GC6=GC6, verbose=False, p06=my_fk_dh.get_i_T_j(0,6,home_new.flatten())[:3, 3], p07=my_fk_dh.get_i_T_j(0,7,home_new.flatten())[:3, 3])
         # continue
             # solu, feasible_set = IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, GC2=GC2, GC4=GC4, GC6=GC6, verbose=True, p06=my_fk_dh.get_i_T_j(0,6,home_new.flatten())[:3, 3])
-        solu, feasible_set = IK_heuristic1(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, verbose=True)
+        solu, feasible_set = IK_heuristic1(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, verbose=False)
 
         for f in np.arange(-1.0, 1.0, 0.02):
             s = solu(f*np.pi)
@@ -199,7 +207,7 @@ if False:
                 print('pgoal', p07.T)
                 print(home_new.T)
                 print(s.T)
-                # assert False
+                assert False
                 break
 
 

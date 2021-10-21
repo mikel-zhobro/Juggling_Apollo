@@ -15,35 +15,20 @@ from math import sin, cos
 #     0.0           0.0         -1.0
 #   p = 0 0 0
 
-# (0, 'R_BASE', 'R_SFE')
-#   R =
-#     1.0    0.0   0.0
-#     0.0    0.0   1.0
-#     0.0   -1.0   0.0
-#   p = 0.0   0.16813   0.0
-
 spi6 = 0.5
 cpi6 = cos(np.pi/6)
-T_base_rbase_prim = np.array([  #
-    [-spi6, cpi6,  0.0,  0.0],
-    [ cpi6, spi6,  0.0,  0.0],
-    [ 0.0,  0.0,   1.0,  0.0],
-    [ 0.0,  0.0,   0.0,  1.0]], dtype = 'float')
 
+T_rbase_prim_rbase = np.array([  # Sets the Arm to the right base frame
+    [ 0.0, -1.0, 0.0, 0.0],
+    [ 0.0,  0.0, 1.0, 0.0],
+    [-1.0,  0.0, 0.0, 0.0],
+    [ 0.0,  0.0, 0.0, 1.0]], dtype = 'float')
 
-T_rbase_prim_rbase = np.array([   # R_rbase_tcpdh^T R_rbase_tcpDH
-    [ 0.0, 1.0, 0.0, 0.0],
-    [ 0.0, 0.0, 1.0, 0.0],
-    [-1.0, 0.0, 0.0, 0.0],
-    [ 0.0, 0.0, 0.0, 1.0]], dtype = 'float')
-
-
-T_tcpdh_tcppin = np.array([   # R_rbase_tcpdh^T R_rbase_tcpDH
-    [ 0.0, -spi6, cpi6, 0.0],
-    [ 0.0,  cpi6, spi6, 0.0],
+T_tcpdh_tcppin = np.array([      # Defines the orientation of the TCP
+    [ 0.0,  1.0,  0.0,  0.0],
     [-1.0,  0.0,  0.0,  0.0],
+    [ 0.0,  0.0,  1.0,  0.0],
     [ 0.0,  0.0,  0.0,  1.0]], dtype = 'float')
-
 
 class DH_revolut():
     n_joints = 0
@@ -91,9 +76,8 @@ class DH_revolut():
         T0_7 = np.eye(4)
         for j, theta_j in zip (self.joints, Q):
             T0_7 = T0_7.dot(self.getT(j, theta_j))
-        # return T_base_pin_dh.dot(T0_7)
-        # return T_base_rbase.dot(T0_7).dot(T_tcpdh_tcppin)
-        return T_base_rbase_prim.dot(T_rbase_prim_rbase.dot(T0_7))
+        # return T_rbase_prim_rbase.dot(T0_7).dot(T_tcpdh_tcppin)
+        return T_rbase_prim_rbase.dot(T0_7)
 
     def get_i_R_j(self, i, j, Qi_j):
         # Qi_j: angles of joints from i to j
@@ -122,8 +106,10 @@ class DH_revolut():
             i_T_j = i_T_j.dot(self.getT(joint, th_j)[:a, :a])
         return i_T_j
 
-    def get_i_p_j(self, Q):
-        pass
+    def get_goal_in_base_frame(self, p, R):
+        R_ret = T_rbase_prim_rbase[:3,:3].T.dot(R)
+        p_ret = T_rbase_prim_rbase[:3,:3].T.dot(p) - T_rbase_prim_rbase[:3,3:4]
+        return p_ret, R_ret
 
     def plot(self):
         T0wshoulder = self.get_i_T_j(0, 2)
