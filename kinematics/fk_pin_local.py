@@ -155,7 +155,11 @@ if __name__ == "__main__":
 
     # pin_rob = PinRobot(False)
     # home_pose = np.array([np.pi/8, 0.0, 0.0, 3*np.pi/8, 0.0, 0.0, 0.0]).reshape(-1,1)
-    home_pose = np.array([0.0, -0.0, 0.0, 0.0, 0.0, 0.0, 0.0]).reshape(-1,1)
+    home_pose = np.array([0.0, 0.0, -np.pi/6, 0.0, 0.0, np.pi/2, 0.0]).reshape(-1,1)
+    home_pose = np.array([1.0, 1.0, 0.0, 1.0, np.pi/4, 1.0, 2.0]).reshape(-1,1)
+    home_pose = np.array([1.0, 1.0, 1.0, 1.0, np.pi/4, 1.0, 2.0]).reshape(-1,1)
+    home_pose = np.array([1.0, 1.0, np.pi/6, 1.0, np.pi/4, 1.0, 2.0]).reshape(-1,1)
+
     # print(pin_rob.FK(home_pose, "R_BASE"))
     # print(pin_rob.FK(home_pose+2.0, "R_BASE"))
     # print(pin_rob.FK(home_pose+1.0, "R_BASE"))
@@ -165,59 +169,32 @@ if __name__ == "__main__":
 
 
     # Find DH params
-    prevJoint = BASE
-    prevJoint = "R_BASE"
-    print(-1, BASE, "R_BASE")
-    print(pin_rob.FK_f2f(home_pose, baseName=BASE, frameName="R_BASE"))
+    if False:
+        prevJoint = BASE
+        prevJoint = "R_BASE"
+        print(-1, BASE, "R_BASE")
+        print(pin_rob.FK_f2f(home_pose, baseName=BASE, frameName="R_BASE"))
 
-    for i, jointName in enumerate(R_joints):
-        print(i, prevJoint, jointName)
-        print(pin_rob.FK_f2f(home_pose, baseName=prevJoint, frameName=jointName))
-        prevJoint = jointName
+        for i, jointName in enumerate(R_joints):
+            print(i, prevJoint, jointName)
+            print(pin_rob.FK_f2f(home_pose, baseName=prevJoint, frameName=jointName))
+            prevJoint = jointName
 
-    print(i+1, prevJoint, TCP)
-    print(pin_rob.FK_f2f(home_pose, baseName=prevJoint, frameName=TCP))
+        print(i+1, prevJoint, TCP)
+        print(pin_rob.FK_f2f(home_pose, baseName=prevJoint, frameName=TCP))
 
-    print(i+2, "R_SFE", "R_EB")  # Shoulder -> Elbow
-    print(pin_rob.FK_f2f(home_pose, baseName="R_SFE", frameName="R_EB"))
+        print(i+2, "R_SFE", "R_EB")  # Shoulder -> Elbow
+        print(pin_rob.FK_f2f(home_pose, baseName="R_SFE", frameName="R_EB"))
 
-    print(i+3, "R_EB", "R_WFE")  # Elbow -> Wrist
-    print(pin_rob.FK_f2f(home_pose, baseName="R_EB", frameName="R_WFE"))
+        print(i+3, "R_EB", "R_WFE")  # Elbow -> Wrist
+        print(pin_rob.FK_f2f(home_pose, baseName="R_EB", frameName="R_WFE"))
 
-    print(i+4, "R_WFE", TCP)  # Wrist -> TCP
-    print(pin_rob.FK_f2f(home_pose, baseName="R_WFE", frameName=TCP))
+        print(i+4, "R_WFE", TCP)  # Wrist -> TCP
+        print(pin_rob.FK_f2f(home_pose, baseName="R_WFE", frameName=TCP))
 
-    print(i+5, "R_BASE", TCP)
+        print(i+6, BASE, TCP)
+        print(pin_rob.FK_f2f(home_pose, baseName=BASE, frameName=TCP))
+
+
+    print(5, "R_BASE", TCP)
     print(pin_rob.FK_f2f(home_pose, baseName="R_BASE", frameName=TCP))
-
-    print(i+6, BASE, TCP)
-    print(pin_rob.FK_f2f(home_pose, baseName=BASE, frameName=TCP))
-
-
-
-    # q = pin.randomConfiguration(pin_rob.model,-np.ones(pin_rob.model.nq),np.ones(pin_rob.model.nq))
-    # v = np.random.rand(pin_rob.model.nv)
-
-    # frame_name = TCP
-    # frame_id = pin_rob.model.getFrameId(frame_name)
-    # frame = pin_rob.model.frames[frame_id]
-    # frame_placement = frame.placement
-    # parent_joint = frame.parent
-
-    # # 0
-    # # pin_rob.fk(q, TCP)
-    # pin.forwardKinematics(pin_rob.model, pin_rob.data, q)
-    # pin.updateFramePlacement(pin_rob.model, pin_rob.data, frame_id) # updates data
-    # # pin.updateFramePlacements(pin_rob.model,pin_rob.data)
-    # J = pin.computeFrameJacobian(pin_rob.model, pin_rob.data, q, frame_id)
-
-    # print(J)
-    # print()
-
-    # # 1
-    # pin.forwardKinematics(pin_rob.model,pin_rob.data,q,v)
-    # pin.computeJointJacobians(pin_rob.model,pin_rob.data,q)
-    # pin.updateFramePlacement(pin_rob.model,pin_rob.data, frame_id)
-    # frame_J = pin.getFrameJacobian(pin_rob.model, pin_rob.data, frame_id, pin.ReferenceFrame.WORLD)
-    # J_dot_v = pin.Motion(frame_J.dot(v).reshape(6,1))
-    # print(frame_J)
