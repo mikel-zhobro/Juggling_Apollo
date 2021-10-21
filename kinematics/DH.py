@@ -24,23 +24,18 @@ T_rbase_prim_rbase = np.array([  # Sets the Arm to the right base frame
     [-1.0,  0.0, 0.0, 0.0],
     [ 0.0,  0.0, 0.0, 1.0]], dtype = 'float')
 
-T_tcpdh_tcppin = np.array([      # Defines the orientation of the TCP
-    [ 0.0,  1.0,  0.0,  0.0],
-    [-1.0,  0.0,  0.0,  0.0],
-    [ 0.0,  0.0,  1.0,  0.0],
-    [ 0.0,  0.0,  0.0,  1.0]], dtype = 'float')
-
 class DH_revolut():
     n_joints = 0
     class Joint():
-        def __init__(self, a, alpha, d, theta, name):
+        def __init__(self, a, alpha, d, theta, name="", offset=0.0):
             self.a = a
             self.alpha = alpha
             self.d = d
             self.theta = theta
             self.name = name
+            self.offset = offset
             self.index = DH_revolut.n_joints
-            self.limit_range = ContinuousSet(JOINTS_LIMITS[self.name][0], JOINTS_LIMITS[self.name][1], False, False)
+            self.limit_range = ContinuousSet(JOINTS_LIMITS[self.name][0]-offset, JOINTS_LIMITS[self.name][1]-offset, False, False)
             DH_revolut.n_joints += 1
 
         def __repr__(self):
@@ -56,11 +51,11 @@ class DH_revolut():
         self.joints.append(self.Joint(a, alpha, d, theta, name))
 
     def getT(self, j, theta):
-        c_th = cos(theta + j.theta); s_th = sin(theta + j.theta)
+        c_th = cos(theta + j.theta + j.offset); s_th = sin(theta + j.theta + j.offset)
         if j.index==6:
             return np.array(
-                [[c_th,  -s_th,    0.0,  0.0],
-                [s_th,    c_th,    0.0,  0.0],
+                [[s_th,   c_th,    0.0,  0.0],
+                [-c_th,   s_th,    0.0,  0.0],
                 [0.0,     0.0,     1.0,  j.d],
                 [0.0,     0.0,     0.0,  1.0]], dtype='float')
         else:
@@ -76,7 +71,6 @@ class DH_revolut():
         T0_7 = np.eye(4)
         for j, theta_j in zip (self.joints, Q):
             T0_7 = T0_7.dot(self.getT(j, theta_j))
-        # return T_rbase_prim_rbase.dot(T0_7).dot(T_tcpdh_tcppin)
         return T_rbase_prim_rbase.dot(T0_7)
 
     def get_i_R_j(self, i, j, Qi_j):
