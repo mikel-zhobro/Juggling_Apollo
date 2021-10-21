@@ -47,8 +47,8 @@ class DH_revolut():
     def joint(self, i):
         return self.joints[i]
 
-    def add_joint(self, a, alpha, d, theta, name):
-        self.joints.append(self.Joint(a, alpha, d, theta, name))
+    def add_joint(self, a, alpha, d, theta, name, offset):
+        self.joints.append(self.Joint(a, alpha, d, theta, name, offset))
 
     def getT(self, j, theta):
         c_th = cos(theta + j.theta + j.offset); s_th = sin(theta + j.theta + j.offset)

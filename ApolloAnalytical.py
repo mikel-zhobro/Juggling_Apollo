@@ -52,7 +52,7 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
     small_psi  = acos(clip_c((np.linalg.norm(x0sw)**2 + d_se**2 - d_ew**2) / (2*d_se*np.linalg.norm(x0sw)))) # angle betweren SW and SE(see page. 6 2Paper)
     th2_ref = atan2(-x0sw[2, 0], sqrt(x0sw[0, 0]**2 + x0sw[1, 0]**2)) - GC4*small_psi
 
-    R03_ref = DH_model.get_i_R_j(0, 3, [th1_ref, th2_ref, -DH_model.joint(2).theta])
+    R03_ref = DH_model.get_i_R_j(0, 3, [th1_ref, th2_ref, -DH_model.joint(2).theta-DH_model.joint(2).offset])
 
     if verbose:
         print('Theta1', th1_ref)
@@ -166,12 +166,13 @@ d_bs = 0.378724; d_se = 0.4; d_ew = 0.39; d_wt = 0.186
 a_s            = [0.0] * 7
 alpha_s        = [pi2, pi2, -pi2, pi2, -pi2, pi2, 0.0]
 d_s            = [d_bs, 0.0, d_se, 0.0, d_ew, 0.0, d_wt]
-theta_s = [0.0, -pi2, pi2+th3_offset, 0.0, -pi2, 0.0, 0.0]
+theta_s = [0.0, -pi2, pi2, 0.0, -pi2, 0.0, 0.0]
+offsets = [0.0, 0.0, th3_offset, 0.0, 0.0, 0.0, 0.0]
 
 # Create Robot
 my_fk_dh = DH_revolut()
-for a, alpha, d, theta, name in zip(a_s, alpha_s, d_s, theta_s, R_joints):
-    my_fk_dh.add_joint(a, alpha, d, theta, name)
+for a, alpha, d, theta, name, offset in zip(a_s, alpha_s, d_s, theta_s, R_joints, offsets):
+    my_fk_dh.add_joint(a, alpha, d, theta, name, offset)
 
 home_pose = np.array([0.0, -0.0, -np.pi/6, np.pi/2, 0.0, -0.0, 0.0]).reshape(-1,1)
 home_pose = np.array([1.0, 1.0, np.pi/6, 1.0, np.pi/4, 1.0, 2.0]).reshape(-1,1)
