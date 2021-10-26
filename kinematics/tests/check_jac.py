@@ -1,3 +1,5 @@
+
+import path
 import numpy as np
 from fk import J, FK, FK_DH
 from scipy.optimize import approx_fprime

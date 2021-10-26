@@ -1,7 +1,7 @@
 from math import sin, cos, tan, atan2, atan, sqrt
 import matplotlib.pyplot as plt
 import numpy as np
-from utilities import ContinuousSet
+from Sets import ContinuousSet
 from random import random
 
 # TODO: Still problems locating singularities.
@@ -11,7 +11,7 @@ delta_psi = 5.0/180*np.pi
 # print('Delta psi:' + str(eps_psi))
 
 
-def tangent_type(an, bn, cn, ad, bd, cd, theta_lim_range, verbose=False):
+def tangent_type(an, bn, cn, ad, bd, cd, joint, verbose=False):
     feasible_set = ContinuousSet(-np.pi, np.pi, False, True)  # here we capture the feasible set of psi
     singular_feasible_set = ContinuousSet()
     stat_psi = list()
@@ -103,8 +103,8 @@ def tangent_type(an, bn, cn, ad, bd, cd, theta_lim_range, verbose=False):
         return roots
 
     # Consider Limitss
-    theta_min = theta_lim_range.a
-    theta_max = theta_lim_range.b
+    theta_min = joint.limit_range.a
+    theta_max = joint.limit_range.b
     roots = sorted(find_root(theta_min, True) + find_root(theta_max, False), key=lambda r: r.root)
     if verbose:
         print('roots', roots)
@@ -163,6 +163,7 @@ def tangent_type(an, bn, cn, ad, bd, cd, theta_lim_range, verbose=False):
             for psi in singular_feasible_set.inverse(-np.pi, np.pi):
                 plt.bar(psi.a, height=1, width=psi.b-psi.a, bottom=0, align='edge', color='red', alpha=0.3, label='singularity')
         plt.legend(loc=1)
+        plt.suptitle(r'$\theta_i$'.format(joint.index))
         plt.show()
 
     return feasible_set

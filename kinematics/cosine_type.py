@@ -1,7 +1,8 @@
 from math import sin, cos, tan, atan2, atan, sqrt, acos
 import matplotlib.pyplot as plt
 import numpy as np
-from utilities import ContinuousSet, clip_c
+from Sets import ContinuousSet
+from utilities import clip_c
 from random import random
 
 
@@ -10,7 +11,7 @@ eps_psi = 1e-4
 delta_psi = 5.0/180*np.pi
 # print('Delta psi:' + str(eps_psi))
 
-def cosine_type(a, b, c, theta_lim_range, GC=1.0, verbose=False):
+def cosine_type(a, b, c, joint, GC=1.0, verbose=False):
     feasible_set = ContinuousSet(-np.pi, np.pi, False, True)  # here we capture the feasible set of psi
     stat_psi = list()
     psi_singular = False
@@ -69,8 +70,8 @@ def cosine_type(a, b, c, theta_lim_range, GC=1.0, verbose=False):
         return roots
 
     # Consider Limitss
-    theta_min = theta_lim_range.a
-    theta_max = theta_lim_range.b
+    theta_min = joint.limit_range.a
+    theta_max = joint.limit_range.b
     roots = sorted(find_root(theta_min, True) + find_root(theta_max, False), key=lambda r: r.root)
     if verbose:
         print('roots', roots)
@@ -124,6 +125,7 @@ def cosine_type(a, b, c, theta_lim_range, GC=1.0, verbose=False):
         for psi in feasible_set.c_ranges:
             plt.bar(psi.a, height=1, width=psi.b-psi.a, bottom=0, align='edge', color='green', alpha=0.3, label='feasible')
         plt.legend(loc=1)
+        plt.suptitle(r'$\theta_i$'.format(joint.index))
         plt.show()
     return feasible_set
 

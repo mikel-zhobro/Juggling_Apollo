@@ -5,8 +5,10 @@ sys.path.append(PROJECT_ROOT)
 from apollo_interface.Apollo_It import JOINTS_LIMITS, R_joints, L_joints
 import numpy as np
 import math
-import pinocchio as pin
-from Sets import ContinuousSet
+try:
+    import pinocchio as pin
+except:
+    pass
 
 def reduce_model(FILENAME, jointsToUse):
     model = pin.buildModelFromUrdf(FILENAME)

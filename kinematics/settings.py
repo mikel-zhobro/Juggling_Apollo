@@ -4,7 +4,8 @@ import numpy as np
 FILENAME = "/home/apollo/Software/workspace/src/catkin/playful/playful-kinematics/urdf/apollo.urdf"
 
 
-WORLD = "BASE"
+WORLD = "universe"
+BASE = "BASE"
 TCP = "R_PALM"
 
 joints = [
