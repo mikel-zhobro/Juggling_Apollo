@@ -50,7 +50,9 @@ def tangent_type(an, bn, cn, ad, bd, cd, theta_lim_range, verbose=False):
         # feas_psi = feasible_set_for_monotonic_function(tan_f, j.limit_range, ContinuousSet(-np.pi, np.pi, False))
     else:  # discontinuous profile (2 possibilities)
         theta_s_neg = atan((at*bn - bt*an) / (at*bd - bt*ad))
-        psi_singular = 2 * atan(at/ (bt-ct)) # should be avoided
+        psi_singular1 = 2 * atan(at/ (bt-ct)) # should be avoided
+        psi_singular2 = atan2(at/(-ct), (bt/(-ct))) # should be avoided
+        psi_singular = psi_singular1
         if psi_singular + delta_psi > np.pi:
             singular_feasible_set.add_c_range(psi_singular+delta_psi-2*np.pi - delta_psi, psi_singular - delta_psi)
         elif psi_singular - delta_psi < -np.pi:
@@ -147,6 +149,8 @@ def tangent_type(an, bn, cn, ad, bd, cd, theta_lim_range, verbose=False):
         # Singular poinrs
         for psi in feasible_set.c_ranges:
             plt.axvspan(psi.a, psi.b, color='green', alpha=0.3)
+        plt.scatter(psi_singular1, 0.0, c='k')
+        plt.scatter(psi_singular2, 0.0, c='y')
         plt.xlabel(r'$\psi$')
         plt.ylabel(r'$\theta_i$')
         plt.legend(loc=1)
