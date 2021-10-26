@@ -172,7 +172,6 @@ def cosine_type(a, b, c, joint, GC=1.0, verbose=False, sine_type=False):
     return feasible_set
 
 
-
 def tangent_type(an, bn, cn, ad, bd, cd, joint, verbose=False):
     feasible_set = ContinuousSet(-np.pi, np.pi, False, True)  # here we capture the feasible set of psi
     singular_feasible_set = ContinuousSet()

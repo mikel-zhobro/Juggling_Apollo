@@ -127,8 +127,9 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
         plt.title('Final Feasible Set [GC2({}), GC4({}), GC6({}])'.format(GC2, GC4, GC6))
         plt.show()
     # print(psi_feasible_set)
+    solution_function = lambda psi: np.array([ th1(psi), th2(psi), th3(psi), th4, th5(psi), th6(psi), th7(psi)]).reshape(-1,1)
 
-    return (lambda psi: np.array([ th1(psi), th2(psi), th3(psi), th4, th5(psi), th6(psi), th7(psi)]).reshape(-1,1), psi_feasible_set)
+    return (solution_function, psi_feasible_set)
 
 
 def IK_heuristic1(p07_d, R07_d, DH_model, verbose=False):
@@ -197,7 +198,7 @@ if True:
         #     print(GC2, GC4, GC6)
         #     IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, GC2=1, GC4=GC4, GC6=GC6, verbose=False, p06=my_fk_dh.get_i_T_j(0,6,home_new.flatten())[:3, 3], p07=my_fk_dh.get_i_T_j(0,7,home_new.flatten())[:3, 3])
         # continue
-            solu, feasible_set = IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, GC2=GC2, GC4=GC4, GC6=GC6, verbose=True, p06=my_fk_dh.get_i_T_j(0,6,home_new.flatten())[:3, 3])
+            solu, feasible_set = IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False, p06=my_fk_dh.get_i_T_j(0,6,home_new.flatten())[:3, 3])
         # solu, feasible_set = IK_heuristic1(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, verbose=False)
 
             for f in np.arange(-1.0, 1.0, 0.02):
