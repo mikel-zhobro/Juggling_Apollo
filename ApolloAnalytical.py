@@ -6,7 +6,6 @@ from math import sin, cos, acos, sqrt, atan2, asin
 from kinematics.IK_analytical import IK_anallytical
 from kinematics.DH import DH_revolut
 from kinematics.utilities import R_joints, L_joints
-from kinematics.fk import FK_DH
 from kinematics.utilities import skew, vec, clip_c
 from kinematics.Feasibility import sine_type, cosine_type, tangent_type
 from kinematics.Sets import ContinuousSet
@@ -31,7 +30,7 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
         * Offset the joint range accordingly
         * Offset the solution accordingly
     """
-    p07_d, R07_d = DH_model.get_goal_in_base_frame(p07_d, R07_d)
+    p07_d, R07_d = DH_model.get_goal_in_dh_base_frame(p07_d, R07_d)
     l0bs = vec([0,   0,     d_bs])
     l3se = vec([0,  -d_se,  0])
     l4ew = vec([0,   0,     d_ew])
@@ -177,8 +176,10 @@ for a, alpha, d, theta, name, offset in zip(a_s, alpha_s, d_s, theta_s, R_joints
 
 home_pose = np.array([0.0, -0.0, -np.pi/6, np.pi/2, 0.0, -0.0, 0.0]).reshape(-1,1)
 home_pose = np.array([1.0, 1.0, np.pi/6, 1.0, np.pi/4, 1.0, 2.0]).reshape(-1,1)
+home_pose = np.array([0.0, -0.0, -np.pi/6, 0.0, 0.0, 0.0, 0.0]).reshape(-1,1)
 
-print(my_fk_dh.FK(home_pose))
+print(my_fk_dh.FK(home_pose, base_frame=False))
+print(my_fk_dh.FK(home_pose, base_frame=True))
 
 # Test with random goal poses
 if False:
@@ -213,16 +214,3 @@ if False:
                     print(s.T)
                     assert False
                     break
-
-
-
-if False:
-    for i in range(122):
-        home_new = np.random.rand(7,1)*np.pi/2
-        T_1 = FK_DH(home_new.copy())
-        T_2 = my_fk_dh.FK(home_new.copy())
-        nrr = np.linalg.norm(T_1-T_2)
-        # print(T_1)
-        # print(T_2)
-        if nrr >1e-6:
-            print("ERROR")
