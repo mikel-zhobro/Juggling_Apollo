@@ -1,6 +1,7 @@
 from sys import exec_prefix
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.spatial.transform import Rotation
 try:
     import O8O_apollo as apollo
 except:
@@ -116,6 +117,7 @@ def go_to_posture(posture, nb_iterations, bursting):
 
 class MyApollo:
     def __init__(self, r_arm=True):
+        self.r_arm = r_arm
         if r_arm:
             self.joints_list = R_joints
         else:
@@ -222,6 +224,17 @@ class MyApollo:
             return self.go_to_posture_array(np.zeros_like(home_pose), it_time, False)
         else:
             return self.go_to_posture_array(home_pose, it_time, False)
+        
+    def get_TCP_pose(self):
+        observation = apollo.read()
+        cartesian_states = observation.get_cartesian()
+        if self.r_arm:
+            hand = cartesian_states.hands[0]
+        else:
+            hand = cartesian_states.hands[1]
+        
+        return np.array(hand.position).reshape(-1,1), Rotation.from_quat(hand.orientation).as_dcm()
+        
 
 
 

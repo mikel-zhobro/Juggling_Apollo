@@ -31,9 +31,9 @@ def modrad(q):
     """Limit q between where q is an numpy array"""
     res = np.array(q).copy()
     while np.any(res>np.pi):
-        res = np.where(q>np.pi, q-2*np.pi, res)
+        res = np.where(res>np.pi, res-2*np.pi, res)
     while np.any(res<-np.pi):
-        res = np.where(q<-np.pi, q+2*np.pi, res)
+        res = np.where(res<-np.pi, res+2*np.pi, res)
     return res
 
 def euler_to_quaternion(r):
@@ -77,4 +77,14 @@ def vec(elems):
 def clip_c(v):
     return np.clip(v, -1.0, 1.0)
 
+def pR2T(p,R):
+    T = np.eye(4)
+    T[:3,:3] = R
+    T[:3, 3:4] = p
+    return T
 
+def invT(T):
+    T = T.copy()
+    T[:3,:3] = T[:3,:3].T
+    T[:3,3:4] = -T[:3,:3].dot(T[:3,3:4])
+    return T

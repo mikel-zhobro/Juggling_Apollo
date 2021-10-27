@@ -3,6 +3,7 @@ import numpy as np
 import O8O_apollo as apollo
 from pinocchio.rpy import rpyToMatrix
 import pinocchio
+from scipy.spatial.transform import Rotation as R
 pinocchio.switchToNumpyMatrix()
 from Apollo_It import R_joints, L_joints, jointsToIndexDict
 np.set_printoptions(precision=4, suppress=True)
@@ -45,7 +46,8 @@ def print_hand(index, hand):
     # print "\tAngular velocity:", str_array(hand.orientation_angular_velocity)
     # print "\tAngular acceleration:", str_array(hand.orientation_angular_acceleration)
     print "Orientation (quaternion):"
-    print quaternionToMatrix(*hand.orientation)
+    print R.from_quat(hand.orientation).as_dcm()
+    # print quaternionToMatrix(*hand.orientation)
     # print "\t\tvelocity", str_array(hand.orientation_velocity)
     # print "\t\tacceleration", str_array(hand.orientation_acceleration)
 
@@ -73,6 +75,7 @@ def euler_from_quaternion(x, y, z, w):
 
 def quaternionToMatrix(x, y, z, w):
     return rpyToMatrix(euler_from_quaternion(x, y, z, w))
+
 
 print ""
 
