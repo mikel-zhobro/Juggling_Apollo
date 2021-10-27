@@ -181,7 +181,7 @@ home_pose = np.array([1.0, 1.0, np.pi/6, 1.0, np.pi/4, 1.0, 2.0]).reshape(-1,1)
 print(my_fk_dh.FK(home_pose))
 
 # Test with random goal poses
-if True:
+if False:
     GCs = [(i, ii, iii) for i in [-1.0, 1.0] for ii in [-1.0, 1.0] for iii in [-1.0, 1.0]]
     for i in tqdm(range(10000)):
         # home_new = np.random.rand(7,1)*np.pi

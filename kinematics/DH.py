@@ -18,6 +18,12 @@ from math import sin, cos
 spi6 = 0.5
 cpi6 = cos(np.pi/6)
 
+T_world_rbase_prim = np.array([  # Sets the Arm to the right base frame
+    [-spi6,  cpi6,  0.0, 0.0],
+    [ cpi6,  spi6,  0.0, 0.0],
+    [ 0.0,   0.0,  -1.0, 0.0],
+    [ 0.0,   0.0,   0.0, 1.0]], dtype = 'float')
+
 T_rbase_prim_rbase = np.array([  # Sets the Arm to the right base frame
     [ 0.0, -1.0, 0.0, 0.0],
     [ 0.0,  0.0, 1.0, 0.0],
@@ -66,12 +72,15 @@ class DH_revolut():
                 [0.0,    sig,       0.0,       j.d],
                 [0.0,    0.0,       0.0,       1.0]], dtype='float')
 
-    def FK(self, Q):
+    def FK(self, Q, base_frame=True):
         Q = Q.copy().reshape(-1, 1)
         T0_7 = np.eye(4)
         for j, theta_j in zip (self.joints, Q):
             T0_7 = T0_7.dot(self.getT(j, theta_j))
-        return T_rbase_prim_rbase.dot(T0_7)
+        if base_frame:
+            return T_rbase_prim_rbase.dot(T0_7)
+        else:  # world frame
+            return T_world_rbase_prim.dot(T_rbase_prim_rbase.dot(T0_7))
 
     def get_i_R_j(self, i, j, Qi_j):
         # Qi_j: angles of joints from i to j
@@ -101,8 +110,8 @@ class DH_revolut():
         return i_T_j
 
     def get_goal_in_base_frame(self, p, R):
-        R_ret = T_rbase_prim_rbase[:3,:3].T.dot(R)
-        p_ret = T_rbase_prim_rbase[:3,:3].T.dot(p) - T_rbase_prim_rbase[:3,3:4]
+        R_ret = T_world_rbase_prim[:3,:3].T.dot(R)
+        p_ret = T_world_rbase_prim[:3,:3].T.dot(p) - T_world_rbase_prim[:3,3:4]
         return p_ret, R_ret
 
     def plot(self):
