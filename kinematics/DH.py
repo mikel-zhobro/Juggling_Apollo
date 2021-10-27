@@ -1,34 +1,25 @@
 import numpy as np
 from Sets import ContinuousSet
-from utilities import JOINTS_LIMITS
+from utilities import JOINTS_LIMITS, pR2T, invT
 from math import sin, cos
+np.set_printoptions(precision=4, suppress=True)
 
-
-# (-1, 'BASE', 'R_BASE')
-#   R =
-#    -0.5          0.866025    0.0
-#     0.866025     0.5         0.0
-#     0.0          0.0        -1.0
-#   R =
-#    -sin(pi/6)     cos(pi/6)    0.0
-#     cos(pi/6)     sin(pi/6)    0.0
-#     0.0           0.0         -1.0
-#   p = 0 0 0
 
 spi6 = 0.5
 cpi6 = cos(np.pi/6)
 
-T_world_rbase_prim = np.array([  # Sets the Arm to the right base frame
+T_base_rbase = np.array([  # Sets the Arm to the right base frame
     [-spi6,  cpi6,  0.0, 0.0],
     [ cpi6,  spi6,  0.0, 0.0],
     [ 0.0,   0.0,  -1.0, 0.0],
     [ 0.0,   0.0,   0.0, 1.0]], dtype = 'float')
 
-T_rbase_prim_rbase = np.array([  # Sets the Arm to the right base frame
+T_rbase_dhbase = np.array([  # Sets the Arm to the right base frame
     [ 0.0, -1.0, 0.0, 0.0],
     [ 0.0,  0.0, 1.0, 0.0],
     [-1.0,  0.0, 0.0, 0.0],
     [ 0.0,  0.0, 0.0, 1.0]], dtype = 'float')
+
 
 class DH_revolut():
     n_joints = 0
@@ -48,7 +39,8 @@ class DH_revolut():
             return '{}. {}: a({}), b({}), d({}), theta({})'.format(self.index, self.name, self.a, self.alpha, self.d, self.theta)
 
     def __init__(self):
-        self.joints = []
+        DH_revolut.n_joints = 0
+        self.joints = list()
 
     def joint(self, i):
         return self.joints[i]
@@ -72,15 +64,17 @@ class DH_revolut():
                 [0.0,    sig,       0.0,       j.d],
                 [0.0,    0.0,       0.0,       1.0]], dtype='float')
 
-    def FK(self, Q, base_frame=True):
+    def FK(self, Q, rbase_frame=False):
         Q = Q.copy().reshape(-1, 1)
         T0_7 = np.eye(4)
         for j, theta_j in zip (self.joints, Q):
             T0_7 = T0_7.dot(self.getT(j, theta_j))
-        if base_frame:
-            return T_rbase_prim_rbase.dot(T0_7)
-        else:  # world frame
-            return T_world_rbase_prim.dot(T_rbase_prim_rbase.dot(T0_7))
+  
+        T0_7 = T_rbase_dhbase.dot(T0_7)
+        if not rbase_frame:  # dont enter if we want fk in rbase frame
+            T0_7 = T_base_rbase.dot(T0_7)
+        
+        return T0_7
 
     def get_i_R_j(self, i, j, Qi_j):
         # Qi_j: angles of joints from i to j
@@ -109,9 +103,17 @@ class DH_revolut():
             i_T_j = i_T_j.dot(self.getT(joint, th_j)[:a, :a])
         return i_T_j
 
-    def get_goal_in_base_frame(self, p, R):
-        R_ret = T_world_rbase_prim[:3,:3].T.dot(R)
-        p_ret = T_world_rbase_prim[:3,:3].T.dot(p) - T_world_rbase_prim[:3,3:4]
+    def get_goal_in_dh_base_frame(self, p, R):
+        # base-> rbase
+        T_rbase_base = invT(T_base_rbase)
+        R_ret = T_rbase_base[:3,:3].dot(R)
+        p_ret = T_rbase_base[:3,:3].dot(p) + T_rbase_base[:3,3:4]
+
+        # rbase -> dh_base
+        T_dhbase_rbase = invT(T_rbase_dhbase)
+        R_ret = T_dhbase_rbase[:3,:3].dot(R_ret)
+        p_ret = T_dhbase_rbase[:3,:3].dot(p_ret) + T_dhbase_rbase[:3,3:4]
+
         return p_ret, R_ret
 
     def plot(self):
@@ -119,3 +121,27 @@ class DH_revolut():
         T0wselbo    = self.get_i_T_j(0, 4)
         T0wswrist   = self.get_i_T_j(0, 6)
         pass
+
+    
+if __name__ == "__main__":
+    from kinematics.utilities import R_joints
+    pi2 = np.pi/2
+    th3_offset = np.pi/6
+    d_bs = 0.378724; d_se = 0.4; d_ew = 0.39; d_wt = 0.186
+    a_s            = [0.0] * 7
+    alpha_s        = [pi2, pi2, -pi2, pi2, -pi2, pi2, 0.0]
+    d_s            = [d_bs, 0.0, d_se, 0.0, d_ew, 0.0, d_wt]
+    theta_s = [0.0, -pi2, pi2, 0.0, -pi2, 0.0, 0.0]
+    offsets = [0.0, 0.0, th3_offset, 0.0, 0.0, 0.0, 0.0]
+
+    # Create Robot
+    my_fk_dh = DH_revolut()
+    for a, alpha, d, theta, name, offset in zip(a_s, alpha_s, d_s, theta_s, R_joints, offsets):
+        my_fk_dh.add_joint(a, alpha, d, theta, name, offset)
+        
+        
+    # Joint configuration
+    home_pose = np.array([0.0, -0.0, 0.0, 0.0, 0.0, 0.0, 0.0]).reshape(-1,1)
+    base_T_tcp = my_fk_dh.FK(home_pose, False)
+    print(base_T_tcp)  # base_T_tcp
+    print(my_fk_dh.get_i_T_j(0,7, home_pose))  # basedh_T_tcp

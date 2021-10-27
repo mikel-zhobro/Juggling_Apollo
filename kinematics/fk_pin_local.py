@@ -1,3 +1,4 @@
+from numpy.core.defchararray import join
 import pinocchio as pin
 import numpy as np
 from numpy.linalg import norm, solve
@@ -10,11 +11,11 @@ pin.switchToNumpyMatrix()  # https://github.com/stack-of-tasks/pinocchio/issues/
 
 
 # inv kinematics params
-IT_MAX = 10200
+IT_MAX     = 10200
 eps_pos    = 1e-3
-eps_orient    = 1e-2
-DT     = 10e-4
-damp   = 1e-12
+eps_orient = 1e-2
+DT         = 10e-4
+damp       = 1e-12
 
 class PinRobot():
     def __init__(self, r_arm=True):
@@ -27,7 +28,7 @@ class PinRobot():
                                              # Only used as internal state(still all functions should be called with certain joint_state as input)
 
         # Use "BASE" instead of 'universe' as base coordinate frame (Set the BASE Frame)
-        self.SE3_base_origin = self.FK_f2f(pin.neutral(self.model), BASE, WORLD).inverse()
+        self.SE3_base_origin = self.FK_f2f(pin.neutral(self.model), BASE, WORLD)
 
     def limit_joints(self, Q):
         for i, name in enumerate(self.joints_list):
@@ -140,60 +141,42 @@ class PinRobot():
 
 
 if __name__ == "__main__":
-    pin_rob = PinRobot()
+    from scipy.spatial.transform import Rotation as R
+    pin_rob = PinRobot(True)
 
     # # Try out IK
     # home_new = np.array([np.pi/8, -0.4, 0.0, 3*np.pi/8, 0.0, 0.0, 0.0]).reshape(-1, 1)
     # home_new = np.random.rand(7,1)*np.pi
     # SE3_w_tcp = pin_rob.FK(home_new)
-    # q_goal = pin_rob.ik_apollo(home_new, SE3_w_tcp.translation-0.3, SE3_w_tcp.rotation[:,[1,2,0]], plot=False)
+    # delta_R = R.from_euler("xyz", [0.1, 0.1, 0.1]).as_dcm()
+    # # q_goal = pin_rob.ik_apollo(home_new, SE3_w_tcp.translation-0.3, SE3_w_tcp.rotation[:,[1,2,0]], plot=False)
+    # q_goal = pin_rob.ik_apollo(home_new, SE3_w_tcp.translation-0.3, delta_R.dot(SE3_w_tcp.rotation), plot=False)
     # print(q_goal.T)
     # print()
     # print(home_new.T)
 
 
-    # pin_rob = PinRobot(False)
-    # home_pose = np.array([np.pi/8, 0.0, 0.0, 3*np.pi/8, 0.0, 0.0, 0.0]).reshape(-1,1)
-    home_pose = np.array([0.0, 0.0, -np.pi/6, 0.0, 0.0, np.pi/2, 0.0]).reshape(-1,1)
-    home_pose = np.array([1.0, 1.0, 0.0, 1.0, np.pi/4, 1.0, 2.0]).reshape(-1,1)
-    home_pose = np.array([1.0, 1.0, 1.0, 1.0, np.pi/4, 1.0, 2.0]).reshape(-1,1)
-    home_pose = np.array([1.0, 1.0, np.pi/6, 1.0, np.pi/4, 1.0, 2.0]).reshape(-1,1)
+    home_pose = np.array([0.0, -0.1, -np.pi/6, 0.0, 0.0, np.pi/2, 0.0]).reshape(-1,1)
+    home_pose = np.array([0.0, -0.1, 0.0, 0.0, 0.0, 0.0, 0.0]).reshape(-1,1)
+    home_pose = np.array([0.0, -0.0, 0.0, 0.0, 0.0, 0.0, 0.0]).reshape(-1,1)  
 
-    # print(pin_rob.FK(home_pose, "R_BASE"))
-    # print(pin_rob.FK(home_pose+2.0, "R_BASE"))
-    # print(pin_rob.FK(home_pose+1.0, "R_BASE"))
-    # print(pin_rob.FK_f2f(home_pose, baseName=BASE, frameName="R_BASE"))  # base-> R_base
-    # print(pin_rob.FK_f2f(home_pose, baseName='universe', frameName="R_BASE"))
-    # print(pin_rob.FK_f2f(home_pose, baseName='universe', frameName="R_BASE"))
 
+    def print_FK(base, frame):
+        print(base, frame) # base -> frame
+        print(pin_rob.FK_f2f(home_pose, baseName=base, frameName=frame).homogeneous)
 
     # Find DH params
     if False:
-        prevJoint = BASE
-        prevJoint = "R_BASE"
-        print(-1, BASE, "R_BASE")
-        print(pin_rob.FK_f2f(home_pose, baseName=BASE, frameName="R_BASE"))
-
-        for i, jointName in enumerate(R_joints):
-            print(i, prevJoint, jointName)
-            print(pin_rob.FK_f2f(home_pose, baseName=prevJoint, frameName=jointName))
-            prevJoint = jointName
-
-        print(i+1, prevJoint, TCP)
-        print(pin_rob.FK_f2f(home_pose, baseName=prevJoint, frameName=TCP))
-
-        print(i+2, "R_SFE", "R_EB")  # Shoulder -> Elbow
-        print(pin_rob.FK_f2f(home_pose, baseName="R_SFE", frameName="R_EB"))
-
-        print(i+3, "R_EB", "R_WFE")  # Elbow -> Wrist
-        print(pin_rob.FK_f2f(home_pose, baseName="R_EB", frameName="R_WFE"))
-
-        print(i+4, "R_WFE", TCP)  # Wrist -> TCP
-        print(pin_rob.FK_f2f(home_pose, baseName="R_WFE", frameName=TCP))
-
-        print(i+6, BASE, TCP)
-        print(pin_rob.FK_f2f(home_pose, baseName=BASE, frameName=TCP))
+        print_FK("R_SFE", "R_EB")  # Shoulder -> Elbow
+        print_FK("R_EB", "R_WFE")  # Elbow -> Wrist
+        print_FK("R_WFE", TCP)     # Wrist -> TCP
+        print_FK(BASE, TCP)        # Base -> TCP
 
 
-    print(5, "R_BASE", TCP)
-    print(pin_rob.FK_f2f(home_pose, baseName="R_BASE", frameName=TCP))
+
+    print_FK("universe", BASE) # World -> TCP
+    print_FK(BASE, "R_BASE")   # Base  -> TCP
+
+    print_FK("universe", TCP) # World  -> TCP
+    print_FK(BASE, TCP)       # R_Base -> TCP
+    print_FK("R_BASE", TCP)   # R_Base -> TCP
