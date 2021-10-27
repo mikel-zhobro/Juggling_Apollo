@@ -24,5 +24,19 @@ def main():
     plt.legend()
     plt.show()
     
+    
+def main2():
+
+       # define the model and draw some data
+    model = lambda x: x * np.sin(x)
+    xdata = np.arange(0, 12, 0.2)
+    ydata = model(xdata)
+
+    plt.plot(xdata, ydata, '-', color='k', label="psi")
+    plt.fill_between(xdata, ydata -2, ydata + 2, color='gray', alpha=0.2, label="psimin psimax")
+    plt.legend()
+    plt.show()
+       
+
 if __name__ == "__main__":
-    main()
+    main2()

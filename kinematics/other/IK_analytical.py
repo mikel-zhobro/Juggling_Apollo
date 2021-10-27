@@ -1,3 +1,8 @@
+import os, sys
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+sys.path.append(PROJECT_ROOT)
+    
+    
 import numpy as np
 import matplotlib.pyplot as plt
 from utilities import skew, vec, clip_c
@@ -151,7 +156,8 @@ if __name__ == "__main__":
     # Create Robot
     my_fk_dh = DH_revolut()
     for a, alpha, d, theta, name in zip(a_s, alpha_s, d_s, theta_offset_s, R_joints):
-        my_fk_dh.add_joint(a, alpha, d, theta, name)
+        my_fk_dh.add_joint(a, alpha, d, theta, JOINTS_LIMITS[name], name)
+
 
 
     # Test with random goal poses

@@ -3,17 +3,15 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from math import sin, cos, acos, sqrt, atan2, asin
 
-from IK_analytical import IK_anallytical
 from DH import DH_revolut
-from utilities import R_joints, L_joints
-from fk import FK_DH
+from utilities import R_joints, L_joints, JOINTS_LIMITS
 from utilities import skew, vec, clip_c
 from Feasibility import sine_type, cosine_type, tangent_type
 from Sets import ContinuousSet
 
 np.set_printoptions(precision=4, suppress=True)
 
-
+# DH Params
 pi2 = np.pi/2
 th3_offset = np.pi/6
 d_bs = 0.378724; d_se = 0.4; d_ew = 0.39; d_wt = 0.186
@@ -174,7 +172,8 @@ if __name__ == "__main__":
     # Create Robot
     my_fk_dh = DH_revolut()
     for a, alpha, d, theta, name, offset in zip(a_s, alpha_s, d_s, theta_s, R_joints, offsets):
-        my_fk_dh.add_joint(a, alpha, d, theta, name, offset)
+        my_fk_dh.add_joint(a, alpha, d, theta, JOINTS_LIMITS[name], name, offset)
+        
 
     home_pose = np.array([0.0, -0.0, -np.pi/6, np.pi/2, 0.0, -0.0, 0.0]).reshape(-1,1)
     home_pose = np.array([1.0, 1.0, np.pi/6, 1.0, np.pi/4, 1.0, 2.0]).reshape(-1,1)
@@ -188,37 +187,25 @@ if __name__ == "__main__":
             home_new = np.array([ j.limit_range.sample() for j in my_fk_dh.joints ]).reshape(7,1)
 
             # print(home_new.T)
-            T07_home = my_fk_dh.FK(home_new, True)
+            T07_home = my_fk_dh.FK(home_new)
             R07 = T07_home[:3, :3]
             p07 = T07_home[:3, 3:4]
-            for GC2, GC4, GC6 in GCs:
+            # for GC2, GC4, GC6 in GCs:
             #     IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, GC2=1, GC4=GC4, GC6=GC6, verbose=False, p06=my_fk_dh.get_i_T_j(0,6,home_new.flatten())[:3, 3], p07=my_fk_dh.get_i_T_j(0,7,home_new.flatten())[:3, 3])
             # continue
-                solu, feasible_set = IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False)  # , p06=my_fk_dh.get_i_T_j(0,6,home_new.flatten())[:3, 3]
-            # solu, feasible_set = IK_heuristic1(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, verbose=False)
+                # solu, feasible_set = IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False)  # , p06=my_fk_dh.get_i_T_j(0,6,home_new.flatten())[:3, 3]
+                # solu, feasible_set = IK_heuristic1(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, verbose=True)
+            solu, feasible_set = IK_heuristic2(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, verbose=False)
 
-                for f in np.arange(-1.0, 1.0, 0.02):
-                    s = solu(f*np.pi)
-                    nrr = np.linalg.norm(T07_home-my_fk_dh.FK(s, True))
-                    if nrr >1e-6:
-                        print('ERR', nrr)
-                        print('PSI: {} pi'.format(f))
-                        print('------------')
-                        print('pgoal', p07.T)
-                        print(home_new.T)
-                        print(s.T)
-                        assert False
-                        break
-
-
-
-    if False:
-        for i in range(122):
-            home_new = np.random.rand(7,1)*np.pi/2
-            T_1 = FK_DH(home_new.copy())
-            T_2 = my_fk_dh.FK(home_new.copy())
-            nrr = np.linalg.norm(T_1-T_2)
-            # print(T_1)
-            # print(T_2)
-            if nrr >1e-6:
-                print("ERROR")
+            for f in np.arange(-1.0, 1.0, 0.02):
+                s = solu(f*np.pi)
+                nrr = np.linalg.norm(T07_home-my_fk_dh.FK(s))
+                if nrr >1e-6:
+                    print('ERR', nrr)
+                    print('PSI: {} pi'.format(f))
+                    print('------------')
+                    print('pgoal', p07.T)
+                    print(home_new.T)
+                    print(s.T)
+                    assert False
+                    break

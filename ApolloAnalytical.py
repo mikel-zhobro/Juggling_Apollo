@@ -5,7 +5,7 @@ from math import sin, cos, acos, sqrt, atan2, asin
 
 from kinematics.IK_analytical import IK_anallytical
 from kinematics.DH import DH_revolut
-from kinematics.utilities import R_joints, L_joints
+from kinematics.utilities import R_joints, L_joints, JOINTS_LIMITS
 from kinematics.utilities import skew, vec, clip_c
 from kinematics.Feasibility import sine_type, cosine_type, tangent_type
 from kinematics.Sets import ContinuousSet
@@ -172,14 +172,13 @@ offsets = [0.0, 0.0, th3_offset, 0.0, 0.0, 0.0, 0.0]
 # Create Robot
 my_fk_dh = DH_revolut()
 for a, alpha, d, theta, name, offset in zip(a_s, alpha_s, d_s, theta_s, R_joints, offsets):
-    my_fk_dh.add_joint(a, alpha, d, theta, name, offset)
+    my_fk_dh.add_joint(a, alpha, d, theta, JOINTS_LIMITS[name], name, offset)
 
 home_pose = np.array([0.0, -0.0, -np.pi/6, np.pi/2, 0.0, -0.0, 0.0]).reshape(-1,1)
 home_pose = np.array([1.0, 1.0, np.pi/6, 1.0, np.pi/4, 1.0, 2.0]).reshape(-1,1)
 home_pose = np.array([0.0, -0.0, -np.pi/6, 0.0, 0.0, 0.0, 0.0]).reshape(-1,1)
 
-print(my_fk_dh.FK(home_pose, base_frame=False))
-print(my_fk_dh.FK(home_pose, base_frame=True))
+print(my_fk_dh.FK(home_pose))
 
 # Test with random goal poses
 if False:

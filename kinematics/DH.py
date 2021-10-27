@@ -24,7 +24,7 @@ T_rbase_dhbase = np.array([  # Sets the Arm to the right base frame
 class DH_revolut():
     n_joints = 0
     class Joint():
-        def __init__(self, a, alpha, d, theta, name="", offset=0.0):
+        def __init__(self, a, alpha, d, theta, limit=(-np.pi, np.pi), name="", offset=0.0):
             self.a = a
             self.alpha = alpha
             self.d = d
@@ -32,7 +32,8 @@ class DH_revolut():
             self.name = name
             self.offset = offset
             self.index = DH_revolut.n_joints
-            self.limit_range = ContinuousSet(JOINTS_LIMITS[self.name][0]-offset, JOINTS_LIMITS[self.name][1]-offset, False, False)
+            # self.limit_range = ContinuousSet(JOINTS_LIMITS[self.name][0]-offset, JOINTS_LIMITS[self.name][1]-offset, False, False)
+            self.limit_range = ContinuousSet(limit[0]-offset, limit[1]-offset, False, False)
             DH_revolut.n_joints += 1
 
         def __repr__(self):
@@ -45,8 +46,8 @@ class DH_revolut():
     def joint(self, i):
         return self.joints[i]
 
-    def add_joint(self, a, alpha, d, theta, name="", offset=0.0):
-        self.joints.append(self.Joint(a, alpha, d, theta, name, offset))
+    def add_joint(self, a, alpha, d, theta, limit=(-np.pi, np.pi), name="", offset=0.0):
+        self.joints.append(self.Joint(a, alpha, d, theta, limit, name, offset))
 
     def getT(self, j, theta):
         c_th = cos(theta + j.theta + j.offset); s_th = sin(theta + j.theta + j.offset)
@@ -137,7 +138,8 @@ if __name__ == "__main__":
     # Create Robot
     my_fk_dh = DH_revolut()
     for a, alpha, d, theta, name, offset in zip(a_s, alpha_s, d_s, theta_s, R_joints, offsets):
-        my_fk_dh.add_joint(a, alpha, d, theta, name, offset)
+        my_fk_dh.add_joint(a, alpha, d, theta, JOINTS_LIMITS[name], name, offset)
+
         
         
     # Joint configuration

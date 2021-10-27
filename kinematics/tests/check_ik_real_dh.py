@@ -2,8 +2,8 @@ import path
 import numpy as np
 from fk_pin_local import PinRobot
 from DH import DH_revolut
-from ApolloAnalyticalIK import IK_anallytical, IK_heuristic1, IK_heuristic2
-from utilities import R_joints, L_joints, pR2T
+from AnalyticalIK import IK_anallytical, IK_heuristic1, IK_heuristic2
+from utilities import R_joints, L_joints, JOINTS_LIMITS, pR2T
 from tqdm import tqdm
 
 np.set_printoptions(precision=3, suppress=True)
@@ -28,7 +28,8 @@ dh_rob = DH_revolut()
 pin_rob = PinRobot(r_arm=r_arm)
 
 for a, alpha, d, theta, name, offset in zip(a_s, alpha_s, d_s, theta_s, joints2Use, offsets):
-    dh_rob.add_joint(a, alpha, d, theta, name, offset)
+    dh_rob.add_joint(a, alpha, d, theta, JOINTS_LIMITS[name], name, offset)
+
 
 
 def check_FK():
