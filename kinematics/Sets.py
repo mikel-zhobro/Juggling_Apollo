@@ -22,7 +22,6 @@ class ContinuousRange():
     def sample(self):
         return self.a + (self.b-self.a) * random()
 
-
     def __repr__(self):
         return '{}{}, {}{}'.format('[' if self.a_incl else '(', self.a, self.b, ']' if self.b_incl else ')')
 
@@ -36,6 +35,9 @@ class ContinuousRange():
         else:
             lower = self.a < other.a
         return lower
+    
+    def __contains__(self, val):
+        return   self.a <= val <= self.b
 
 class ContinuousSet():
     def __init__(self, start=None, end=None, start_include=True, end_include=True):
@@ -70,6 +72,7 @@ class ContinuousSet():
 
     @property
     def middle(self):
+        assert not self.empty, "Set is empty, there is no middle."
         return (self.a + self.b)/2
 
     @property
@@ -79,6 +82,21 @@ class ContinuousSet():
     def sample(self):
         self.assert_range()
         return self.c_ranges[0].sample()
+    
+    def max_range(self):
+        max_range = max(self.c_ranges, key=lambda item: item.b-item.a)
+        return ContinuousSet(max_range.a, max_range.b, max_range.a_incl, max_range.b_incl)
+    
+    def range_of(self, val):
+        cr_ret = None
+        for cr in self.c_ranges:
+            if val in cr:
+                cr_ret = cr
+                break
+                
+        assert cr_ret is not None, "Cannot find any range in {} where {} is included!".format(self, val)
+        return ContinuousSet(cr_ret.a, cr_ret.b, cr_ret.a_incl, cr_ret.b_incl)
+            
 
     @property
     def size(self):
