@@ -37,93 +37,100 @@ class ApolloArmKinematics():
         """
         return self.pin_rob(q).homogeneous
     
-    def IK_heuristic2(self, p07_d, R07_d):
-        """
-        Does a search over all branches and returns the one with the biggest feasible set.
-        """
-        solution_function, feasible_set = IK_heuristic2(p07_d, R07_d, self.dh_rob)
-        psi_middle = feasible_set.middle
-        psi_min = feasible_set.a
-        psi_max = feasible_set.b
-        assert not feasible_set.empty, "Not possible to calculate IK"
-        return solution_function(psi_middle), psi_min, psi_max
+    def IK(self,p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0):
+        return IK_anallytical(p07_d, R07_d, DH_model, GC2=GC2, GC4=GC4, GC6=GC6)
     
-    def seqIK(self, position_traj, thetas, q_joints_state_start):
-        N = position_traj.shape[0]
-        psi_mins = np.zeros((N))
-        psi_maxs = np.zeros((N))
-        joints_traj = np.zeros((N, q_joints_state_start.size))
-        joints_traj[0] = q_joints_state_start
-        psi_mins[0] = q_joints_state_start-1.0
-        psi_maxs[0] = q_joints_state_start+1.0
-
-        q_joint_state_i = q_joints_state_start.copy()
-        for i, (pos_goal_i, theta_i) in enumerate(zip(position_traj[1:], thetas[1:])):
-            s = sin(theta_i); c = cos(theta_i)
-            R_goal_i = np.array([[ s,   c,  0.0,],
-                                [0.0, 0.0, 1.0,],
-                                [-c,   s,  0.0,]], dtype='float')
-            q_joint_state_i, psi_min, psi_max = self.IK(pos_goal_i.reshape(3,1), R_goal_i, q_joint_state_i.copy(), verbose=False)
-            joints_traj[i+1,:] = q_joint_state_i.T
-            psi_mins[i+1] = psi_min
-            psi_maxs[i+1] = psi_max
-
-        return joints_traj
-        
-    def CartesianMinJerk2JointSpace(self, position_traj, thetas, q_joints_state_start):
-        """ Calculates the joint space trajectories that correspond to cartesian trajectories
+    def seqIK(self, position_traj, thetas_traj, q_joints_state_start, verbose=False):
+        """[summary]
 
         Args:
-            position_traj ([np.array(dtype='float')]): [N,3] a xyz relative trajectory of length N from the start position specified by q_joints_state_start
-            thetas ([np.array(dtype='float')]): [N,] describing the orientation of the cup in the 2D plane(deviation from upright position)
-                                                z_cup = [0, -1, 0] is constant as we want to rotate only in the 2D plane
-                                                R = [[ s, 0, c],
-                                                    [ 0,-1, 0],
-                                                    [-c, 0, s]]
-            q_joints_state_start ([type]): starting joint configuration which should correspond to the first pose
-        """
-        # 1. Make sure the home position of the hand matches the start theta of the trajectory
-        base_T_tcp_start = self.FK(q_joints_state_start.copy())
-        s = sin(thetas[0]); c = cos(thetas[0])
-        R_goal_start = np.array([[ s,   c,  0.0,],
-                                [0.0, 0.0, 1.0,],
-                                [-c,   s,  0.0,]], dtype='float')
-        assert np.allclose(base_T_tcp_start[:3, :3], R_goal_start), "Home position must match the start theta of the trajectory"
-        assert np.allclose(base_T_tcp_start[:3, -1], position_traj[0,:]), "Home position must match the start position of the trajectory"
-        ## If needed to corrects
-        ## a. Update joint_start so that the home position/orientation matches the first position/orientation of the trajectory
-        # q_joints_state_start = IK(base_T_tcp_start[:3, 3:], R_goal_start, q_joints_state_start.copy())
+            position_traj        ([np.array((N, 3))]): relative movements from start_position
+            thetas_traj          ([np.array(N)])     : relative rotations around z axis from start orientation(x-down, y-right, z-forward)
+            q_joints_state_start ([np.array((7, 1))]): decides start position/orientation from where everything unfolds
+            verbose (bool, optional)                 : Ploting for verbose reasons. Defaults to False.
 
+        Returns:
+            [np.array((N, 7))]: Joint trajectories
+        """
+        mu = 0.3
+        # Find a solution satisfying the constraints for start pose
+        T_start = self.dh_rob.FK(q_joints_state_start)
+        GC2, GC4, GC6, feasible_set, solu =  IK_heuristic2(p07_d=T_start[:3,3:4], R07_d=T_start[:3,:3], DH_model=self.dh_rob) # decide branch of solutions
+        
+        # Choose psi for start configuration
+        feasible_set = feasible_set.max_range()
+        assert not feasible_set.empty, "Not possible to calculate IK"
+        psi = feasible_set.middle
+        psi_min = feasible_set.a
+        psi_max = feasible_set.b
+        q_joint_state_i = solu(psi)
+        
+        # Init lists
         N = position_traj.shape[0]
+        psis = np.zeros((N))
         psi_mins = np.zeros((N))
         psi_maxs = np.zeros((N))
-        joints_traj = np.zeros((N, q_joints_state_start.size))
-        joints_traj[0] = q_joints_state_start
-        psi_mins[0] = q_joints_state_start-1.0
-        psi_maxs[0] = q_joints_state_start+1.0
+        joints_traj = np.zeros((N,) + q_joint_state_i.shape)
+        joints_traj[0] = q_joint_state_i
+        psis[0] = psi
+        psi_mins[0] = psi_min
+        psi_maxs[0] = psi_max
 
-        q_joint_state_i = q_joints_state_start.copy()
-        for i, (pos_goal_i, theta_i) in enumerate(zip(position_traj[1:], thetas[1:])):
+        R_start = np.array([[0.0, -1.0, 0.0,],  # uppword orientation(cup is up)
+                            [0.0,  0.0, 1.0,],
+                            [-1.0, 0.0, 0.0,]], dtype='float')
+        p_start = T_start[:3, 3:4]
+
+        for i, (pos_goal_i, theta_i) in enumerate(zip(position_traj[1:], thetas_traj[1:])): # position_traj and thetas should start from 0
+            
+            # Compute next orientation from theta
             s = sin(theta_i); c = cos(theta_i)
-            R_goal_i = np.array([[ s,   c,  0.0,],
-                                [0.0, 0.0, 1.0,],
-                                [-c,   s,  0.0,]], dtype='float')
-            q_joint_state_i, psi_min, psi_max = self.IK(pos_goal_i.reshape(3,1), R_goal_i, q_joint_state_i.copy(), verbose=False)
-            joints_traj[i+1,:] = q_joint_state_i.T
-            psi_mins[i+1] = psi_min
-            psi_maxs[i+1] = psi_max
+            start_R_i = np.array([[c,  -s,   0.0,],
+                                  [s,   c,   0.0,],
+                                  [0.0, 0.0, 1.0,]], dtype='float')
+            R_i = R_start.dot(start_R_i)
+            
+            # Calc IK for new pose
+            solu, feas_set = IK_anallytical(p_start+pos_goal_i.reshape(3,1), R_i, self.dh_rob, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False)
+            
+            # Choose psi for the new joint configuration  
+            feas_set = feas_set.range_of(psi)
+            psi = (1-mu)*psi + mu*feas_set.middle  # TODO: Find range closest to previous one, not just max_range
+            
+            # Fill verbose lists
+            joints_traj[i+1,:] = solu(psi)
+            psis[i+1] = psi
+            psi_mins[i+1] = feas_set.a
+            psi_maxs[i+1] = feas_set.b
+            
+        if verbose:
+            self.plot(psis, psi_mins, psi_maxs, joints_traj)
         return joints_traj
     
-
-    def plot(self, psi_mins, psi_maxs, dt=1):
-        times = np.arange(0, len(psi_maxs)) * dt
-        plt.plot(times, (psi_mins+psi_maxs)/2, '-', color='k', label="psi")
-        plt.fill_between(times, psi_mins, psi_maxs, color='gray', alpha=0.2, label="psimin-psimax")
+    def plot(self, psis, psi_mins, psi_maxs, joint_trajs, dt=1):
+        times = np.arange(0, len(psis)) * dt
+        plt.figure()
+        plt.plot(times, psis, '-', color='k', label="psi")
+        plt.fill_between(times, psi_mins, psi_maxs, color='gray', alpha=0.2, label="psimin<->psimax")
         plt.legend()
+        
+        
+        plt.figure()
+        plt.plot(times, joint_trajs.copy().squeeze())
         plt.show()
        
        
        
 
 if __name__ == "__main__":
+    dt = 0.06
     myApollo = ApolloArmKinematics()
+    home_pose = np.array([0.0, -1.0, 0.0, np.pi/2, 0.0, 0.0, 0.0])
+    
+    N = 12
+    thetas_traj = np.zeros((N,))
+    position_traj = np.zeros((N, 3))
+    position_traj[:, 0] = np.sin(np.arange(N)*dt)
+    
+    myApollo.seqIK(position_traj, thetas_traj, home_pose, verbose=True)
+    
