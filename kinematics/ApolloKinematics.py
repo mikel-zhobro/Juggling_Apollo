@@ -14,7 +14,7 @@ class ApolloArmKinematics():
         self.r_arm = r_arm
         self.dh_rob = self.init_dh()
         self.pin_rob = PinRobot(r_arm=r_arm)
-    
+
     def init_dh(self):
         joints2Use = R_joints if self.r_arm else L_joints
         pi2 = np.pi/2
@@ -40,7 +40,7 @@ class ApolloArmKinematics():
     
     def IK(self,p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0):
         return IK_anallytical(p07_d, R07_d, DH_model, GC2=GC2, GC4=GC4, GC6=GC6)
-    
+
     def seqIK(self, position_traj, thetas_traj, q_joints_state_start, verbose=False):
         """[summary]
 
@@ -69,7 +69,7 @@ class ApolloArmKinematics():
         psi_min = feasible_set.a
         psi_max = feasible_set.b
         q_joint_state_i = solu(psi)
-        
+
         # Init lists
         N = position_traj.shape[0]
         psis = np.zeros((N))
@@ -87,21 +87,21 @@ class ApolloArmKinematics():
         p_start = T_start[:3, 3:4]
 
         for i, (pos_goal_i, theta_i) in enumerate(zip(position_traj[1:], thetas_traj[1:])): # position_traj and thetas should start from 0
-            
+
             # Compute next orientation from theta
             s = sin(theta_i); c = cos(theta_i)
             start_R_i = np.array([[c,  -s,   0.0,],
                                   [s,   c,   0.0,],
                                   [0.0, 0.0, 1.0,]], dtype='float')
             R_i = R_start.dot(start_R_i)
-            
+
             # Calc IK for new pose
-            solu, feas_set = IK_anallytical(p_start+pos_goal_i.reshape(3,1), R_i, self.dh_rob, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False)
-            
-            # Choose psi for the new joint configuration  
+            solu, feas_set = IK_anallytical(p_start+pos_goal_i.reshape(3,1), R_i, self.dh_rob, GC2=GC2, GC4=GC4, GC6=GC6, verbose=True)
+
+            # Choose psi for the new joint configuration
             feas_set = feas_set.range_of(psi)
             psi = (1-mu)*psi + mu*feas_set.middle  # TODO: Find range closest to previous one, not just max_range
-            
+
             # Fill verbose lists
             joints_traj[i+1,:] = solu(psi)
             psis[i+1] = psi
@@ -124,9 +124,9 @@ class ApolloArmKinematics():
         js = axs[1].plot(times[1:], 180.0/np.pi*joint_trajs[1:,:].copy().squeeze())
         axs[1].legend(js, [r'$\theta_{}$'.format(i+1) for i in range(7)])
         plt.show()
-       
-       
-       
+
+
+
 
 if __name__ == "__main__":
     from apollo_interface.Apollo_It import MyApollo, plot_simulation
