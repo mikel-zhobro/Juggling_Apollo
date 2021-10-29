@@ -115,7 +115,7 @@ def go_to_posture(posture, nb_iterations, bursting):
     return observation
 
 
-class MyApollo:
+class ApolloInterface:
     def __init__(self, r_arm=True):
         self.r_arm = r_arm
         if r_arm:
@@ -278,7 +278,7 @@ def main():
     inputs[:,4] = 0.3 * np.sin(timesteps)
     inputs[:,6] = 0.3 * np.sin(timesteps)
 
-    r_arm = MyApollo(r_arm=True)
+    r_arm = ApolloInterface(r_arm=True)
     print("GOING HOME!")
     r_arm.calibration()
     r_arm.go_to_home_position(zero_pose=True)

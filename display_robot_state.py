@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from apollo_interface.Apollo_It import MyApollo
+from apollo_interface.Apollo_It import ApolloInterface
 np.set_printoptions(precision=6, suppress=True)
 
 # home_pose = np.array([1.0, 1.0, np.pi/6, 1.0, np.pi/4, 1.0, 2.0]).reshape(-1,1)
@@ -10,7 +10,7 @@ home_pose = np.array([0.0, -0.1, 0.0, 0.0, 0.0, 0.0, np.pi/2]).reshape(-1,1)
 
 
 def main():    
-    r_arm = MyApollo(r_arm=True)
+    r_arm = ApolloInterface(r_arm=True)
     r_arm.go_to_posture_array(home_pose, 5000, False)
     
     

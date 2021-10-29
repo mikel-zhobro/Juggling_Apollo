@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from apollo_interface.Apollo_It import MyApollo
+from apollo_interface.Apollo_It import ApolloInterface
 
 def main():
 
@@ -10,7 +10,7 @@ def main():
     inputs = np.zeros((N, 7))
     inputs[:,0] = 0.3 * np.sin(timesteps)
     
-    r_arm = MyApollo(r_arm=True)
+    r_arm = ApolloInterface(r_arm=True)
     r_arm.go_to_posture_array([0.0, 0.0, -np.pi/4, np.pi/2, np.pi/2, np.pi/2, 0.0], 2000, False)
     # r_arm.go_to_posture_array([np.pi/4, 0.0, np.pi/4, np.pi/4, 3*np.pi/4, 3*np.pi/4, 0.0], 2000, False)
     

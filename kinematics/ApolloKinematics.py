@@ -114,15 +114,15 @@ class ApolloArmKinematics():
 
 
 if __name__ == "__main__":
-    from apollo_interface.Apollo_It import MyApollo, plot_simulation
+    from apollo_interface.Apollo_It import ApolloInterface
     dt = 0.004      # [s] discretization time step size
     home_pose = np.array([0.0, -1.0, 0.0, np.pi/2, 0.0, 0.0, 0.0])
 
-    r_arm_interface = MyApollo(r_arm=True)
-    myApollo = ApolloArmKinematics()
+    rArmInterface = ApolloInterface(r_arm=True)
+    rArmKinematics = ApolloArmKinematics(r_arm=True)
     
-    N = 5000
-    T_start = myApollo.dh_rob.FK(home_pose)
+    N = 200
+    T_start = rArmKinematics.FK(home_pose)
     T_start[:3, :3] = np.array([[0.0, -1.0, 0.0,],  # uppword orientation(cup is up)
                                 [0.0,  0.0, 1.0,],
                                 [-1.0, 0.0, 0.0,]], dtype='float')
@@ -133,15 +133,16 @@ if __name__ == "__main__":
     # position_traj[:, 1] = np.sin(np.arange(N)*dt)*0.1
     # position_traj[:, 2] = np.sin(np.arange(N)*dt)*0.1
     
-    joints_traj, q_start = myApollo.seqIK(position_traj, thetas_traj, T_start, verbose=True)
+    joints_traj, q_start = rArmKinematics.seqIK(position_traj, thetas_traj, T_start, verbose=True)
     
     
-    r_arm_interface.go_to_home_position(q_start, 2000)
+    rArmInterface.go_to_home_position(q_start, 2000)
     for i in range(N):
         q_i = joints_traj[i,:].reshape(-1, 1)
-        # print(np.linalg.norm(position_traj[i] + T_start[:3, -1] - myApollo.FK(q_i)[:3, -1] ))
-        r_arm_interface.go_to_posture_array(joints_traj[i], int(dt*1000), False)
-        
-    r_arm_interface.go_to_home_position(q_start, 2000)
+        rArmInterface.go_to_posture_array(joints_traj[i], int(dt*1000), False)
+    rArmInterface.go_to_home_position(q_start, 2000)
     
     
+    # plt.plot([np.linalg.norm(position_traj[i] + T_start[:3, -1] - rArmKinematics.FK(joints_traj[i])[:3, -1] ) for i in range(N)])
+    # plt.title("ERROR on IK")
+    # plt.show()

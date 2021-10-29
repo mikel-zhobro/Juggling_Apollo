@@ -7,11 +7,11 @@ from juggling_apollo.settings import dt, ABS, g, ABS
 from juggling_apollo.ILC import ILC
 from juggling_apollo.MinJerk import plotMJ, get_minjerk_trajectory
 from juggling_apollo.DynamicSystem import ApolloDynSys
-from apollo_interface.Apollo_It import MyApollo, plot_simulation
+from apollo_interface.Apollo_It import ApolloInterface, plot_simulation
 from kinematics.fk import FK, IK
 
 # create r_arm and go to home position
-r_arm = MyApollo(r_arm=True)
+r_arm = ApolloInterface(r_arm=True)
 home_pose = [0.0, 0.0, -np.pi/4, np.pi/2, np.pi/2, np.pi/2, 0.0]  # TODO
 r_arm.go_to_posture_array(home_pose, 2000, False)
 home_position = FK(*home_pose)
