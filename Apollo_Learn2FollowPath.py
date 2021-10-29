@@ -8,17 +8,38 @@ from juggling_apollo.ILC import ILC
 from juggling_apollo.MinJerk import plotMJ, get_minjerk_trajectory
 from juggling_apollo.DynamicSystem import ApolloDynSys
 from apollo_interface.Apollo_It import ApolloInterface, plot_simulation
-from kinematics.other.fk import FK, CartesianMinJerk2JointSpace
+from kinematics.ApolloKinematics import ApolloArmKinematics
 
 
-def plot_joints(ys):
+def plot_joints(joints_traj):
   plt.figure()
-  lines = plt.plot(ys)
+  lines = plt.plot(joints_traj.reshape(-1, 7))
   plt.legend(iter(lines), ("th: {}".format(i) for i in range(len(lines))))
   plt.show()
 
 
 print("juggling_apollo")
+
+# 0. Create Apollo objects
+# Init state  ([{ 1-Dim }])
+y_home = 0.0 # starting position for the hand
+home_pose = np.array([np.pi/4, 0.0, 0.0, np.pi/4, -2*np.pi/3, np.pi/2, -np.pi/2])
+home_pose = np.array([0.0, 0.0, 0.0, np.pi/2, 0.0, 0.0, 0.0])
+
+# A) INTERFACE: create rArmInterface and go to home position
+rArmInterface = ApolloInterface(r_arm=True)
+rArmInterface.go_to_home_position(home_pose)
+
+# B) KINEMATICS: create rArmInterface and go to home position
+rArmKinematics = ApolloArmKinematics(r_arm=True)
+T_home = rArmKinematics.FK(home_pose)
+T_home[:3, :3] = np.array([[0.0, -1.0, 0.0],  # uppword orientation(cup is up)
+                           [0.0,  0.0, 1.0],
+                           [-1.0, 0.0, 0.0]], dtype='float')
+home_R = T_home[:3, :3]
+home_position = T_home[:3, 3:]
+N_joints = len(home_pose)
+
 
 # 1. Compute juggling params for given E, tau and
 # A) Orientation
@@ -44,47 +65,16 @@ N_repeat_point = steps_from_time(T_throw_first, dt)-1                     # time
 print('H: ' + str(H))
 print('T_fly: ' + str(T_fly))
 
-# Init state  ([{ 1-Dim }])
-y_home = 0.0 # starting position for the hand
-home_pose = np.array([np.pi/4, 0.0, 0.0, np.pi/4, -2*np.pi/3, np.pi/2, -np.pi/2])
-home_pose = np.array([0.0, 0.0, 0.0, np.pi/2, 0.0, 0.0, 0.0])
-
-# create r_arm and go to home position
-r_arm = ApolloInterface(r_arm=True)
-r_arm.go_to_home_position(home_pose)
-home_T = FK(*home_pose)
-home_position = home_T[:3, 3:]
-home_R = home_T[:3, 3:]
-N_joints = len(home_pose)
 
 # %%
 # Learn Throw
 ILC_it = 55  # number of ILC iteration
 
-
-# Init ilc
-# Here we want to set some convention to avoid missunderstandins later on.
-# 1. the state is [xb, xp, ub, up]^T
-# 2. the system can have as input either velocity u_des or the force F_p
-# I. SYSTEM DYNAMICS
-input_is_velocity = True
-kf_dpn_params = {
-  'M': 0.031*np.eye(N_1, dtype='float'),    # covariance of noise on the measurment
-  'P0': 0.1*np.eye(N_1, dtype='float'),     # initial disturbance covariance
-  'd0': np.zeros((N_1, 1), dtype='float'),  # initial disturbance value
-  'epsilon0': 0.3,                          # initial variance of noise on the disturbance
-  'epsilon_decrease_rate': 1                # the decreasing factor of noise on the disturbance
-}
-my_ilcs = [ILC(dt=dt, sys=ApolloDynSys(dt, input_is_velocity), kf_dpn_params=kf_dpn_params, x_0=[home_pose[i], 0]) for i in range(N_joints)]
-for ilc in my_ilcs:
-  ilc.initILC(N_1=N_1, impact_timesteps=[False]*N_1)  # ignore the ball
-
-
 # Data collection
 # System Trajectories
-joints_q_vec  = np.zeros([ILC_it, N_1+1, N_joints], dtype='float')
-joints_vq_vec = np.zeros([ILC_it, N_1+1, N_joints], dtype='float')
-joints_aq_vec = np.zeros([ILC_it, N_1+1, N_joints], dtype='float')
+joints_q_vec  = np.zeros([ILC_it, N_1+1, N_joints, 1], dtype='float')
+joints_vq_vec = np.zeros([ILC_it, N_1+1, N_joints, 1], dtype='float')
+joints_aq_vec = np.zeros([ILC_it, N_1+1, N_joints, 1], dtype='float')
 xyz_vec       = np.zeros([ILC_it, N_1+1, 3], dtype='float')
 # ILC Trajectories
 joints_d_vec  = np.zeros([ILC_it, N_1+1, N_joints], dtype='float')
@@ -106,20 +96,16 @@ i_a_end = None
 tt=[0,        T_throw_first,     T_throw_first+T_empty,   T_FULL  ]
 xx=[y_home,   0.0,               z_catch,                 y_home   ]
 uu=[0.0,      ub_throw,          ub_catch,                0.0     ]
-if True:
+if False:
   print(uu[-1])
   xvaj = get_minjerk_trajectory(dt, tt=tt, xx=xx, uu=uu, smooth_acc=smooth_acc)
-  plotMJ(dt, tt, xx, uu, smooth_acc, xvaj)
   thetas = np.zeros_like(xvaj[0])
   position_traj = np.zeros((thetas.size, 3))
-  position_traj[:,0] = xvaj[0] + home_position[0].T
-  position_traj[:,1:] = home_position[1:].T
-  joints_traj = CartesianMinJerk2JointSpace(position_traj, thetas, home_pose)  # [N, 7]
-  plt.plot(np.arange(thetas.size), joints_traj[:, 0])
-  plt.figure()
-  lines = plt.plot(joints_traj/np.pi*180.0)
-  plt.legend(iter(lines), ("th: {}".format(i) for i in range(len(lines))))
-  plt.show()
+  position_traj[:, 0] = xvaj[0]
+  joints_trajs, q_start, psi_params = rArmKinematics.seqIK(position_traj, thetas, T_home)  # [N, 7]
+  rArmKinematics.plot(joints_trajs, *psi_params)
+  
+  plotMJ(dt, tt, xx, uu, smooth_acc, xvaj)
 
 
 extra_rep = 2
@@ -129,8 +115,32 @@ extra_rep = 2
 y_des, velo, accel, jerk = get_minjerk_trajectory(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=xx, uu=uu)
 # Transform minjerk to jointspace (out of the loop since trajectory doesn't change)
 thetas = np.zeros_like(y_des)
-position_traj = np.zeros((thetas.size, 3)); position_traj[:,1:] = home_position[1:].T; position_traj[:,0] = y_des + home_position[0].T
-joints_traj_des = CartesianMinJerk2JointSpace(position_traj, thetas, home_pose)  # [N, 7]
+position_traj = np.zeros((thetas.size, 3))
+position_traj[:,0] = y_des
+joints_traj_des, q_start, _ = rArmKinematics.seqIK(position_traj, thetas, T_home)  # [N, 7]
+
+
+
+# Init ilc
+# Here we want to set some convention to avoid missunderstandins later on.
+# 1. the state is [xb, xp, ub, up]^T
+# 2. the system can have as input either velocity u_des or the force F_p
+# I. SYSTEM DYNAMICS
+input_is_velocity = True
+kf_dpn_params = {
+  'M': 0.031*np.eye(N_1, dtype='float'),    # covariance of noise on the measurment
+  'P0': 0.1*np.eye(N_1, dtype='float'),     # initial disturbance covariance
+  'd0': np.zeros((N_1, 1), dtype='float'),  # initial disturbance value
+  'epsilon0': 0.3,                          # initial variance of noise on the disturbance
+  'epsilon_decrease_rate': 1                # the decreasing factor of noise on the disturbance
+}
+
+my_ilcs = [ILC(dt=dt, sys=ApolloDynSys(dt, input_is_velocity), kf_dpn_params=kf_dpn_params, x_0=[q_start[i, 0], 0]) for i in range(N_joints)]
+for ilc in my_ilcs:
+  ilc.initILC(N_1=N_1, impact_timesteps=[False]*N_1)  # ignore the ball
+
+
+
 
 for j in range(ILC_it):
   # Learn feed-forward signal
@@ -138,7 +148,7 @@ for j in range(ILC_it):
   u_arr = np.array(u_ff, dtype='float').squeeze().reshape(N_joints, -1).T
 
   # Main Simulation
-  q_s, q_v_s, q_a_s, dP_N_vec, u_vec = r_arm.apollo_run_one_iteration(dt=dt, T=T_FULL, u=u_arr, x0=home_pose, repetitions=1, it=j)
+  q_s, q_v_s, q_a_s, dP_N_vec, u_vec = rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL, u=u_arr, joint_home_config=q_start, repetitions=1, it=j)
 
   # a. System output
   y_meas = q_s[1:]
@@ -147,7 +157,7 @@ for j in range(ILC_it):
   joints_q_vec[j, ] =  q_s
   joints_vq_vec[j, ] = q_v_s
   joints_aq_vec[j, ] = q_a_s
-  # xyz_vec[j, ] = FK(joints_q_vec)
+  xyz_vec[j, ] = rArmKinematics.seqFK(q_s)[:, :3, -1]
 
   joints_d_vec[j, 1:] = np.squeeze(joints_traj_des[1:]-y_meas)
   u_ff_vec[j, :-1] = u_vec
@@ -160,7 +170,7 @@ for j in range(ILC_it):
 
 # %%
 # Extra to catch the ball
-q_s_ex, q_v_s_ex, q_a_s_ex, dP_N_vec_ex, u_vec_arr = r_arm.apollo_run_one_iteration(dt=dt, T=T_FULL, u=u_arr, x0=home_pose, repetitions=5, it=j)
+q_s_ex, q_v_s_ex, q_a_s_ex, dP_N_vec_ex, u_vec_arr = rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL, u=u_arr, joint_home_config=home_pose, repetitions=5, it=j)
 
 # Evauluate last iteration
 # if j%(ILC_it-1)==0:
