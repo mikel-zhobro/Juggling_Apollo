@@ -286,6 +286,7 @@ def tangent_type(an, bn, cn, ad, bd, cd, joint, verbose=False):
     if verbose:
         title = r'$\theta_{}$ -- tangent_type'.format(joint.index)
         plot_type(theta_f, grad_theta_f, theta_min, theta_max, stat_psi, roots, jumpings, feasible_set, title, singular_feasible_set)
+        plot_type2(theta_f, fn, fd, theta_min, theta_max, stat_psi, roots, jumpings, feasible_set, title, singular_feasible_set)
 
     return feasible_set
 
@@ -298,6 +299,38 @@ def sine_type(a, b, c, joint, GC=1.0, verbose=False):
         # x_min = pi/2 - theta_lim_range.b
         # x_max = pi/2 - theta_lim_range.a
     return cosine_type(a, b, c, joint, GC=GC, verbose=verbose, sine_type=True)
+
+
+def plot_type2(theta_f, fn, fd, theta_min, theta_max, stat_psi, roots, jumpings, feasible_set, title, singular_feasible_set):
+    # TODO: Plot fn, fd in polar plot
+    fig = plt.figure(figsize=(10, 10))
+    ax = plt.subplot(111, polar=True)
+    N = int(np.pi/0.01)
+    psi_s =  np.linspace(-np.pi, np.pi, N)
+    fn_s =   [fn(psi) for psi in psi_s]
+    fd_s =   [fd(psi) for psi in psi_s]
+    r_s = [sqrt(fn(psi)**2 + fd(psi)**2) for psi in psi_s]
+    theta_s =   [theta_f(psi) for psi in psi_s]
+    cols = np.zeros(len(fd_s))
+
+    # Mark singularity
+    if not singular_feasible_set.empty:
+        for i, psi in enumerate(singular_feasible_set.inverse(-np.pi, np.pi)):
+            cols = np.where((psi_s > psi.a) & (psi_s < psi.b), 1.0, cols)
+
+
+    max_r = max(r_s)
+    # Plot theta feasible limits
+    ax.bar(theta_min, height=max_r, width=theta_max-theta_min, bottom=0, align='edge', color='green', alpha=0.3, label=r'feasible $\theta_{}$')
+    # Plot fn,fd
+    ax.scatter(theta_s, r_s, marker='.', s=2, c=cols)
+
+    plt.text(0.46, .72, r'$f_d(\psi)$', transform=ax.transAxes)
+    plt.text(0.72, .48, r'$f_n(\psi)$', transform=ax.transAxes)
+    plt.legend()
+    plt.title(r'$f_n(\psi), f_d(\psi)$ -- tangent_type')
+    plt.show()
+
 
 
 if __name__ == "__main__":
@@ -313,7 +346,7 @@ if __name__ == "__main__":
             paramsn = np.random.rand(3,1)*2.0 - 1.0
             paramsd = np.random.rand(3,1)*2.0 - 1.0
             z = np.cross(paramsn, paramsd, axis=0)
-            if np.linalg.norm(z[0,0]**2 + z[1,0]**2 - z[2,0]**2) <1e-5:
+            if np.linalg.norm(z[0,0]**2 + z[1,0]**2 - z[2,0]**2) <1e-4:
                 break
         params = np.zeros(6, dtype=float)
         params[:3] = paramsn[:,0]
