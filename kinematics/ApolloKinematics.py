@@ -35,8 +35,11 @@ class ApolloArmKinematics():
         """
         returns the Transformationsmatrix base_T_tcp
         """
-        return self.pin_rob.FK(q).homogeneous
+        return self.pin_rob.FK(q.reshape(7, 1)).homogeneous
         # return self.dh_rob.FK(q)
+        
+    def seqFK(self, qs):
+        return np.array([self.FK(q) for q in qs]).reshape(-1, 4, 4)
     
     def IK(self,p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0):
         return IK_anallytical(p07_d, R07_d, DH_model, GC2=GC2, GC4=GC4, GC6=GC6)
@@ -47,7 +50,7 @@ class ApolloArmKinematics():
         Args:
             position_traj        ([np.array((N, 3))]): relative movements from start_position
             thetas_traj          ([np.array(N)])     : relative rotations around z axis from start orientation(x-down, y-right, z-forward)
-            q_joints_state_start ([np.array((7, 1))]): decides start position/orientation from where everything unfolds
+            T_start              ([np.array((4, 4))]): decides start position/orientation from where everything unfolds
             verbose (bool, optional)                 : Ploting for verbose reasons. Defaults to False.
 
         Returns:
@@ -65,7 +68,7 @@ class ApolloArmKinematics():
 
         # Init lists
         N = position_traj.shape[0]
-        joints_traj = np.zeros((N,) + q_joint_state_i.shape)
+        joint_trajs = np.zeros((N,) + q_joint_state_i.shape)
         psis = np.zeros((N))
         psi_mins = np.zeros((N))
         psi_maxs = np.zeros((N))
@@ -88,29 +91,54 @@ class ApolloArmKinematics():
             psi = (1-mu)*psi + mu*feas_set.middle  # TODO: Find range closest to previous one, not just max_range
 
             # Fill verbose lists
-            joints_traj[i] = solu(psi)
+            joint_trajs[i] = solu(psi)
             psis[i] = psi
             psi_mins[i] = feas_set.a
             psi_maxs[i] = feas_set.b
 
         if verbose:
-            self.plot(psis, psi_mins, psi_maxs, joints_traj)
-        return joints_traj, q_joint_state_i
+            self.plot(joint_trajs, psis, psi_mins, psi_maxs)
+            
+        return joint_trajs, q_joint_state_i, (psis, psi_mins, psi_maxs)
     
-    def plot(self, psis, psi_mins, psi_maxs, joint_trajs, dt=1):
+    def plot(self, joint_trajs=None, psis=None, psi_mins=None, psi_maxs=None, dt=1):
+        if psis is None:
+            self.plot_joints(joint_trajs)
+        elif joint_trajs is None:
+            self.plot_psis(psis, psi_mins, psi_maxs)
+        else:
+            fig, axs = plt.subplots(2,1)
+            self.plot_psis(psis, psi_mins, psi_maxs, ax=axs[0])
+            self.plot_joints(joints_traj=joint_trajs, ax=axs[1])
+            plt.show()
+
+
+    def plot_psis(self, psis, psi_mins, psi_maxs, dt=1.0, ax=None):
+        noax = ax is None
+        if noax:
+            fig, ax = plt.subplots(1)
+
         times = np.arange(0, len(psis)) * dt
-        fig, axs = plt.subplots(2,1)
+        ax.plot(times, psis, '-', color='k', label="psi")
+        ax.fill_between(times, psi_mins, psi_maxs, color='gray', alpha=0.2, label="psimin<->psimax")
+        ax.legend()
 
-        axs[0].plot(times, psis, '-', color='k', label="psi")
-        axs[0].fill_between(times, psi_mins, psi_maxs, color='gray', alpha=0.2, label="psimin<->psimax")
-        axs[0].legend()
-        
-        
-        js = axs[1].plot(times[1:], 180.0/np.pi*joint_trajs[1:,:].copy().squeeze())
-        axs[1].legend(js, [r'$\theta_{}$'.format(i+1) for i in range(7)])
-        plt.show()
+        if noax:
+            plt.show()
+        return ax
 
+    def plot_joints(self, joints_traj, dt=1.0, ax=None, rad=False):
+        noax = ax is None
+        if noax:
+            fig, ax = plt.subplots(1)
 
+        times = np.arange(0,joints_traj.shape[0]) * dt
+        lines = plt.plot(times, joints_traj.reshape(-1, 7)) if rad else plt.plot(joints_traj.reshape(-1, 7) * 180.0/np.pi)
+        ax.legend(iter(lines), (r"$\theta_{}$".format(i+1) for i in range(len(lines))), loc=1)
+
+        if noax:
+            plt.show()
+        return ax
 
 
 if __name__ == "__main__":
@@ -133,7 +161,7 @@ if __name__ == "__main__":
     # position_traj[:, 1] = np.sin(np.arange(N)*dt)*0.1
     # position_traj[:, 2] = np.sin(np.arange(N)*dt)*0.1
     
-    joints_traj, q_start = rArmKinematics.seqIK(position_traj, thetas_traj, T_start, verbose=True)
+    joints_traj, q_start, _ = rArmKinematics.seqIK(position_traj, thetas_traj, T_start, verbose=True)
     
     
     rArmInterface.go_to_home_position(q_start, 2000)
