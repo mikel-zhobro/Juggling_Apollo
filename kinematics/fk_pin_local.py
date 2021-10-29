@@ -43,7 +43,7 @@ class PinRobot():
         returns the SE3_base_frame(R,p) of frameName in base coordinates
         """
         frameId = self.model.getFrameId(frameName)
-        pin.forwardKinematics(self.model, self.data, q)
+        pin.forwardKinematics(self.model, self.data, q.reshape(7,1))
         return self.SE3_base_origin * pin.updateFramePlacement(self.model, self.data, frameId) # updates data and returns T_base_frame
 
     def FK_f2f(self, q, baseName=BASE, frameName=TCP):

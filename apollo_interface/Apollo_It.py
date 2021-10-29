@@ -142,13 +142,13 @@ class ApolloInterface:
                 obs_np[i][k] = obs.get(i).get()[k]
         return obs_np
 
-    def apollo_run_one_iteration(self, dt, T, u, x0=None, repetitions=1, it=0):
+    def apollo_run_one_iteration(self, dt, T, u, joint_home_config=None, repetitions=1, it=0):
         """ Runs the system for the time interval 0->T
 
         Args:
             dt ([double]): timestep
             T ([double]): approximate time required for the iteration
-            x0 ([list]): home_state(if set the robot has to first go there before runing the inputs)
+            joint_home_config ([list]): home_state(if set the robot has to first go there before runing the inputs)
             u ([np.array(double)]): inputs of the shape [N_steps, 7(n_joints)]
             repetitions (int, optional): Nr of times to repeat the given input trajectory.
 
@@ -160,16 +160,16 @@ class ApolloInterface:
         N0 = len(u)
         u = np.squeeze(np.tile(u, [repetitions, 1]))
 
-        if x0 is not None:
-            self.go_to_home_position(x0)
+        if joint_home_config is not None:
+            self.go_to_home_position(joint_home_config)
 
         # Vectors to collect the history of the system states
         N = N0 * repetitions + 1
         n_joints = 7
-        thetas_s = np.zeros((N, n_joints));  thetas_s[0] = x0
-        vel_s = np.zeros((N,n_joints))
-        acc_s = np.zeros((N,n_joints))
-        dP_N_vec = np.zeros_like(thetas_s)  # TODO: hand torque sensor
+        thetas_s = np.zeros((N, n_joints, 1));  thetas_s[0] = joint_home_config
+        vel_s    = np.zeros((N, n_joints, 1))
+        acc_s    = np.zeros((N, n_joints, 1))
+        dP_N_vec = np.zeros((N, n_joints))  # TODO: hand torque sensor
 
         # Action Loop
         delta_it = int(1000*dt)
@@ -177,12 +177,12 @@ class ApolloInterface:
             # one step simulation
             obs_np = self.go_to_speed_array(u[i], delta_it, False)
             # collect state of the system
-            thetas_s[i+1] = obs_np[:,0]
-            vel_s[i+1] = obs_np[:,1]
-            acc_s[i+1] = obs_np[:,2]
+            thetas_s[i+1] = obs_np[:,0].reshape(7, 1)
+            vel_s[i+1] = obs_np[:,1].reshape(7, 1)
+            acc_s[i+1] = obs_np[:,2].reshape(7, 1)
             # collect helpers
             dP_N_vec[i+1] = 0
-        if x0 is not None:
+        if joint_home_config is not None:
             return thetas_s, vel_s, acc_s, dP_N_vec, u
         else:
             return thetas_s[1:], vel_s[1:], acc_s[1:],dP_N_vec[1:], u
