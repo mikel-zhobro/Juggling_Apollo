@@ -135,7 +135,8 @@ kf_dpn_params = {
   'epsilon_decrease_rate': 1                # the decreasing factor of noise on the disturbance
 }
 
-my_ilcs = [ILC(dt=dt, sys=ApolloDynSys(dt, input_is_velocity), kf_dpn_params=kf_dpn_params, x_0=[q_start[i, 0], 0]) for i in range(N_joints)]
+# my_ilcs = [ILC(dt=dt, sys=ApolloDynSys(dt, input_is_velocity), kf_dpn_params=kf_dpn_params, x_0=[q_start[i, 0], 0]) for i in range(N_joints)]
+my_ilcs = [ILC(dt=dt, sys=ApolloDynSys(dt, input_is_velocity), kf_dpn_params=kf_dpn_params, x_0=[0.0, 0.0]) for i in range(N_joints)]
 for ilc in my_ilcs:
   ilc.initILC(N_1=N_1, impact_timesteps=[False]*N_1)  # ignore the ball
 
@@ -144,7 +145,8 @@ for ilc in my_ilcs:
 
 for j in range(ILC_it):
   # Learn feed-forward signal
-  u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=joints_traj_des[:, i], y_meas=y_meas[:, i]) for i, ilc in enumerate(my_ilcs)]
+  # u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=joints_traj_des[:, i], y_meas=y_meas[:, i]) for i, ilc in enumerate(my_ilcs)]
+  u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=joints_traj_des[:, i]-q_start[i], y_meas=y_meas[:, i]) for i, ilc in enumerate(my_ilcs)]
   u_arr = np.array(u_ff, dtype='float').squeeze().reshape(N_joints, -1).T
 
   # Main Simulation
