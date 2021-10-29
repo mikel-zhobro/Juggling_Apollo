@@ -7,7 +7,7 @@ from utilities import modrad, reduce_model
 from settings import R_joints, L_joints, TCP, WORLD, BASE, FILENAME, JOINTS_LIMITS
 
 np.set_printoptions(precision=4, suppress=True)
-pin.switchToNumpyMatrix()  # https://github.com/stack-of-tasks/pinocchio/issues/802
+pin.switchToNumpyArray()  # https://github.com/stack-of-tasks/pinocchio/issues/802
 
 
 # inv kinematics params
