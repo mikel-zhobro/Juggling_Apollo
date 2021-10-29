@@ -35,7 +35,8 @@ class ApolloArmKinematics():
         """
         returns the Transformationsmatrix base_T_tcp
         """
-        return self.pin_rob(q).homogeneous
+        # return self.pin_rob.FK(q).homogeneous
+        return self.dh_rob.FK(q)
     
     def IK(self,p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0):
         return IK_anallytical(p07_d, R07_d, DH_model, GC2=GC2, GC4=GC4, GC6=GC6)
@@ -52,10 +53,14 @@ class ApolloArmKinematics():
         Returns:
             [np.array((N, 7))]: Joint trajectories
         """
-        mu = 0.3
+        mu = 0.1
         # Find a solution satisfying the constraints for start pose
         T_start = self.dh_rob.FK(q_joints_state_start)
-        GC2, GC4, GC6, feasible_set, solu =  IK_heuristic2(p07_d=T_start[:3,3:4], R07_d=T_start[:3,:3], DH_model=self.dh_rob) # decide branch of solutions
+        R_start = np.array([[0.0, -1.0, 0.0,],  # uppword orientation(cup is up)
+                            [0.0,  0.0, 1.0,],
+                            [-1.0, 0.0, 0.0,]], dtype='float')
+        p_start = T_start[:3, 3:4]
+        GC2, GC4, GC6, feasible_set, solu =  IK_heuristic2(p07_d=p_start, R07_d=R_start, DH_model=self.dh_rob) # decide branch of solutions
         
         # Choose psi for start configuration
         feasible_set = feasible_set.max_range()
@@ -103,34 +108,49 @@ class ApolloArmKinematics():
             psi_mins[i+1] = feas_set.a
             psi_maxs[i+1] = feas_set.b
             
-        if verbose:
+        if True:
             self.plot(psis, psi_mins, psi_maxs, joints_traj)
-        return joints_traj
+        return joints_traj, T_start
     
     def plot(self, psis, psi_mins, psi_maxs, joint_trajs, dt=1):
         times = np.arange(0, len(psis)) * dt
-        plt.figure()
-        plt.plot(times, psis, '-', color='k', label="psi")
-        plt.fill_between(times, psi_mins, psi_maxs, color='gray', alpha=0.2, label="psimin<->psimax")
-        plt.legend()
+        fig, axs = plt.subplots(2,1)
+
+        axs[0].plot(times, psis, '-', color='k', label="psi")
+        axs[0].fill_between(times, psi_mins, psi_maxs, color='gray', alpha=0.2, label="psimin<->psimax")
+        axs[0].legend()
         
         
-        plt.figure()
-        plt.plot(times, joint_trajs.copy().squeeze())
+        js = axs[1].plot(times[1:], 180.0/np.pi*joint_trajs[1:,:].copy().squeeze())
+        axs[1].legend(js, [r'$\theta_{}$'.format(i+1) for i in range(7)])
         plt.show()
        
        
        
 
 if __name__ == "__main__":
-    dt = 0.06
-    myApollo = ApolloArmKinematics()
+    from apollo_interface.Apollo_It import MyApollo, plot_simulation
+    dt = 0.004      # [s] discretization time step size
     home_pose = np.array([0.0, -1.0, 0.0, np.pi/2, 0.0, 0.0, 0.0])
+
+    r_arm_interface = MyApollo(r_arm=True)
+    myApollo = ApolloArmKinematics()
     
-    N = 12
-    thetas_traj = np.zeros((N,))
+    N = 5000
+    thetas_traj = 0.0* (np.cos(np.arange(N)*dt) * np.pi/4 - np.pi/4)
     position_traj = np.zeros((N, 3))
-    position_traj[:, 0] = np.sin(np.arange(N)*dt)
+    position_traj[:, 2] = np.sin(np.arange(N)*dt)*0.1
     
-    myApollo.seqIK(position_traj, thetas_traj, home_pose, verbose=True)
+    joints_traj, T_start = myApollo.seqIK(position_traj, thetas_traj, home_pose, verbose=True)
+    
+    
+    r_arm_interface.go_to_home_position(joints_traj[0], 2000)
+    for i in range(1, N):
+        q_i = joints_traj[i]
+        Ti = myApollo.FK(q_i)
+        print(np.linalg.norm(Ti[:3, 3:4]-position_traj[i, 0:1] - joints_traj[0]))
+        r_arm_interface.go_to_posture_array(joints_traj[i], int(dt*1000), False)
+        
+    r_arm_interface.go_to_home_position(joints_traj[0], 2000)
+    
     

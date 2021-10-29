@@ -8,7 +8,7 @@ from juggling_apollo.ILC import ILC
 from juggling_apollo.MinJerk import plotMJ, get_minjerk_trajectory
 from juggling_apollo.DynamicSystem import ApolloDynSys
 from apollo_interface.Apollo_It import MyApollo, plot_simulation
-from kinematics.fk import FK, CartesianMinJerk2JointSpace
+from kinematics.other.fk import FK, CartesianMinJerk2JointSpace
 
 
 def plot_joints(ys):
@@ -47,6 +47,8 @@ print('T_fly: ' + str(T_fly))
 # Init state  ([{ 1-Dim }])
 y_home = 0.0 # starting position for the hand
 home_pose = np.array([np.pi/4, 0.0, 0.0, np.pi/4, -2*np.pi/3, np.pi/2, -np.pi/2])
+home_pose = np.array([0.0, 0.0, 0.0, np.pi/2, 0.0, 0.0, 0.0])
+
 # create r_arm and go to home position
 r_arm = MyApollo(r_arm=True)
 r_arm.go_to_home_position(home_pose)
@@ -104,7 +106,7 @@ i_a_end = None
 tt=[0,        T_throw_first,     T_throw_first+T_empty,   T_FULL  ]
 xx=[y_home,   0.0,               z_catch,                 y_home   ]
 uu=[0.0,      ub_throw,          ub_catch,                0.0     ]
-if False:
+if True:
   print(uu[-1])
   xvaj = get_minjerk_trajectory(dt, tt=tt, xx=xx, uu=uu, smooth_acc=smooth_acc)
   plotMJ(dt, tt, xx, uu, smooth_acc, xvaj)

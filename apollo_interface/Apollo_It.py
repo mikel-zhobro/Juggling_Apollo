@@ -105,7 +105,7 @@ def go_to_posture(posture, nb_iterations, bursting):
 
     # creating command stacks
     for joint, position in posture.iteritems():
-        apollo.add_position_command(joint, position, target_iteration, False)
+        apollo.add_position_command(joint, float(position), target_iteration, False)
 
     # sending stack to robot and waiting for the desired number of iterations
     if not bursting:  # if blocking:
