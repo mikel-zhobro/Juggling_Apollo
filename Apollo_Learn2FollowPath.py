@@ -24,7 +24,7 @@ print("juggling_apollo")
 # Init state  ([{ 1-Dim }])
 y_home = 0.0 # starting position for the hand
 home_pose = np.array([np.pi/4, 0.0, 0.0, np.pi/4, -2*np.pi/3, np.pi/2, -np.pi/2])
-home_pose = np.array([0.0, 0.0, 0.0, np.pi/2, 0.0, 0.0, 0.0])
+# home_pose = np.array([0.0, 0.0, 0.0, np.pi/2, 0.0, 0.0, 0.0])
 
 # A) INTERFACE: create rArmInterface and go to home position
 rArmInterface = ApolloInterface(r_arm=True)
@@ -116,10 +116,10 @@ y_des, velo, accel, jerk = get_minjerk_trajectory(dt, smooth_acc=smooth_acc, i_a
 # Transform minjerk to jointspace (out of the loop since trajectory doesn't change)
 thetas = np.zeros_like(y_des)
 position_traj = np.zeros((thetas.size, 3))
-position_traj[:,0] = y_des
+position_traj[:,2] = y_des
 joints_traj_des, q_start, _ = rArmKinematics.seqIK(position_traj, thetas, T_home)  # [N, 7]
 
-
+# q_s, q_v_s, q_a_s, dP_N_vec, u_vec = rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL, u=joints_traj_des.squeeze(), joint_home_config=q_start, repetitions=10, it=0, go2position=True)
 
 # Init ilc
 # Here we want to set some convention to avoid missunderstandins later on.
@@ -148,7 +148,9 @@ for j in range(ILC_it):
   # u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=joints_traj_des[:, i], y_meas=y_meas[:, i]) for i, ilc in enumerate(my_ilcs)]
   u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=joints_traj_des[:, i]-q_start[i], y_meas=y_meas[:, i]) for i, ilc in enumerate(my_ilcs)]
   u_arr = np.array(u_ff, dtype='float').squeeze().reshape(N_joints, -1).T
-
+  plt.figure()
+  plt.plot(u_arr)
+  plt.show()
   # Main Simulation
   q_s, q_v_s, q_a_s, dP_N_vec, u_vec = rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL, u=u_arr, joint_home_config=q_start, repetitions=1, it=j)
 
