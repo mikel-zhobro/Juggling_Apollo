@@ -63,14 +63,14 @@ def main3():
     
     poses, velocities, acc, _, u_vec = r_arm.apollo_run_one_iteration(dt, T=dt*len(timesteps), u=inputs, repetitions=12)
     
-    # plt.figure()
-    # plt.plot(velocities.squeeze()[:, 0], 'b', label="Measured Velocities")
-    # plt.plot(inputs[:, 0], 'r', label="Desired Velocities")
-    # for a in [2.0,  8.0, 15.0]:
-    #     plt.plot(simulate_vel(v_des, dt, N, N1, N2, a), '-', label="Simulated Velocities, alpha="+str(a))
-    # plt.legend()
-    # plt.show()
-    # print()
+    plt.figure()
+    plt.plot(velocities.squeeze()[:, 0], 'b', label="Measured Velocities")
+    plt.plot(inputs[:, 0], 'r', label="Desired Velocities")
+    for a in [2.0,  8.0, 15.0]:
+        plt.plot(simulate_vel(v_des, dt, N, N1, N2, a), '-', label="Simulated Velocities, alpha="+str(a))
+    plt.legend()
+    plt.show()
+    print()
 
 if __name__ == "__main__":
     main3()
