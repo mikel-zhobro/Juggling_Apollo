@@ -126,7 +126,7 @@ class Paddle():
     self.pause = False
     self.info.clear()
     self.info.write("Iteration: {}".format(self.it), align='center', font=('Courier', 30, 'bold'))
-    
+
 
   def set_info(self):
     # Info
@@ -148,20 +148,6 @@ class Paddle():
     self.info0.hideturtle()
     self.info0.goto(130, 200)
     self.info0.write("----- 0 line", align='left', font=('Courier', 12, 'italic'))
-
-    # self.info_throw = t.Turtle()
-    # self.info_throw.color('green')
-    # self.info_throw.penup()
-    # self.info_throw.hideturtle()
-    # self.info_throw.goto(130, 170)
-    # self.info_throw.write("----- throw line", align='left', font=('Courier', 12, 'italic'))
-
-    # self.info_catch = t.Turtle()
-    # self.info_catch.color('red')
-    # self.info_catch.penup()
-    # self.info_catch.hideturtle()
-    # self.info_catch.goto(130, 140)
-    # self.info_catch.write("----- catch line", align='left', font=('Courier', 12, 'italic'))
 
 def main():
   env  = Paddle([0, 0.2, -0.3], -0.4, 0.4, colors = ['red', 'yellow', 'green'])
