@@ -1,4 +1,3 @@
-from sys import exec_prefix
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation
@@ -80,7 +79,7 @@ def go_to_speed(speeds, nb_iterations, bursting):
 
     # creating command stacks
     for joint, speed in speeds.iteritems():
-        apollo.add_speed_command(joint, speed, target_iteration, True)
+        apollo.add_speed_command(joint, float(speed), target_iteration, True)
 
     # sending stack to robot and waiting for the desired number of iterations
     if not bursting:  # if blocking:
@@ -142,7 +141,7 @@ class ApolloInterface:
                 obs_np[i][k] = obs.get(i).get()[k]
         return obs_np
 
-    def apollo_run_one_iteration(self, dt, T, u, joint_home_config=None, repetitions=1, it=0):
+    def apollo_run_one_iteration(self, dt, T, u, joint_home_config=None, repetitions=1, it=0, go2position=False):
         """ Runs the system for the time interval 0->T
 
         Args:
@@ -175,7 +174,10 @@ class ApolloInterface:
         delta_it = int(1000*dt)
         for i in range(N-1):
             # one step simulation
-            obs_np = self.go_to_speed_array(u[i], delta_it, False)
+            if go2position:
+                obs_np = self.go_to_posture_array(u[i], delta_it, False)
+            else:
+                obs_np = self.go_to_speed_array(u[i], delta_it, False)
             # collect state of the system
             thetas_s[i+1] = obs_np[:,0].reshape(7, 1)
             vel_s[i+1] = obs_np[:,1].reshape(7, 1)
@@ -221,9 +223,12 @@ class ApolloInterface:
 
     def go_to_home_position(self, home_pose=home_pose, it_time=4000, zero_pose=False):
         if zero_pose:
-            return self.go_to_posture_array(np.zeros_like(home_pose), it_time, False)
+            ret = self.go_to_posture_array(np.zeros_like(home_pose), it_time, False)
         else:
-            return self.go_to_posture_array(home_pose, it_time, False)
+            ret = self.go_to_posture_array(home_pose, it_time, False)
+            
+        self.go_to_speed_array(np.zeros_like(home_pose), it_time/4, False)
+        return ret
         
     def get_TCP_pose(self):
         observation = apollo.read()
