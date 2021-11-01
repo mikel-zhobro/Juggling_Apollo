@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from apollo_interface.Apollo_It import ApolloInterface
 from juggling_apollo.settings import alpha
-
+from math import sin
 
 def main():
     N = 2000
@@ -53,21 +53,22 @@ def main3():
     N1 = 100
     N2 = 600
     inputs = np.zeros((N, 7))
-    inputs[N1:N2,0] = v_des
-    inputs[N1:N2,3] = v_des
+    inputs[N1:N2,0] = 3.0 * np.sin(np.arange(N2-N1)*dt *4)
+    # inputs[N1:N2,0] = v_des
+    # inputs[N1:N2,3] = v_des
 
     
     r_arm = ApolloInterface(r_arm=True)
     r_arm.go_to_home_position([0.0, 0.0, -np.pi/4, np.pi/2, np.pi/2, np.pi/2, 0.0], 4000, False)
     # r_arm.go_to_posture_array([np.pi/4, 0.0, np.pi/4, np.pi/4, 3*np.pi/4, 3*np.pi/4, 0.0], 2000, False)
     
-    poses, velocities, acc, _, u_vec = r_arm.apollo_run_one_iteration(dt, T=dt*len(timesteps), u=inputs, repetitions=12)
+    poses, velocities, acc, _, u_vec = r_arm.apollo_run_one_iteration(dt, T=dt*len(timesteps), u=inputs, repetitions=1)
     
     plt.figure()
     plt.plot(velocities.squeeze()[:, 0], 'b', label="Measured Velocities")
     plt.plot(inputs[:, 0], 'r', label="Desired Velocities")
-    for a in [2.0,  8.0, 15.0]:
-        plt.plot(simulate_vel(v_des, dt, N, N1, N2, a), '-', label="Simulated Velocities, alpha="+str(a))
+    # for a in [2.0,  8.0, 15.0]:
+    #     plt.plot(simulate_vel(v_des, dt, N, N1, N2, a), '-', label="Simulated Velocities, alpha="+str(a))
     plt.legend()
     plt.show()
     print()
