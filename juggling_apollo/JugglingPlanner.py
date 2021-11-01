@@ -38,6 +38,33 @@ def traj_nb_2_na_1(T_throw, T_hand, ub_catch, ub_throw, T_empty, z_catch, x_0, d
     plotMinJerkTraj(x, v, a, j, dt, title, tt=tt[0:4], xx=xx[0:4], uu=uu[0:4])
   return x
 
+def calc_minjerk(tau, dwell_ratio, catch_throw_ratio, E, F, n_b, n_a):
+  """ Calc list of sub
+      For up to 2 armes the juggling can always be performed in a 2D surface.
+      Designing the trajectory of the hand corresponds to planing the x(t) and z(t) trajectories
+
+      2 Ball, 1 Hand case (easy):
+        The movement in x direction takes place only during the time the hand is free(e)
+      nb Balls, 1 Hand case (general):
+
+
+  Args:
+      - d: time the ball spends on the hand (d=t_catch+t_throw)
+       -- t_catch: time from ball impact to the ruhe-position(where we are ready again to throw)
+       -- t_catch: time from ruhe position to throw position
+      - e: time the hand is free
+
+      tau ([double]): time from catch to catch (tau = d+e), for us this is the shortest time we require to learn everthing
+      dwell_ratio ([double]): d/(d+r)
+      catch_throw_ratio ([double]): t_catch_(t_catch+t_throw) = t_catch/d
+      E ([type]): vertical distance between catch and throw position
+      F ([type]): horizontal distance between catch and throw position
+      n_b ([int]): number of balls
+      n_a ([int]): number of arms
+  """
+  # -> calc H -> T_fly, v0
+  assert n_a<3, "We can have up to 2 arms"
+  pass
 
 if __name__ == "__main__":
   dt = 0.004

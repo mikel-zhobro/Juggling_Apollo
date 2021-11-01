@@ -1,10 +1,12 @@
 # %%
 import numpy as np
-from juggling_apollo.utils import plan_ball_trajectory, steps_from_time, plotIterations, plt
+
+import __add_path__
+from juggling_apollo.utils import steps_from_time, plotIterations, plt
 from juggling_apollo.Simulation import Simulation, plot_simulation
-from juggling_apollo.settings import dt, ABS, g, ABS
+from juggling_apollo.settings import dt, ABS, g
 from juggling_apollo.ILC import ILC
-from juggling_apollo.JugglingPlanner import calc, traj_nb_2_na_1
+from juggling_apollo.JugglingPlanner import calc
 from juggling_apollo.MinJerk import plotMJ, get_minjerk_trajectory
 from juggling_apollo.DynamicSystem import BallAndPlateDynSys as DynamicSystem
 
