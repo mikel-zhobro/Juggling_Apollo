@@ -56,7 +56,7 @@ class ApolloArmKinematics():
         Returns:
             [np.array((N, 7))]: Joint trajectories
         """
-        mu = 0.01
+        mu = 0.02
         # Find the solution branch we shall follow in this sequence and starting psi
         R_start = T_start[:3, :3]
         p_start = T_start[:3, 3:4]

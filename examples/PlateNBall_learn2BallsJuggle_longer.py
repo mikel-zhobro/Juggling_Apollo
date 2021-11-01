@@ -20,12 +20,12 @@ E = 0.15
 tau = 0.5
 dwell_ration = 0.6
 catch_throw_ratio = 0.5
-T_hand, ub_throw, T_empty, H,  z_catch = calc(tau, dwell_ration, E)
+T_hand, T_empty, ub_throw, H, z_catch = calc(tau, dwell_ration, E, slower=1.0)
 T_throw = T_hand*(1-catch_throw_ratio)
-
 T_tau = T_empty + T_hand
 T_fly = T_hand + 2*T_empty
 T_FULL = T_throw + T_fly + T_hand
+
 N_1 = steps_from_time(T_FULL, dt)-1    # size of our vectors(i.e. length of the interval)
 N_throw = steps_from_time(T_throw, dt)-1   # needed to measure z_throw
 N_empty = steps_from_time(T_empty, dt)-1   # needed to measure z_throw

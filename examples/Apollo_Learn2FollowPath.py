@@ -37,8 +37,6 @@ print("juggling_apollo")
 y_home = 0.0 # starting position for the hand
 home_pose = np.array([ 0.6484, -0.6194, -1.8816, 1.0706, -2.4248, 1.1782, -2.4401])
 
-# home_pose = np.array([0.0, 0.0, 0.0, np.pi/2, 0.0, 0.0, 0.0])
-
 # A) INTERFACE: create rArmInterface and go to home position
 rArmInterface = ApolloInterface(r_arm=True)
 rArmInterface.go_to_home_position(home_pose)

@@ -1,11 +1,11 @@
 from utils import flyTime2HeightAndVelocity, plt
 from MinJerk import get_min_jerk_trajectory, plotMinJerkTraj, get_minjerk_trajectory
 
-def calc(tau, dwell_ration, E):
+def calc(tau, dwell_ration, E, slower=1.0):
   # times
   T_hand = tau * dwell_ration  # time the ball spends on the hand
-  T_empty = tau - T_hand             # time the hand is free
-  T_fly = 2*T_empty + T_hand
+  T_empty = tau - T_hand       # time the hand is free
+  T_fly = 2*tau - T_hand       # time the ball is in the air
 
   # positions
   z_throw = 0.0
@@ -14,7 +14,7 @@ def calc(tau, dwell_ration, E):
   # ball height and velocity
   H, ub_throw = flyTime2HeightAndVelocity(T_fly)
 
-  return T_hand, ub_throw, T_empty, H, z_catch
+  return T_hand*slower, T_empty*slower, ub_throw, H, z_catch
 
 def traj_nb_2_na_1(T_throw, T_hand, ub_catch, ub_throw, T_empty, z_catch, x_0, dt, smooth_acc, plot=False):
   # 2balls 1hand
@@ -75,8 +75,9 @@ if __name__ == "__main__":
   catch_throw_ratio = 0.5
   smooth_accs = [False, True]
   for smooth in smooth_accs:
-    T_hand, ub_throw, T_empty, H, z_catch = calc(tau, dwell_ration, E)
+    T_hand, ub_throw, H, z_catch = calc(tau, dwell_ration, E)
     ub_catch = 0.9*ub_throw
+    T_empty = tau - T_hand                                                    # time the hand is free
     T_throw = T_hand*(1-catch_throw_ratio)
     traj_nb_2_na_1(T_throw, T_hand-T_throw, ub_catch, ub_throw, T_empty, z_catch, x_0, dt, smooth, True)
 
