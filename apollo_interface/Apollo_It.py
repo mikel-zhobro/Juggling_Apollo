@@ -217,18 +217,22 @@ class ApolloInterface:
         obs_np = self.obs_to_numpy(observation)
         return obs_np
 
-    def calibration(self):
-        # 1. Measure offsets at 00 position
-        zero_conf = self.go_to_home_position(zero_pose=True)
-
     def go_to_home_position(self, home_pose=home_pose, it_time=4000, zero_pose=False):
         if zero_pose:
-            ret = self.go_to_posture_array(np.zeros_like(home_pose), it_time, False)
+            des = np.zeros_like(home_pose)
+            while True:
+                obs = self.go_to_posture_array(des, it_time, False)
+                if np.linalg.norm(des-obs[:,0]) <= 1e-4:
+                    break
         else:
-            ret = self.go_to_posture_array(home_pose, it_time, False)
+            while True:
+                obs = self.go_to_posture_array(home_pose, it_time, False)
+                print("HOME with error:", np.linalg.norm(home_pose.squeeze()-obs[:,0].squeeze()))
+                if np.linalg.norm(home_pose.squeeze()-obs[:,0].squeeze()) <= 1e-4:
+                    break
             
         self.go_to_speed_array(np.zeros_like(home_pose), it_time/4, False)
-        return ret
+        return obs
         
     def get_TCP_pose(self):
         observation = apollo.read()
