@@ -49,8 +49,6 @@ T_home = rArmKinematics.FK(home_pose)
 T_home[:3, :3] = np.array([[0.0, -1.0, 0.0],  # uppword orientation(cup is up)
                            [0.0,  0.0, 1.0],
                            [-1.0, 0.0, 0.0]], dtype='float')
-home_R = T_home[:3, :3]
-home_position = T_home[:3, 3:]
 N_joints = len(home_pose)
 
 
