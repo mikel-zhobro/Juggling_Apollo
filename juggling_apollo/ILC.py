@@ -29,6 +29,10 @@ class ILC:
     # reset KFs
     self.kf_dpn.resetKF()
 
+  @property
+  def d(self):
+    return self.kf_dpn.d
+
   def learnThrowStep(self, ub_throw, T_throw, x_catch=0.0, u_ff_old=None, y_meas=None, d1_meas=0, d2_meas=0):
     # 1. Throw
     if u_ff_old is not None:  # we are calculating u_ff for the first time
@@ -83,14 +87,10 @@ class ILC:
 
   def learnWhole(self, y_des, u_ff_old=None, y_meas=None):
     # 1. Throw
-    if u_ff_old is not None:  # we are calculating u_ff for the first time
-      self.kf_dpn.updateStep(u_ff_old.reshape(-1, 1), y_meas.reshape(-1, 1))  # estimate dpn disturbance
+    disturbance = self.kf_dpn.d
+    if u_ff_old is not None:  # we are calculating u_ff for the first time(so just use the linear model for that)
+      disturbance = self.kf_dpn.updateStep(u_ff_old.reshape(-1, 1), y_meas.reshape(-1, 1))  # estimate dpn disturbance
 
-    # title = "Min-Jerk trajectory with " +  ("" if smooth_acc else "non") +"-smoothed acceleration."
-    # plotMinJerkTraj(y_des, v, a, j, self.dt, title, tt=tt[0:4], xx=xx[0:4], uu=uu[0:4])
-    # plt.show()
-
-
-    u_ff_new = self.quad_input_optim.calcDesiredInput(self.kf_dpn.d, np.array(y_des[1:], dtype='float').reshape(-1, 1), True)
+    u_ff_new = self.quad_input_optim.calcDesiredInput(disturbance, np.array(y_des[1:], dtype='float').reshape(-1, 1), True)
 
     return u_ff_new
