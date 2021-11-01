@@ -249,7 +249,7 @@ def plotMinJerkTraj(x, v, a, j, dt, title, intervals=None, colors=None, tt=None,
       for t in tt:
         ax.axvline(t, linestyle='--')
   fig.suptitle(title)
-  plt.show(block = False)
+  plt.show(block = True)
 
 
 def plotMJ(dt, tt, xx, uu, smooth_acc, xvaj = None):
