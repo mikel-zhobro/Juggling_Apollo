@@ -36,10 +36,10 @@ print("juggling_apollo")
 # Init state  ([{ 1-Dim }])
 y_home = 0.0 # starting position for the hand
 home_pose = np.array([ 0.6484, -0.6194, -1.8816, 1.0706, -2.4248, 1.1782, -2.4401])
+N_joints = len(home_pose)
 
 # A) INTERFACE: create rArmInterface and go to home position
 rArmInterface = ApolloInterface(r_arm=True)
-rArmInterface.go_to_home_position(home_pose)
 
 # B) KINEMATICS: create rArmInterface and go to home position
 rArmKinematics = ApolloArmKinematics(r_arm=True)
@@ -47,21 +47,17 @@ T_home = rArmKinematics.FK(home_pose)
 T_home[:3, :3] = np.array([[0.0, -1.0, 0.0],  # uppword orientation(cup is up)
                            [0.0,  0.0, 1.0],
                            [-1.0, 0.0, 0.0]], dtype='float')
-N_joints = len(home_pose)
 
 
 # 1. Compute juggling params for given E, tau and
 # A) Orientation
-# x shows up in our base coordinate frame(constant for 1D case(= y_tcp))
-# z shows on the side (should stay constant(= -x_tcp) for the 1D case)
-# y shows horizontally back to the robot(should stay constant for 1D case ( = -z_tcp))
+#    x-down, y-right, z-forward
 # B) Position
-# only x changes, y and z stay contant for 1D case
-
-Ex = 0.15                                                                 # Ex = x_catch - x_throw
+#    only z changes, x and y stay contant for 1D case
+Ex = 0.15                                                                 # Ex = z_catch - z_throw
 tau = 0.5                                                                 # tau = T_hand + T_empty (length of the repeatable part)
 dwell_ration = 0.6                                                        # what part of tau is used for T_hand
-T_hand, ub_throw, T_empty, H,  z_catch = calc(tau, dwell_ration, Ex)
+T_hand, T_empty, ub_throw, H, z_catch = calc(tau, dwell_ration, Ex, slower=1.8)
 T_throw_first = T_hand*0.5                                                # Time to use for the first throw from home position
 
 T_fly = T_hand + 2*T_empty
@@ -80,51 +76,40 @@ print('T_fly: ' + str(T_fly))
 ILC_it = 55  # number of ILC iteration
 
 # Data collection
-# System Trajectories
+# a. System Trajectories
 joints_q_vec  = np.zeros([ILC_it, N_1+1, N_joints, 1], dtype='float')
 joints_vq_vec = np.zeros([ILC_it, N_1+1, N_joints, 1], dtype='float')
 joints_aq_vec = np.zeros([ILC_it, N_1+1, N_joints, 1], dtype='float')
 xyz_vec       = np.zeros([ILC_it, N_1+1, 3], dtype='float')
-# ILC Trajectories
+# b. ILC Trajectories
 disturbanc_vec  = np.zeros([ILC_it, N_1+1, N_joints], dtype='float')
 joints_d_vec  = np.zeros([ILC_it, N_1+1, N_joints], dtype='float')
 u_ff_vec      = np.zeros([ILC_it, N_1+1, N_joints], dtype='float')
-# Measurments
+# c. Measurments
 torque_vec    = np.zeros([ILC_it, N_1+1, N_joints], dtype='float')
 
 # ILC Loop
 u_ff = [None] * N_joints
 y_meas = np.zeros((N_1, N_joints), dtype='float')
 
-# Min Jerk Params
-# new MinJerk
+# Min Jerk
 smooth_acc = False
 ub_catch = -ub_throw*0.9
 i_a_end = None
 tt=[0,        T_throw_first,     T_throw_first+T_empty,   T_FULL  ]
 xx=[y_home,   0.0,               z_catch,                 y_home   ]
 uu=[0.0,      ub_throw,          ub_catch,                0.0     ]
-if False:
-  print(uu[-1])
-  xvaj = get_minjerk_trajectory(dt, tt=tt, xx=xx, uu=uu, smooth_acc=smooth_acc)
-  thetas = np.zeros_like(xvaj[0])
-  xyz_traj = np.zeros((thetas.size, 3))
-  xyz_traj[:, 0] = xvaj[0]
-  joints_trajs, q_start, psi_params = rArmKinematics.seqIK(xyz_traj, thetas, T_home)  # [N, 7]
-  rArmKinematics.plot(joints_trajs, *psi_params)
-  
-  plotMJ(dt, tt, xx, uu, smooth_acc, xvaj)
-
-
-extra_rep = 2
-
-
-# Min jerk trajectories (out of the loop since trajectory doesn't change)
-y_des, velo, accel, jerk = get_minjerk_trajectory(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=xx, uu=uu)
+y_des, velo, accel, jerk = get_minjerk_trajectory(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=xx, uu=uu)  # Min jerk trajectories (out of the loop since trajectory doesn't change)
+# Cartesian -> JointSpace
 thetas                   = np.zeros_like(y_des)
 xyz_traj                 = np.zeros((thetas.size, 3))
 xyz_traj[:,2]            = y_des
-q_traj_des, q_start, _   = rArmKinematics.seqIK(xyz_traj, thetas, T_home)  # [N, 7]
+q_traj_des, q_start, psi_params   = rArmKinematics.seqIK(xyz_traj, thetas, T_home)  # [N, 7]
+
+if True:
+  rArmKinematics.plot(q_traj_des, *psi_params)
+  plotMJ(dt, tt, xx, uu, smooth_acc, (y_des, velo, accel, jerk))
+
 
 # q_traj, q_v_traj, q_a_traj, dP_N_vec, u_vec = rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL, u=q_traj_des.squeeze(), joint_home_config=q_start, repetitions=10, it=0, go2position=True)
 
@@ -177,6 +162,7 @@ for j in range(ILC_it):
 
 
 # %%
+extra_rep = 2
 # Extra to catch the ball
 q_s_ex, q_v_s_ex, q_a_s_ex, dP_N_vec_ex, u_vec_arr = rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL, u=u_arr, joint_home_config=home_pose, repetitions=5, it=j)
 
