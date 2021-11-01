@@ -12,6 +12,7 @@ from apollo_interface.Apollo_It import ApolloInterface, plot_simulation
 from kinematics.ApolloKinematics import ApolloArmKinematics
 
 
+colors = ["r", 'g', 'b', 'k', 'c', 'm', 'y']
 def plot_joint_list(joint_traj_list, dt):
   N = len(joint_traj_list)
   for i in range(N):
@@ -19,13 +20,11 @@ def plot_joint_list(joint_traj_list, dt):
   plt.show()
 
 def plot_joints(joints_traj, dt=1.0, label="", block=True):
-  colors = ["r", 'g', 'b', 'k', 'c', 'm', 'y']
   if block:
     plt.figure()
   timesteps = dt*np.arange(joints_traj.reshape(-1, 7).shape[0])
   for i in range(7):
     lines = plt.plot(timesteps, joints_traj[:, i], c=colors[i], label=r'$\theta_{}$'.format(i))
-  # plt.legend(iter(lines), (r'$\theta_{}$'.format(i) for i in range(len(lines))))
   plt.legend()
   plt.show(block=block)
 
@@ -106,7 +105,7 @@ xyz_traj                 = np.zeros((thetas.size, 3))
 xyz_traj[:,2]            = y_des
 q_traj_des, q_start, psi_params   = rArmKinematics.seqIK(xyz_traj, thetas, T_home)  # [N, 7]
 
-if True:
+if False:
   rArmKinematics.plot(q_traj_des, *psi_params)
   plotMJ(dt, tt, xx, uu, smooth_acc, (y_des, velo, accel, jerk))
 
@@ -140,9 +139,7 @@ for j in range(ILC_it):
   # Main Simulation
   q_traj, q_v_traj, q_a_traj, dP_N_vec, u_vec = rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL, u=u_arr, joint_home_config=q_start, repetitions=1, it=j)
 
-  plot_joint_list([q_traj, q_traj_des], dt)
-  plot_joints(q_traj-q_traj_des, dt)
-
+  
   # System Output
   y_meas = q_traj[1:]
 
@@ -155,6 +152,19 @@ for j in range(ILC_it):
   disturbanc_vec[j, 1:] = np.squeeze([ilc.d for ilc in my_ilcs]).T  # learned joint space disturbances
   joints_d_vec[j, 1:]   = np.squeeze(q_traj_des[1:]-y_meas)         # actual joint space error
   xyz_vec[j, ]          = rArmKinematics.seqFK(q_traj)[:, :3, -1]   # actual cartesian errors
+
+
+  if False:
+    plot_joint_list([q_traj, q_traj_des], dt)
+    plot_joints(q_traj-q_traj_des, dt)
+
+  for ii in range(3):
+    plt.plot(xyz_vec[j, ][:, ii], c=colors[ii])
+    plt.plot(xyz_traj[:, ii] + T_home[ii, -1], c=colors[ii])  
+  lines = plt.plot(xyz_vec[j, ] - xyz_traj - T_home[:3, -1])
+  plt.legend(iter(lines), (i for i in ['x', 'y', 'z']))
+  plt.show()
+  
 
   print("ITERATION: " + str(j+1)
         + ", \n\Trajectory_track_error_norm: " + str(np.linalg.norm(joints_d_vec[j]))
