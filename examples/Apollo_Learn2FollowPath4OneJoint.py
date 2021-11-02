@@ -145,9 +145,9 @@ if False:
 input_is_velocity = True
 kf_dpn_params = {
   'M': 0.021*np.eye(N_1, dtype='float'),    # covariance of noise on the measurment
-  'P0': 0.1*np.eye(N_1, dtype='float'),     # initial disturbance covariance
+  'P0': 0.01*np.eye(N_1, dtype='float'),     # initial disturbance covariance
   'd0': np.zeros((N_1, 1), dtype='float'),  # initial disturbance value
-  'epsilon0': 0.3,                          # initial variance of noise on the disturbance
+  'epsilon0': 0.1,                          # initial variance of noise on the disturbance
   'epsilon_decrease_rate': 0.9              # the decreasing factor of noise on the disturbance
 }
 
