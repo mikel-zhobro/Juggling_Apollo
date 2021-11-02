@@ -49,7 +49,7 @@ class ApolloArmKinematics():
 
         Args:
             position_traj        ([np.array((N, 3))]): relative movements from start_position
-            thetas_traj          ([np.array(N)])     : relative rotations around z axis from start orientation(x-down, y-right, z-forward)
+            thetas_traj          ([np.array(N)])     : relative rotations around z axis from start orientation of TCP (x-down, y-right, z-forward)
             T_start              ([np.array((4, 4))]): decides start position/orientation from where everything unfolds
             verbose (bool, optional)                 : Ploting for verbose reasons. Defaults to False.
 
@@ -100,7 +100,11 @@ class ApolloArmKinematics():
             self.plot(joint_trajs, psis, psi_mins, psi_maxs)
             
         return joint_trajs, q_joint_state_i, (psis, psi_mins, psi_maxs)
-    
+
+    @property
+    def limits(self):
+        return [j.limit_range for j in self.dh_rob.joints]
+
     def plot(self, joint_trajs=None, psis=None, psi_mins=None, psi_maxs=None, dt=1):
         if psis is None:
             self.plot_joints(joint_trajs)

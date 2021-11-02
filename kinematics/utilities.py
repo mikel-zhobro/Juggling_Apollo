@@ -10,6 +10,8 @@ try:
 except:
     pass
 
+VERBOSE = False
+
 def reduce_model(FILENAME, jointsToUse):
     model = pin.buildModelFromUrdf(FILENAME)
 
@@ -22,9 +24,10 @@ def reduce_model(FILENAME, jointsToUse):
 
     # Info
     joint_index_dict = {jn: model_reduced.getJointId(jn) for jn in jointsToUse}
-    sorted_jn_index = sorted(joint_index_dict.items(), key=lambda kv: kv[0])
-    print("Free Joints and their corresponding indexes in Pinocchio:")
-    print("    " + str(sorted_jn_index))
+    if VERBOSE:
+        sorted_jn_index = sorted(joint_index_dict.items(), key=lambda kv: kv[0])
+        print("Free Joints and their corresponding indexes in Pinocchio:")
+        print("    " + str(sorted_jn_index))
     return model_reduced
 
 def modrad(q):

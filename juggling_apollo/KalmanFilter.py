@@ -32,7 +32,10 @@ class KalmanFilter:
       self.epsilon = self.epsilon0
 
   def updateStep(self, u, y_meas):
-    # In this case y = Fu + Gd0  + ((( GKd ))) + mu
+    # In this case
+    # d0 ~ N(P0)
+    # d = d + n_d                        with n_d ~ N(eps*I)
+    # y = Fu + Gd0  + ((( GKd ))) + n_y  with n_y ~ N(0, M)
     P1_0 = self._P + self.Ident * self.epsilon
     Theta = self.lss.GK.dot(P1_0).dot(self.lss.GK.T) + self.M
     K = P1_0.dot(self.lss.GK.T).dot(np.linalg.inv(Theta))
