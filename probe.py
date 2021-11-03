@@ -59,6 +59,7 @@ def main3():
 
     
     r_arm = ApolloInterface(r_arm=True)
+
     r_arm.go_to_home_position([0.0, 0.0, -np.pi/4, np.pi/2, np.pi/2, np.pi/2, 0.0], 4000, False)
     # r_arm.go_to_posture_array([np.pi/4, 0.0, np.pi/4, np.pi/4, 3*np.pi/4, 3*np.pi/4, 0.0], 2000, False)
     
@@ -72,6 +73,34 @@ def main3():
     plt.legend()
     plt.show()
     print()
+
+
+
+def main4():
+    def save_matrices(A,B,C, file_name):
+        with open(file_name, 'wb') as f:
+            np.save(f, A)
+            np.save(f, B)
+            np.save(f, C)
+
+    def load_matrices(file_name):
+        with open(file_name, 'rb') as f:
+            A = np.load(f)
+            B = np.load(f)
+            C = np.load(f)
+        return (A,B,C)
+    
+    
+    A = 0.2
+    B = np.eye(4)
+    C = np.eye(5)
+    
+    filename ='data/abc'
+    save_matrices(A,B,C, filename)
+    abc = load_matrices(filename)
+    print(abc)
+
+
 
 if __name__ == "__main__":
     main3()

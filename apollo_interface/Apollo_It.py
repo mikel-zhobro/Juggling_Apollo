@@ -227,8 +227,8 @@ class ApolloInterface:
         else:
             while True:
                 obs = self.go_to_posture_array(home_pose, it_time, False)
-                print("HOME with error:", np.linalg.norm(home_pose.squeeze()-obs[:,0].squeeze()))
-                if np.linalg.norm(home_pose.squeeze()-obs[:,0].squeeze()) <= 1e-4:
+                print("HOME with error:", np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze()))
+                if np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze()) <= 1e-4:
                     break
             
         self.go_to_speed_array(np.zeros_like(home_pose), it_time/4, False)
