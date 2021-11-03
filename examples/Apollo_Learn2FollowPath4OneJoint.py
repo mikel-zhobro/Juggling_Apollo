@@ -1,6 +1,5 @@
 # %%
 import numpy as np
-from numpy.core.shape_base import block
 
 import __add_path__
 from juggling_apollo.utils import steps_from_time, plt
