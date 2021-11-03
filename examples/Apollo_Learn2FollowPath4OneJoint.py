@@ -42,6 +42,28 @@ def plot_joints(joints_traj, dt=1.0, title="", block=True, limits=None):
     plt.title(title)
   plt.show(block=block)
 
+def plot_A(lines_list, indexes_list, labels, dt=1, xlabel="", ylabel=""):
+  assert len(lines_list) == len(labels), "Please use same number of lines and labels"
+  N = len(lines_list)
+  M = len(indexes_list)
+  if M >= 3:
+    a = M//3 + (1 if M%3 !=0 else 0)
+    b = 3
+  else:
+    a = 1
+    b = M
+  timesteps = dt*np.arange(lines_list[0].shape[0])
+  fig, axs = plt.subplots(a,b, figsize=(12,8))
+  axs = np.array(axs)
+  for iii, ix in enumerate(indexes_list):
+    for i in range(N):
+      axs.flatten()[iii].plot(timesteps, lines_list[i][:, ix].squeeze(), color=colors[ix], linestyle=line_types[i], label=r"$\theta_{}$ {}".format(ix, labels[i]))
+      r"$\theta_{}$ {}".format(ix, labels[i])
+      axs.flatten()[iii].legend(loc=1)
+      axs.flatten()[iii].grid(True)
+  fig.text(0.5, 0.04, xlabel, ha='center')
+  fig.text(0.04, 0.5, ylabel, va='center', rotation='vertical')
+
 
 print("juggling_apollo")
 
@@ -58,7 +80,7 @@ rArmKinematics = ApolloArmKinematics(r_arm=True)
 T_home = rArmKinematics.FK(home_pose)
 print(T_home)
 # T_home = np.eye(4, dtype='float')
-# T_home[:3, -1] = [0.3, 0.811, -0.49]
+T_home[:3, -1] = [0.3, 0.811, -0.49]
 T_home[:3, :3] = np.array([[0.0, -1.0, 0.0],  # uppword orientation(cup is up)
                            [0.0,  0.0, 1.0],
                            [-1.0, 0.0, 0.0]], dtype='float')
@@ -88,7 +110,7 @@ N_repeat_point = steps_from_time(T_throw_first, dt)-1                     # time
 
 # %%
 # Learn Throw
-ILC_it = 55  # number of ILC iteration
+ILC_it = 35  # number of ILC iteration
 
 # Data collection
 # a. System Trajectories
@@ -114,7 +136,7 @@ ub_catch = -ub_throw*0.9
 i_a_end = None
 tt=[0.0,      T_throw_first,     T_throw_first+T_empty,   T_FULL  ]
 xx=[0.0,      0.0,               z_catch,                 0.0   ]
-uu=[0.0,      ub_throw/2.0,      ub_catch/2.0,            0.0     ]
+uu=[0.0,      ub_throw/3.0,      ub_catch/3.0,            0.0     ]
 y_des, velo, accel, jerk = get_minjerk_trajectory(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=xx, uu=uu)  # Min jerk trajectories (out of the loop since trajectory doesn't change)
 
 if False:
@@ -144,15 +166,16 @@ if False:
 # I. SYSTEM DYNAMICS
 input_is_velocity = True
 kf_dpn_params = {
-  'M': 0.021*np.eye(N_1, dtype='float'),    # covariance of noise on the measurment
-  'P0': 0.01*np.eye(N_1, dtype='float'),     # initial disturbance covariance
-  'd0': np.zeros((N_1, 1), dtype='float'),  # initial disturbance value
-  'epsilon0': 0.1,                          # initial variance of noise on the disturbance
-  'epsilon_decrease_rate': 0.9              # the decreasing factor of noise on the disturbance
+  'M': 0.02*np.eye(N_1, dtype='float'),       # covariance of noise on the measurment
+  'P0': 0.06*np.eye(N_1, dtype='float'),      # initial disturbance covariance
+  'd0': np.zeros((N_1, 1), dtype='float'),    # initial disturbance value
+  'epsilon0': 1e-5,                           # initial variance of noise on the disturbance
+  'epsilon_decrease_rate': 1.0                  # the decreasing factor of noise on the disturbance
 }
 
 my_ilcs = [
-  ILC(dt=dt, sys=ApolloDynSysIdeal(dt, input_is_velocity), kf_dpn_params=kf_dpn_params, x_0=[q_start[i, 0]]) 
+  # ILC(dt=dt, sys=ApolloDynSysIdeal(dt, input_is_velocity), kf_dpn_params=kf_dpn_params, x_0=[q_start[i, 0]]) 
+  ILC(dt=dt, sys=ApolloDynSys(dt, input_is_velocity), kf_dpn_params=kf_dpn_params, x_0=[q_start[i, 0], 0]) 
   for i in range(N_joints)]
 
 
@@ -161,28 +184,8 @@ for ilc in my_ilcs:
 
 
 
-def plot_A(lines_list, indexes_list, labels, dt=1, xlabel="", ylabel=""):
-  assert len(lines_list) == len(labels), "Please use same number of lines and labels"
-  N = len(lines_list)
-  M = len(indexes_list)
-  if M >= 3:
-    a = M//3 + (1 if M%3 !=0 else 0)
-    b = 3
-  else:
-    a = 1
-    b = M
-  timesteps = dt*np.arange(lines_list[0].shape[0])
-  fig, axs = plt.subplots(a,b, figsize=(12,8))
-  for iii, ix in enumerate(indexes_list):
-    for i in range(N):
-      axs.flatten()[iii].plot(timesteps, 180.0/np.pi*lines_list[i][:, ix].squeeze(), color=colors[ix], linestyle=line_types[i], label=r"$\theta_{}$ {}".format(ix, labels[i]))
-      r"$\theta_{}$ {}".format(ix, labels[i])
-      axs.flatten()[iii].legend(loc=1)
-      axs.flatten()[iii].grid(True)
-  fig.text(0.5, 0.04, xlabel, ha='center')
-  fig.text(0.04, 0.5, ylabel, va='center', rotation='vertical')
 
-every_N = 9
+every_N = ILC_it-1
 for j in range(ILC_it):
   # Learn feed-forward signal
   u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=q_traj_des[:, i], y_meas=y_meas[:, i], verbose=bool(i in learnable_joints and j%every_N==0 and False)) for i, ilc in enumerate(my_ilcs)]
@@ -208,29 +211,30 @@ for j in range(ILC_it):
   xyz_vec[j, ]          = rArmKinematics.seqFK(q_traj)[:, :3, -1]   # actual cartesian errors
 
   if True and j%every_N==0:
-    plot_A([u_arr, q_v_traj[1:], joints_vq_vec[j-4][1:]], learnable_joints, ["des", "it="+str(j), "it="+str(j-4)], dt=dt, xlabel=r"$t$ [s]", ylabel=r" angle velocity [$\frac{1\circ}{s}$]")
+    plot_A([u_arr, q_v_traj[1:]], learnable_joints, ["des", "it="+str(j)], dt=dt, xlabel=r"$t$ [s]", ylabel=r" angle velocity [$\frac{rad}{s}$]")
     plt.suptitle("Angle Velocities")
     plt.show(block=False)
 
   if True and j%every_N==0:
-    plot_A([q_traj_des, q_traj, joints_q_vec[j-4]], learnable_joints, ["des", "it="+str(j), "it="+str(j-4)], dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$1\circ$]")
+    plot_A([q_traj_des, q_traj, joints_q_vec[j-4], joints_q_vec[0]], learnable_joints, ["des", "it="+str(j), "it="+str(j-4), "it=0"], dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
     plt.suptitle("Angle Positions")
     plt.show()
 
-  if False:
-    plot_joints(q_traj, dt, limits=rArmKinematics.limits)
-    plot_joints(q_traj-q_traj_des, dt)
-
+  if True and j%every_N==0:
+    plot_A([disturbanc_vec[j, 1:], disturbanc_vec[j-2, 1:], disturbanc_vec[j-4, 1:], disturbanc_vec[1, 1:]], learnable_joints, ["d", "it-2", "it-4", "it=1"], dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
+    plt.suptitle("Disturbance")
+    plt.show()
   
-  if False:
+  if True and j%every_N==0:
     ls = ['x', 'y', 'z']
+    fig, axs = plt.subplots(3,1, figsize=(12,8))
     for ii in range(3):
-      plt.plot(xyz_vec[j, ][:, ii], c=colors[ii], label=ls[ii])
-      plt.plot(xyz_traj[:, ii] + T_home[ii, -1], c=colors[ii], linestyle='--', label=ls[ii]+'_des')  
+      axs[ii].plot(xyz_vec[j, ][:, ii], c=colors[ii], label=ls[ii])
+      axs[ii].plot(xyz_traj[:, ii] + T_home[ii, -1], c=colors[ii], linestyle='--', label=ls[ii]+'_des')  
       # lines = plt.plot(xyz_vec[j, ] - xyz_traj - T_home[:3, -1])
       # plt.legend(iter(lines), (i for i in ['x', 'y', 'z']))
-      plt.legend(loc=1)
-      plt.show()
+      axs[ii].legend(loc=1)
+    plt.show()
   
 
   print("ITERATION: " + str(j+1))
@@ -238,11 +242,6 @@ for j in range(ILC_it):
     print(str(i) + ". Trajectory_track_error_norm: " + str(np.linalg.norm(joints_d_vec[j, :, i]))
         )
 
-  
-plt.plot(q_traj[:,learnable_joints].squeeze(), label='measured')
-plt.plot(q_traj_des[:,learnable_joints].squeeze(), label='desired')
-plt.legend(loc=1)
-plt.show()
 # %%
 extra_rep = 2
 # Extra to catch the ball

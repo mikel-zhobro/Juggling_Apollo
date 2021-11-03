@@ -33,7 +33,7 @@ class DH_revolut():
             self.offset = offset
             self.index = DH_revolut.n_joints
             # self.limit_range = ContinuousSet(JOINTS_LIMITS[self.name][0]-offset, JOINTS_LIMITS[self.name][1]-offset, False, False)
-            self.limit_range = ContinuousSet(limit[0]-offset, limit[1]-offset, False, False)
+            self.limit_range = ContinuousSet(limit[0], limit[1], False, False)
             DH_revolut.n_joints += 1
 
         def __repr__(self):

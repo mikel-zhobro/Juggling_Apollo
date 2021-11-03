@@ -325,8 +325,8 @@ def tangent_type(an, bn, cn, ad, bd, cd, joint, verbose=False):
     limits = joint.limit_range - ContinuousSet(-np.pi+eps_psi, np.pi-eps_psi, False, True)
     # theta_min = joint.limit_range.a
     # theta_max = joint.limit_range.b
-    theta_min = limits.a
-    theta_max = limits.b
+    theta_min = limits.a + joint.offset
+    theta_max = limits.b + joint.offset
     roots = sorted(find_root(theta_min, True) + find_root(theta_max, False), key=lambda r: r.root)
 
     # Joint Limits feasible sets

@@ -41,8 +41,28 @@ class ApolloArmKinematics():
     def seqFK(self, qs):
         return np.array([self.FK(q) for q in qs]).reshape(-1, 4, 4)
     
-    def IK(self,p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0):
-        return IK_anallytical(p07_d, R07_d, DH_model, GC2=GC2, GC4=GC4, GC6=GC6)
+    def IK(self,p07_d, R07_d, GC2=1.0, GC4=1.0, GC6=1.0):
+        return IK_anallytical(p07_d, R07_d, self.dh_rob, GC2=GC2, GC4=GC4, GC6=GC6)
+
+    def IK_best(self, T_d, for_seqik=False):
+        # Returns joint configuration that correspond to the IK solutions with biggest PSI feasible set 
+        # PSI is choosen from the middle of the set
+        GC2, GC4, GC6, feasible_set, solu =  IK_heuristic2(p07_d=T_d[:3, 3:4], R07_d=T_d[:3, :3], DH_model=self.dh_rob) # decide branch of solutions
+        assert not feasible_set.empty, "Not possible to calculate IK"
+        feasible_set = feasible_set.max_range()
+        psi = feasible_set.middle                     # Choose psi for start configuration
+        q_joints = solu(feasible_set.a+1e-4)          # Start configuration
+        print("EHHHHHHHHHHHHHHHHHHHH")
+        print(self.limits[2])
+        print(solu(feasible_set.a)[2], solu(feasible_set.b)[2])
+        print(feasible_set)
+        print(q_joints.T)
+        q_joints = solu(psi)          # Start configuration
+        
+        if for_seqik:
+            return q_joints, GC2, GC4, GC6, psi
+        else:
+            return q_joints
 
     def seqIK(self, position_traj, thetas_traj, T_start, verbose=False):
         """[summary]
@@ -60,11 +80,7 @@ class ApolloArmKinematics():
         # Find the solution branch we shall follow in this sequence and starting psi
         R_start = T_start[:3, :3]
         p_start = T_start[:3, 3:4]
-        GC2, GC4, GC6, feasible_set, solu =  IK_heuristic2(p07_d=p_start, R07_d=R_start, DH_model=self.dh_rob) # decide branch of solutions
-        assert not feasible_set.empty, "Not possible to calculate IK"
-        feasible_set = feasible_set.max_range()
-        psi = feasible_set.middle     # Choose psi for start configuration
-        q_joint_state_i = solu(psi)   # Start configuration
+        q_joint_state_i, GC2, GC4, GC6, psi = self.IK_best(T_start, for_seqik=True)   # Start configuration
 
         # Init lists
         N = position_traj.shape[0]
