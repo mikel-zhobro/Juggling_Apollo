@@ -1,4 +1,3 @@
-# %%
 import numpy as np
 
 import __add_path__
@@ -6,6 +5,9 @@ import matplotlib.pyplot as plt
 from juggling_apollo.settings import dt
 from apollo_interface.Apollo_It import ApolloInterface
 from kinematics.ApolloKinematics import ApolloArmKinematics
+from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal, ApolloDynSys2
+from juggling_apollo.LiftedStateSpace import LiftedStateSpace
+
 
 np.set_printoptions(precision=4, suppress=True)
 
@@ -48,7 +50,7 @@ def plot_A(lines_list, indexes_list, labels, dt=1, xlabel="", ylabel="", limits=
   axs = np.array(axs)
   for iii, ix in enumerate(indexes_list):
     for i in range(N):
-      axs.flatten()[iii].plot(timesteps, lines_list[i][:, ix].squeeze(), color=colors[ix], linestyle=line_types[i], label=r"$\theta_{}$ {}".format(ix+1, labels[i]))
+      axs.flatten()[iii].plot(timesteps, lines_list[i][:, ix].squeeze(), color=colors[i], linestyle=line_types[ix], label=r"$\theta_{}$ {}".format(ix+1, labels[i]))
       if limits is not None:
         axs.flatten()[iii].axhspan(limits[ix].a, limits[ix].b, color=colors[ix], alpha=0.3, label='feasible set')
         axs.flatten()[iii].set_ylim([min(-np.pi, limits[ix].a), max(np.pi, limits[ix].b)])
@@ -82,7 +84,7 @@ print(q_home.T)
 N_joints     = 7  # number of joints
 N_1          = 500
 N_step_start = 200
-N_step_end   = 380
+N_step_end   = 280
 
 T_FULL = N_1*dt
 T_signal = (N_step_end-N_step_start)*dt
@@ -97,7 +99,7 @@ u_des = np.sin(np.pi/T_signal * timesteps)
 
 # Step Like Signal
 amplitudes = [0.5, 1, 2, 4]
-# u_des = 1.0
+u_des = 1.0
 
 v_traj_des = np.zeros((N_1, N_joints, 1))
 
@@ -113,14 +115,14 @@ joints_aq_vec = np.zeros([N_trials, N_1+1, N_joints, 1], dtype='float')
 
 
 
-
-def simulate_vel(v_des, alpha=200.0):
-    N = v_des.size
-    vels = np.zeros((N,7,1))
-    for i in range(N):
-        # vels[i] =  alpha*dt*vels[i-1] + (1.0-alpha*dt)*v_des[i] 
-        vels[i] = vels[i-1] + alpha*dt*(v_des[i]-vels[i-1])
-    return vels
+def simulate_vel(v_des, alpha=10.0):
+  N = v_des.size
+  st = ApolloDynSys2(dt, alpha_=alpha)
+  # st.Cd = np.array([0.0, 1.0]).reshape(1,2)
+  sys = LiftedStateSpace(st, [0.0, 0.0, 0.0])
+  sys.updateQuadrProgMatrixes([None]*N)
+  vels = sys.GF.dot(v_des)
+  return np.tile(vels, [1,7])[:,:,np.newaxis]
 
 if False:
     # All joints together
@@ -162,6 +164,9 @@ for j, ampl in enumerate(amplitudes):
         joints_aq_vec[j,:,i]    = q_a_traj[:,i]
 
     if True and i%every_N==0:
-        plot_A([v_traj_des, joints_vq_vec[j,1:], simulate_vel(v_traj_des[:,i])], learnable_joints, ["des", "it="+str(j), "sim"], dt=dt, xlabel=r"$t$ [s]", ylabel=r" angle velocity [$\frac{rad}{s}$]")
+        alphas = [15.0, 46.0, 57.0,69.0, 81.0]
+        lines2Plot = [v_traj_des, joints_vq_vec[j,1:]] + [simulate_vel(v_traj_des[:,i], a) for a in alphas ]
+        labels2Plot = ["des", "real"] + ["sim_a={}".format(a) for a in alphas ]
+        plot_A(lines2Plot, learnable_joints, labels2Plot, dt=dt, xlabel=r"$t$ [s]", ylabel=r" angle velocity [$\frac{rad}{s}$]")
         plt.suptitle("Angle Velocities")
         plt.show(block=True)

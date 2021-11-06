@@ -108,8 +108,8 @@ class BallAndPlateDynSys(DynamicSystem):
 
 
 class ApolloDynSys(DynamicSystem):
-  def __init__(self, dt, input_is_velocity):
-    self.alpha = alpha
+  def __init__(self, dt, input_is_velocity=True, alpha_=alpha):
+    self.alpha = alpha_
     DynamicSystem.__init__(self, dt, input_is_velocity)
 
   def initDynSys(self, dt, input_is_velocity=True):
@@ -131,7 +131,7 @@ class ApolloDynSys(DynamicSystem):
   
   
 class ApolloDynSysIdeal(DynamicSystem):
-  def __init__(self, dt, input_is_velocity):
+  def __init__(self, dt, input_is_velocity=True):
     DynamicSystem.__init__(self, dt, input_is_velocity)
 
   def initDynSys(self, dt, input_is_velocity=True):
@@ -141,12 +141,35 @@ class ApolloDynSysIdeal(DynamicSystem):
   def getSystemMarixesVelocityControl(self, dt):
     # x_k = Ad*x_k-1 + Bd*u_k-1 + S*d_k + c
     # y_k = Cd*x_k
-    
-    
     Ad = np.array([1.0], dtype='float').reshape(1,1)
     Bd = np.array([dt], dtype='float').reshape(1,1)
     Cd = np.array([1.0], dtype='float').reshape(1,1)
     S = np.array([1.0], dtype='float').reshape(1,1)
     c = np.array([0.0], dtype='float').reshape(1,1)
+
+    return Ad, Bd, Cd, S, c
+  
+  
+class ApolloDynSys2(DynamicSystem):
+  def __init__(self, dt, alpha_=alpha, input_is_velocity=True):
+    self.alpha = alpha_
+    DynamicSystem.__init__(self, dt, input_is_velocity)
+
+  def initDynSys(self, dt, input_is_velocity=True):
+    assert input_is_velocity, "For apollo only dynamic system with velocity input is provided."
+    self.Ad, self.Bd, self.Cd, self.S, self.c = self.getSystemMarixesVelocityControl(dt)
+
+  def getSystemMarixesVelocityControl(self, dt):
+    # x_k = Ad*x_k-1 + Bd*u_k-1 + S*d_k + c
+    # y_k = Cd*x_k
+    Ad = np.array([1.0,  dt,         dt**2/2,
+                   0.0,  1.0,        dt,
+                   0.0, -self.alpha, 0.0], dtype='float').reshape(3,3)
+    Bd = np.array([0.0,
+                   0.0,
+                   self.alpha], dtype='float').reshape(3,1)
+    Cd = np.array([0.0, 1.0, 0.0], dtype='float').reshape(1,3)
+    S = np.array([1.0, 0.0, 0.0], dtype='float').reshape(3,1)
+    c = np.array([0.0, 0.0, 0.0], dtype='float').reshape(3,1)
 
     return Ad, Bd, Cd, S, c

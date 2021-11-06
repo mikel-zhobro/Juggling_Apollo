@@ -102,7 +102,6 @@ N_1 = steps_from_time(T_FULL, dt)-1                                       # size
 N_throw = steps_from_time(T_throw_first, dt)-1                            # timestep where throw must happen
 N_throw_empty = steps_from_time(T_throw_first+T_empty, dt)-1              # timestep where catch must happen
 N_repeat_point = steps_from_time(T_throw_first, dt)-1                     # timestep from where the motion should be repeated
-
 # print('H: ' + str(H))
 # print('T_fly: ' + str(T_fly))
 
@@ -113,16 +112,18 @@ ILC_it = 35  # number of ILC iteration
 
 # Data collection
 # a. System Trajectories
-joints_q_vec  = np.zeros([ILC_it, N_1+1, N_joints, 1], dtype='float')
-joints_vq_vec = np.zeros([ILC_it, N_1+1, N_joints, 1], dtype='float')
-joints_aq_vec = np.zeros([ILC_it, N_1+1, N_joints, 1], dtype='float')
-xyz_vec       = np.zeros([ILC_it, N_1+1, 3], dtype='float')
+joints_q_vec   = np.zeros([ILC_it, N_1+1, N_joints, 1], dtype='float')
+joints_vq_vec  = np.zeros([ILC_it, N_1+1, N_joints, 1], dtype='float')
+joints_aq_vec  = np.zeros([ILC_it, N_1+1, N_joints, 1], dtype='float')
+xyz_vec        = np.zeros([ILC_it, N_1+1, 3], dtype='float')
 # b. ILC Trajectories
-disturbanc_vec  = np.zeros([ILC_it, N_1+1, N_joints], dtype='float')
-joints_d_vec  = np.zeros([ILC_it, N_1+1, N_joints], dtype='float')
-u_ff_vec      = np.zeros([ILC_it, N_1+1, N_joints], dtype='float')
+disturbanc_vec = np.zeros([ILC_it, N_1+1, N_joints], dtype='float')
+joints_d_vec   = np.zeros([ILC_it, N_1+1, N_joints], dtype='float')
+u_ff_vec       = np.zeros([ILC_it, N_1+1, N_joints], dtype='float')
 # c. Measurments
-torque_vec    = np.zeros([ILC_it, N_1+1, N_joints], dtype='float')
+torque_vec     = np.zeros([ILC_it, N_1+1, N_joints], dtype='float')
+# d. Trajectory error norms
+error_norms    = np.zeros([ILC_it, N_joints, 1], dtype='float')
 
 # ILC Loop
 u_ff = [None] * N_joints
@@ -163,18 +164,23 @@ if False:
 # q_traj, q_v_traj, q_a_traj, dP_N_vec, u_vec = rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL, u=q_traj_des.squeeze(), joint_home_config=q_start, repetitions=10, it=0, go2position=True)
 
 # I. SYSTEM DYNAMICS
-input_is_velocity = True
-kf_dpn_params = {
-  'M': 0.02*np.eye(N_1, dtype='float'),       # covariance of noise on the measurment
-  'P0': 0.06*np.eye(N_1, dtype='float'),      # initial disturbance covariance
-  'd0': np.zeros((N_1, 1), dtype='float'),    # initial disturbance value
-  'epsilon0': 1e-5,                           # initial variance of noise on the disturbance
-  'epsilon_decrease_rate': 1.0                  # the decreasing factor of noise on the disturbance
-}
+def kf_params(n_m=0.02, epsilon=1e-5, n_d=0.06):
+  kf_dpn_params = {
+    'M': n_m*np.eye(N_1, dtype='float'),       # covariance of noise on the measurment
+    'P0': n_d*np.eye(N_1, dtype='float'),      # initial disturbance covariance
+    'd0': np.zeros((N_1, 1), dtype='float'),    # initial disturbance value
+    'epsilon0': epsilon,                           # initial variance of noise on the disturbance
+    'epsilon_decrease_rate': 1.0                  # the decreasing factor of noise on the disturbance
+  }
+  return kf_dpn_params
+
+n_ms = [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02]
+n_ds = [0.06, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06]
+ep_s = [1e-4, 1e-4, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5]
 
 my_ilcs = [
   # ILC(dt=dt, sys=ApolloDynSysIdeal(dt, input_is_velocity), kf_dpn_params=kf_dpn_params, x_0=[q_start[i, 0]]) 
-  ILC(dt=dt, sys=ApolloDynSys(dt, input_is_velocity), kf_dpn_params=kf_dpn_params, x_0=[q_start[i, 0], 0]) 
+  ILC(dt=dt, sys=ApolloDynSys(dt, alpha_=10.0), kf_dpn_params=kf_params(n_ms[i], ep_s[i], n_ds[i]), x_0=[q_start[i, 0], 0]) 
   for i in range(N_joints)]
 
 
@@ -208,7 +214,9 @@ for j in range(ILC_it):
   disturbanc_vec[j, 1:] = np.squeeze([ilc.d for ilc in my_ilcs]).T  # learned joint space disturbances
   joints_d_vec[j, 1:]   = np.squeeze(q_traj_des[1:]-y_meas)         # actual joint space error
   xyz_vec[j, ]          = rArmKinematics.seqFK(q_traj)[:, :3, -1]   # actual cartesian errors
-
+  error_norms[j, :]     = np.linalg.norm(joints_d_vec[j, :], axis=0, keepdims=True).T
+  
+  
   if True and j%every_N==0:
     plot_A([u_arr, q_v_traj[1:]], learnable_joints, ["des", "it="+str(j)], dt=dt, xlabel=r"$t$ [s]", ylabel=r" angle velocity [$\frac{rad}{s}$]")
     plt.suptitle("Angle Velocities")
@@ -241,32 +249,38 @@ for j in range(ILC_it):
     print(str(i) + ". Trajectory_track_error_norm: " + str(np.linalg.norm(joints_d_vec[j, :, i]))
         )
 
-# %%
-extra_rep = 2
-# Extra to catch the ball
-q_s_ex, q_v_s_ex, q_a_s_ex, dP_N_vec_ex, u_vec_arr = rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL, u=u_arr, joint_home_config=home_pose, repetitions=5, it=j)
 
-# Evauluate last iteration
-# if j%(ILC_it-1)==0:
-if True:
-  q_s_full =   np.append(q_traj[1:], q_s_ex, 0)
-  q_v_s_full =   np.append(q_v_traj[1:], q_v_s_ex, 0)
-  q_a_s_full =   np.append(q_a_traj[1:], q_a_s_ex, 0)
-  dP_N_vec_full =  np.append(dP_N_vec[1:], dP_N_vec_ex, 0)
-  dP_N_vec_full =  np.append(dP_N_vec[1:], dP_N_vec_ex, 0)
-  u_vec_full =    np.append(u_vec, u_vec_arr, 0)
-  y_dess = np.append(y_des[1:], np.tile(y_des[N_throw_empty+1:], extra_rep), 0)
 
-  plot_simulation(dt,
-                  F_vec_full, x_b_vec_full, u_b_vec_full, x_p_vec_full,
-                  u_p_vec_full, dP_N_vec_full, gN_vec_full, y_dess,
-                  title="Iteration: " + str(j),
-                  vertical_lines={T_throw_first:        "T_throw1",              T_throw_first+T_empty: "T_catch_released_ball",
-                                  T_FULL-T_empty: "T_throw_released_ball", T_FULL:          "T_catch1",
-                                  T_FULL-T_empty+T_fly:          "T_catch_released_ball"})
-# Plot the stuff
-# plotIterations(u_ff_vec.T, "uff", dt, every_n=2)
-# plotIterations(d_vec.T, "Error on plate trajectory", dt, every_n=2)
-# plotIterations(x_p_vec.T, "Plate trajectory", dt, every_n=2)
-# plotIterations(u_throw_vec, "ub0", every_n=1)
-plt.show()
+
+filename = "../data/"
+with open(filename, 'wb') as f:
+  np.save(f, q_traj_des)
+  # a. System Trajectories  
+  np.save(f, joints_q_vec) 
+  np.save(f, joints_vq_vec)
+  np.save(f, joints_aq_vec)
+  np.save(f, xyz_vec)
+  # b. ILC Trajectories
+  np.save(f, disturbanc_vec)
+  np.save(f, joints_d_vec)  
+  np.save(f, u_ff_vec)      
+  # c. Measurments
+  np.save(f, torque_vec)
+  # d. Trajectory error norms
+  np.save(f, error_norms)
+
+with open(filename, 'rb') as f:
+  q_traj_des = np.load(f)
+  # a. System Trajectories  
+  joints_q_vec    = np.load(f) 
+  joints_vq_vec   = np.load(f)
+  joints_aq_vec   = np.load(f)
+  xyz_vec         = np.load(f)
+  # b. ILC Trajectories
+  disturbanc_vec  = np.save(f)
+  joints_d_vec    = np.save(f)  
+  u_ff_vec        = np.save(f)      
+  # c. Measurments
+  torque_vec      = np.save(f)
+  # d. Trajectory error norms
+  error_norms     = np.save(f)
