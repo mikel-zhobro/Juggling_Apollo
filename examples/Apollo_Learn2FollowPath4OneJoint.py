@@ -1,5 +1,6 @@
 # %%
 import numpy as np
+import time
 
 import __add_path__
 from juggling_apollo.utils import steps_from_time, plt
@@ -32,7 +33,7 @@ def plot_joints(joints_traj, dt=1.0, title="", block=True, limits=None):
         axs[i].axhspan(limits[i].a, limits[i].b, color=colors[i], alpha=0.3, label='feasible set')
         axs[i].set_ylim([min(-np.pi, limits[i].a), max(np.pi, limits[i].b)])
       axs[i].legend(loc=1)
-      
+
     plt.suptitle(title)
   else:
     for i in range(7):
@@ -148,18 +149,12 @@ if False:
 thetas                   = np.zeros_like(y_des)
 xyz_traj                 = np.zeros((thetas.size, 3))
 xyz_traj[:,2]            = y_des
-q_traj_des, q_start, psi_params   = rArmKinematics.seqIK(xyz_traj, thetas, T_home)  # [N, 7]
-
-## CHOOOSE JOINTS THAT LEARN
-learnable_joints = [0,1,2,3,4,5,6]
-non_learnable_joints = set(range(7)) - set(learnable_joints)
-for i in non_learnable_joints:
-  q_traj_des[:,i] = 0.0
+q_traj_des_, q_start, psi_params   = rArmKinematics.seqIK(xyz_traj, thetas, T_home)  # [N, 7]
 
 if False:
   # rArmKinematics.plot(q_traj_des, *psi_params)
   plot_joints(q_traj_des, limits=rArmKinematics.limits)
-  
+
 
 # q_traj, q_v_traj, q_a_traj, dP_N_vec, u_vec = rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL, u=q_traj_des.squeeze(), joint_home_config=q_start, repetitions=10, it=0, go2position=True)
 
@@ -177,10 +172,10 @@ def kf_params(n_m=0.02, epsilon=1e-5, n_d=0.06):
 n_ms = [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02]
 n_ds = [0.06, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06]
 ep_s = [1e-4, 1e-4, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5]
-
+alpha = 10.0
 my_ilcs = [
-  # ILC(dt=dt, sys=ApolloDynSysIdeal(dt, input_is_velocity), kf_dpn_params=kf_dpn_params, x_0=[q_start[i, 0]]) 
-  ILC(dt=dt, sys=ApolloDynSys(dt, alpha_=10.0), kf_dpn_params=kf_params(n_ms[i], ep_s[i], n_ds[i]), x_0=[q_start[i, 0], 0]) 
+  # ILC(dt=dt, sys=ApolloDynSysIdeal(dt, input_is_velocity), kf_dpn_params=kf_dpn_params, x_0=[q_start[i, 0]])
+  ILC(dt=dt, sys=ApolloDynSys(dt, alpha_=alpha), kf_dpn_params=kf_params(n_ms[i], ep_s[i], n_ds[i]), x_0=[q_start[i, 0], 0])
   for i in range(N_joints)]
 
 
@@ -188,99 +183,146 @@ for ilc in my_ilcs:
   ilc.initILC(N_1=N_1, impact_timesteps=[False]*N_1)  # ignore the ball
 
 
-
+## CHOOOSE JOINTS THAT LEARN
+q_traj_des = q_traj_des_.copy()
+learnable_joints = [0,1,2,3,4,5,6]
 
 every_N = ILC_it-1
-for j in range(ILC_it):
-  # Learn feed-forward signal
-  u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=q_traj_des[:, i], y_meas=y_meas[:, i], verbose=bool(i in learnable_joints and j%every_N==0 and False)) for i, ilc in enumerate(my_ilcs)]
-  u_arr = np.array(u_ff, dtype='float').squeeze().T
+for jjoint in range(7):
+  learnable_joints = [jjoint]
+  non_learnable_joints = set(range(7)) - set(learnable_joints)
   for i in non_learnable_joints:
-    u_arr[:,i] = 0.0
-    
-  # Main Simulation
-  q_traj, q_v_traj, q_a_traj, dP_N_vec, u_vec = rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL, u=u_arr, joint_home_config=q_start, repetitions=1, it=j)
+    q_traj_des[:,i] = 0.0
 
-  
-  # System Output
-  y_meas = q_traj[1:]
+  for j in range(ILC_it):
+    # Learn feed-forward signal
+    u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=q_traj_des[:, i], y_meas=y_meas[:, i], verbose=bool(i in learnable_joints and j%every_N==0 and False)) for i, ilc in enumerate(my_ilcs)]
+    u_arr = np.array(u_ff, dtype='float').squeeze().T
+    for i in non_learnable_joints:
+      u_arr[:,i] = 0.0
 
-  # Collect Data
-  joints_q_vec[j, ]     = q_traj
-  joints_vq_vec[j, ]    = q_v_traj
-  joints_aq_vec[j, ]    = q_a_traj
-  u_ff_vec[j, :-1]      = u_vec
-  torque_vec[j, ]       = dP_N_vec
-  disturbanc_vec[j, 1:] = np.squeeze([ilc.d for ilc in my_ilcs]).T  # learned joint space disturbances
-  joints_d_vec[j, 1:]   = np.squeeze(q_traj_des[1:]-y_meas)         # actual joint space error
-  xyz_vec[j, ]          = rArmKinematics.seqFK(q_traj)[:, :3, -1]   # actual cartesian errors
-  error_norms[j, :]     = np.linalg.norm(joints_d_vec[j, :], axis=0, keepdims=True).T
-  
-  
-  if True and j%every_N==0:
-    plot_A([u_arr, q_v_traj[1:]], learnable_joints, ["des", "it="+str(j)], dt=dt, xlabel=r"$t$ [s]", ylabel=r" angle velocity [$\frac{rad}{s}$]")
-    plt.suptitle("Angle Velocities")
-    plt.show(block=False)
-
-  if True and j%every_N==0:
-    plot_A([q_traj_des, q_traj, joints_q_vec[j-4], joints_q_vec[0]], learnable_joints, ["des", "it="+str(j), "it="+str(j-4), "it=0"], dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
-    plt.suptitle("Angle Positions")
-    plt.show()
-
-  if True and j%every_N==0:
-    plot_A([disturbanc_vec[j, 1:], disturbanc_vec[j-2, 1:], disturbanc_vec[j-4, 1:], disturbanc_vec[1, 1:]], learnable_joints, ["d", "it-2", "it-4", "it=1"], dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
-    plt.suptitle("Disturbance")
-    plt.show()
-  
-  if True and j%every_N==0:
-    ls = ['x', 'y', 'z']
-    fig, axs = plt.subplots(3,1, figsize=(12,8))
-    for ii in range(3):
-      axs[ii].plot(xyz_vec[j, ][:, ii], c=colors[ii], label=ls[ii])
-      axs[ii].plot(xyz_traj[:, ii] + T_home[ii, -1], c=colors[ii], linestyle='--', label=ls[ii]+'_des')  
-      # lines = plt.plot(xyz_vec[j, ] - xyz_traj - T_home[:3, -1])
-      # plt.legend(iter(lines), (i for i in ['x', 'y', 'z']))
-      axs[ii].legend(loc=1)
-    plt.show()
-  
-
-  print("ITERATION: " + str(j+1))
-  for i in learnable_joints:
-    print(str(i) + ". Trajectory_track_error_norm: " + str(np.linalg.norm(joints_d_vec[j, :, i]))
-        )
+    # Main Simulation
+    q_traj, q_v_traj, q_a_traj, dP_N_vec, u_vec = rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL, u=u_arr, joint_home_config=q_start, repetitions=1, it=j)
 
 
+    # System Output
+    y_meas = q_traj[1:]
+
+    # Collect Data
+    joints_q_vec[j, ]     = q_traj
+    joints_vq_vec[j, ]    = q_v_traj
+    joints_aq_vec[j, ]    = q_a_traj
+    u_ff_vec[j, :-1]      = u_vec
+    torque_vec[j, ]       = dP_N_vec
+    disturbanc_vec[j, 1:] = np.squeeze([ilc.d for ilc in my_ilcs]).T  # learned joint space disturbances
+    joints_d_vec[j, 1:]   = np.squeeze(q_traj_des[1:]-y_meas)         # actual joint space error
+    xyz_vec[j, ]          = rArmKinematics.seqFK(q_traj)[:, :3, -1]   # actual cartesian errors
+    error_norms[j, :]     = np.linalg.norm(joints_d_vec[j, :], axis=0, keepdims=True).T
 
 
-filename = "../data/"
-with open(filename, 'wb') as f:
-  np.save(f, q_traj_des)
-  # a. System Trajectories  
-  np.save(f, joints_q_vec) 
-  np.save(f, joints_vq_vec)
-  np.save(f, joints_aq_vec)
-  np.save(f, xyz_vec)
-  # b. ILC Trajectories
-  np.save(f, disturbanc_vec)
-  np.save(f, joints_d_vec)  
-  np.save(f, u_ff_vec)      
-  # c. Measurments
-  np.save(f, torque_vec)
-  # d. Trajectory error norms
-  np.save(f, error_norms)
+    if False and j%every_N==0:
+      plot_A([u_arr, q_v_traj[1:]], learnable_joints, ["des", "it="+str(j)], dt=dt, xlabel=r"$t$ [s]", ylabel=r" angle velocity [$\frac{rad}{s}$]")
+      plt.suptitle("Angle Velocities")
+      plt.show(block=False)
+
+    if False and j%every_N==0:
+      plot_A([q_traj_des, q_traj, joints_q_vec[j-4], joints_q_vec[0]], learnable_joints, ["des", "it="+str(j), "it="+str(j-4), "it=0"], dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
+      plt.suptitle("Angle Positions")
+      plt.show()
+
+    if False and j%every_N==0:
+      plot_A([disturbanc_vec[j, 1:], disturbanc_vec[j-2, 1:], disturbanc_vec[j-4, 1:], disturbanc_vec[1, 1:]], learnable_joints, ["d", "it-2", "it-4", "it=1"], dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
+      plt.suptitle("Disturbance")
+      plt.show()
+
+    if False and j%every_N==0:
+      ls = ['x', 'y', 'z']
+      fig, axs = plt.subplots(3,1, figsize=(12,8))
+      for ii in range(3):
+        axs[ii].plot(xyz_vec[j, ][:, ii], c=colors[ii], label=ls[ii])
+        axs[ii].plot(xyz_traj[:, ii] + T_home[ii, -1], c=colors[ii], linestyle='--', label=ls[ii]+'_des')
+        # lines = plt.plot(xyz_vec[j, ] - xyz_traj - T_home[:3, -1])
+        # plt.legend(iter(lines), (i for i in ['x', 'y', 'z']))
+        axs[ii].legend(loc=1)
+      plt.show()
+
+
+    print("ITERATION: " + str(j+1))
+    for i in learnable_joints:
+      print(str(i) + ". Trajectory_track_error_norm: " + str(np.linalg.norm(joints_d_vec[j, :, i]))
+          )
+
+
+
+
+  filename = "../data/joint_{}_alpha_{}".format(jjoint, alpha) + time.strftime("%Y_%m_%d-%H_%M_%S")
+  with open(filename, 'wb') as f:
+    # Home
+    np.save(f, q_start)
+    np.save(f, T_home)
+    # Desired Trajectories
+    np.save(f, xyz_traj)   # Desired cartesian trajectory
+    np.save(f, q_traj_des) # Desired trajectory for each joint
+    np.save(f, u_arr)      # Learned Input for each joint
+    # a. System Trajectories
+    np.save(f, joints_q_vec)
+    np.save(f, joints_vq_vec)
+    np.save(f, joints_aq_vec)
+    np.save(f, xyz_vec)
+    # b. ILC Trajectories
+    np.save(f, disturbanc_vec)
+    np.save(f, joints_d_vec)
+    np.save(f, u_ff_vec)
+    # c. Measurments
+    np.save(f, torque_vec)
+    # d. Trajectory error norms
+    np.save(f, error_norms)
+    # Params
+    # a. Minjerk
+    np.save(f, tt)
+    np.save(f, xx)
+    np.save(f, uu)
+    # b. ILC
+    np.save(f, learnable_joints)
+    np.save(f, alpha)
+    np.save(f, n_ms)
+    np.save(f, n_ds)
+    np.save(f, ep_s)
+
+with open('list_files.txt', 'a') as f:
+    f.write(filename + "\n")
+
 
 with open(filename, 'rb') as f:
-  q_traj_des = np.load(f)
-  # a. System Trajectories  
-  joints_q_vec    = np.load(f) 
-  joints_vq_vec   = np.load(f)
-  joints_aq_vec   = np.load(f)
-  xyz_vec         = np.load(f)
+  # Home
+  q_start          = np.load(f)
+  T_home           = np.load(f)
+  # Desired Trajectories
+  xyz_traj         = np.load(f)
+  q_traj_des       = np.load(f)
+  u_arr            = np.load(f)
+  # a. System Trajectories
+  joints_q_vec     = np.load(f)
+  joints_vq_vec    = np.load(f)
+  joints_aq_vec    = np.load(f)
+  xyz_vec          = np.load(f)
   # b. ILC Trajectories
-  disturbanc_vec  = np.save(f)
-  joints_d_vec    = np.save(f)  
-  u_ff_vec        = np.save(f)      
+  disturbanc_vec   = np.load(f)
+  joints_d_vec     = np.load(f)
+  u_ff_vec         = np.load(f)
   # c. Measurments
-  torque_vec      = np.save(f)
+  torque_vec       = np.load(f)
   # d. Trajectory error norms
-  error_norms     = np.save(f)
+  error_norms      = np.load(f)
+  # Params
+  ## a. Minjerk
+  tt               = np.load(f)
+  xx               = np.load(f)
+  uu               = np.load(f)
+
+  ## b. ILC
+  learnable_joints = np.load(f)
+  alpha            = np.load(f)
+  n_ms             = np.load(f)
+  n_ds             = np.load(f)
+  ep_s             = np.load(f)

@@ -37,39 +37,54 @@ def plot_A(lines_list, indexes_list, labels, dt=1, xlabel="", ylabel=""):
 # Data loading
 filename = "../data/"
 with open(filename, 'rb') as f:
-  # The desired trajectory to be learned
-  q_traj_des = np.load(f)
-  # a. System Trajectories  
-  joints_q_vec    = np.load(f) 
-  joints_vq_vec   = np.load(f)
-  joints_aq_vec   = np.load(f)
-  xyz_vec         = np.load(f)
+  # Home
+  q_start          = np.load(f)
+  T_home           = np.load(f)
+  # Desired Trajectories
+  xyz_traj         = np.load(f)
+  q_traj_des       = np.load(f)
+  u_arr            = np.load(f)
+  # a. System Trajectories
+  joints_q_vec     = np.load(f)
+  joints_vq_vec    = np.load(f)
+  joints_aq_vec    = np.load(f)
+  xyz_vec          = np.load(f)
   # b. ILC Trajectories
-  disturbanc_vec  = np.save(f)
-  joints_d_vec    = np.save(f)  
-  u_ff_vec        = np.save(f)      
+  disturbanc_vec   = np.load(f)
+  joints_d_vec     = np.load(f)
+  u_ff_vec         = np.load(f)
   # c. Measurments
-  torque_vec      = np.save(f)
+  torque_vec       = np.load(f)
   # d. Trajectory error norms
-  error_norms     = np.save(f)
-  
-  
-  
-  
+  error_norms      = np.load(f)
+  # Params
+  ## a. Minjerk
+  tt             = np.load(f)
+  xx             = np.load(f)
+  uu             = np.load(f)
+
+  ## b. ILC
+  learnable_joints = np.load(f)
+  alpha            = np.load(f)
+  n_ms             = np.load(f)
+  n_ds             = np.load(f)
+  ep_s             = np.load(f)
+
+
 learnable_joints = [0, 1, 2, 3, 4, 5, 6]
-  
+
 # Joint Velocity trajectories
-plot_A([u_arr, q_v_traj[1:]], learnable_joints, ["des", "it="+str(j)], dt=dt, xlabel=r"$t$ [s]", ylabel=r" angle velocity [$\frac{rad}{s}$]")
+plot_A([u_arr, joints_vq_vec[-1, 1:]], learnable_joints, ["des", "it="+str(j)], dt=dt, xlabel=r"$t$ [s]", ylabel=r" angle velocity [$\frac{rad}{s}$]")
 plt.suptitle("Angle Velocities")
 plt.show(block=False)
 
 # Joing angle trajectories
-plot_A([q_traj_des, q_traj, joints_q_vec[-1], joints_q_vec[0]], learnable_joints, ["des", "it="+str(j), "it="+str(j-4), "it=0"], dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
+plot_A([q_traj_des, joints_q_vec[-1], joints_q_vec[-10], joints_q_vec[0]], learnable_joints, ["des", "it="+str(-1), "it="+str(-10), "it=0"], dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
 plt.suptitle("Angle Positions")
 plt.show()
 
 # Learned disturbances
-plot_A([disturbanc_vec[j, 1:], disturbanc_vec[j-2, 1:], disturbanc_vec[j-4, 1:], disturbanc_vec[1, 1:]], learnable_joints, ["d", "it-2", "it-4", "it=1"], dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
+plot_A([disturbanc_vec[-1, 1:], disturbanc_vec[-2, 1:], disturbanc_vec[-4, 1:], disturbanc_vec[1, 1:]], learnable_joints, ["d", "it-2", "it-4", "it=1"], dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
 plt.suptitle("Disturbance")
 plt.show()
 
@@ -78,8 +93,8 @@ plt.show()
 ls = ['x', 'y', 'z']
 fig, axs = plt.subplots(3,1, figsize=(12,8))
 for ii in range(3):
-    axs[ii].plot(xyz_vec[j, ][:, ii], c=colors[ii], label=ls[ii])
-    axs[ii].plot(xyz_traj[:, ii] + T_home[ii, -1], c=colors[ii], linestyle='--', label=ls[ii]+'_des')  
+    axs[ii].plot(xyz_vec[-1][:, ii], c=colors[ii], label=ls[ii])
+    axs[ii].plot(xyz_traj[:, ii] + T_home[ii, -1], c=colors[ii], linestyle='--', label=ls[ii]+'_des')
     # lines = plt.plot(xyz_vec[j, ] - xyz_traj - T_home[:3, -1])
     # plt.legend(iter(lines), (i for i in ['x', 'y', 'z']))
     axs[ii].legend(loc=1)
