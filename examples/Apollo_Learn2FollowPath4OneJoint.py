@@ -23,27 +23,8 @@ def plot_joint_list(joint_traj_list, dt):
     plot_joints(joint_traj_list[i], dt, block=False)
   plt.show()
 
-def plot_joints(joints_traj, dt=1.0, title="", block=True, limits=None):
-  timesteps = dt*np.arange(joints_traj.reshape(-1, 7).shape[0])
-  if block:
-    fig, axs = plt.subplots(7, 1)
-    for i in range(7):
-      lines = axs[i].plot(timesteps, joints_traj[:, i], c=colors[i], label=r'$\theta_{}$'.format(i))
-      if limits is not None:
-        axs[i].axhspan(limits[i].a, limits[i].b, color=colors[i], alpha=0.3, label='feasible set')
-        axs[i].set_ylim([min(-np.pi, limits[i].a), max(np.pi, limits[i].b)])
-      axs[i].legend(loc=1)
-
-    plt.suptitle(title)
-  else:
-    for i in range(7):
-      lines = plt.plot(timesteps, joints_traj[:, i], c=colors[i], label=r'$\theta_{}$'.format(i))
-      plt.legend()
-    plt.title(title)
-  plt.show(block=block)
-
-def plot_A(lines_list, indexes_list, labels, dt=1, xlabel="", ylabel=""):
-  assert len(lines_list) == len(labels), "Please use same number of lines and labels"
+def plot_A(lines_list, indexes_list=list(range(7)), labels=None, dt=1, xlabel="", ylabel="", limits=None):
+  # assert len(lines_list) == len(labels), "Please use same number of lines and labels"
   N = len(lines_list)
   M = len(indexes_list)
   if M >= 3:
@@ -57,8 +38,10 @@ def plot_A(lines_list, indexes_list, labels, dt=1, xlabel="", ylabel=""):
   axs = np.array(axs)
   for iii, ix in enumerate(indexes_list):
     for i in range(N):
-      axs.flatten()[iii].plot(timesteps, lines_list[i][:, ix].squeeze(), color=colors[ix], linestyle=line_types[i], label=r"$\theta_{}$ {}".format(ix, labels[i]))
-      r"$\theta_{}$ {}".format(ix, labels[i])
+      axs.flatten()[iii].plot(timesteps, lines_list[i][:, ix].squeeze(), color=colors[ix], linestyle=line_types[i], label=r"$\theta_{}$ {}".format(ix, labels[i] if labels is not None else ""))
+      if limits is not None:
+        axs.flatten()[iii].axhspan(limits[iii].a, limits[iii].b, color=colors[iii], alpha=0.3, label='feasible set')
+        axs.flatten()[iii].set_ylim([min(-np.pi, limits[iii].a), max(np.pi, limits[iii].b)])
       axs.flatten()[iii].legend(loc=1)
       axs.flatten()[iii].grid(True)
   fig.text(0.5, 0.04, xlabel, ha='center')
