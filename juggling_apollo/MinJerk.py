@@ -35,7 +35,7 @@ def get_minjerk_xyz(dt, tt, xx, uu, smooth_acc=False, i_a_end=None, only_pos=Tru
 
 
 
-def get_minjerk_trajectory(dt, tt, xx, uu, smooth_acc=False, i_a_end=None, only_x=False):
+def get_minjerk_trajectory(dt, tt, xx, uu, smooth_acc=False, i_a_end=None, only_x=False, extra_at_end=None):
   """Computes a multi-interval minjerk trajectory in 1 dimension
 
   Args:
@@ -44,7 +44,8 @@ def get_minjerk_trajectory(dt, tt, xx, uu, smooth_acc=False, i_a_end=None, only_
       xx ([list]): [double] x nr_intervals
       uu ([list]): [double] x nr_intervals
       smooth_acc (bool, optional): Whether the acceleartion between intervals should be smooth.
-      i_a_end ([type], optional): If not None shows the number of the interval, whose end-acceleration should be used for the last interval.
+      i_a_end ([type], optional): If not None shows the number of the interval, whose start-acceleration should be used for the last interval.
+      extra_at_end([type], optional): If not None shows the number of times the last value of position should be repeated
 
   Returns:
       [lists]: x, v, a, j
@@ -84,13 +85,21 @@ def get_minjerk_trajectory(dt, tt, xx, uu, smooth_acc=False, i_a_end=None, only_
     u_last = v[-1]
     a_last = a[-1] if smooth_acc else None
     if i_a_end is not None and i == i_a_end:
-      a_end = a[-1]
+      a_end = a[0]
     if i==N-3:
       a_ende = a_end
   x_ret[n_last:] = x[-1]
   v_ret[n_last:] = v[-1]
   a_ret[n_last:] = a[-1]
   j_ret[n_last:] = j[-1]
+  
+  if extra_at_end is not None:
+    repeat = [1]* N_Whole
+    repeat[-1] = extra_at_end
+    x_ret = np.repeat(x_ret, repeats=repeat, axis=0)
+    v_ret = np.repeat(v_ret, repeats=repeat, axis=0)
+    a_ret = np.repeat(a_ret, repeats=repeat, axis=0)
+    j_ret = np.repeat(j_ret, repeats=repeat, axis=0)
   if only_x:
     return x_ret
   else:
