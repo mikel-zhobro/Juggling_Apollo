@@ -37,28 +37,23 @@ class ApolloArmKinematics():
         """
         return self.pin_rob.FK(q.reshape(7, 1)).homogeneous
         # return self.dh_rob.FK(q)
-        
+
     def seqFK(self, qs):
         return np.array([self.FK(q) for q in qs]).reshape(-1, 4, 4)
-    
+
     def IK(self,p07_d, R07_d, GC2=1.0, GC4=1.0, GC6=1.0):
         return IK_anallytical(p07_d, R07_d, self.dh_rob, GC2=GC2, GC4=GC4, GC6=GC6)
 
     def IK_best(self, T_d, for_seqik=False):
-        # Returns joint configuration that correspond to the IK solutions with biggest PSI feasible set 
+        # Returns joint configuration that correspond to the IK solutions with biggest PSI feasible set
         # PSI is choosen from the middle of the set
         GC2, GC4, GC6, feasible_set, solu =  IK_heuristic2(p07_d=T_d[:3, 3:4], R07_d=T_d[:3, :3], DH_model=self.dh_rob) # decide branch of solutions
         assert not feasible_set.empty, "Not possible to calculate IK"
         feasible_set = feasible_set.max_range()
         psi = feasible_set.middle                     # Choose psi for start configuration
         q_joints = solu(feasible_set.a+1e-4)          # Start configuration
-        print("EHHHHHHHHHHHHHHHHHHHH")
-        print(self.limits[2])
-        print(solu(feasible_set.a)[2], solu(feasible_set.b)[2])
-        print(feasible_set)
-        print(q_joints.T)
-        q_joints = solu(psi)          # Start configuration
-        
+        q_joints = solu(psi)                          # Start configuration
+
         if for_seqik:
             return q_joints, GC2, GC4, GC6, psi
         else:
@@ -88,7 +83,7 @@ class ApolloArmKinematics():
         psis = np.zeros((N))
         psi_mins = np.zeros((N))
         psi_maxs = np.zeros((N))
-        
+
         # Add start configuration
         for i, (pos_goal_i, theta_i) in enumerate(zip(position_traj, thetas_traj)): # position_traj and thetas should start from 0
 
@@ -114,7 +109,7 @@ class ApolloArmKinematics():
 
         if verbose:
             self.plot(joint_trajs, psis, psi_mins, psi_maxs)
-            
+
         return joint_trajs, q_joint_state_i, (psis, psi_mins, psi_maxs)
 
     @property
@@ -127,16 +122,16 @@ class ApolloArmKinematics():
         elif joint_trajs is None:
             self.plot_psis(psis, psi_mins, psi_maxs)
         else:
-            fig, axs = plt.subplots(2,1)
+            fig, axs = plt.subplots(8,1, figsize=(16,12))
             self.plot_psis(psis, psi_mins, psi_maxs, ax=axs[0])
-            self.plot_joints(joints_traj=joint_trajs, ax=axs[1])
+            self.plot_joints(joints_traj=joint_trajs, axs=axs[1:])
             plt.show()
 
 
     def plot_psis(self, psis, psi_mins, psi_maxs, dt=1.0, ax=None):
         noax = ax is None
         if noax:
-            fig, ax = plt.subplots(1)
+            fig, ax = plt.subplots(1, figsize=(16,12))
 
         times = np.arange(0, len(psis)) * dt
         ax.plot(times, psis, '-', color='k', label="psi")
@@ -147,18 +142,26 @@ class ApolloArmKinematics():
             plt.show()
         return ax
 
-    def plot_joints(self, joints_traj, dt=1.0, ax=None, rad=False):
-        noax = ax is None
+    def plot_joints(self, joints_traj, dt=1.0, axs=None, rad=False):
+        colors = ["r", 'g', 'b', 'k', 'c', 'm', 'y']
+        noax = axs is None
         if noax:
-            fig, ax = plt.subplots(1)
-
+            fig, axs = plt.subplots(7,1, figsize=(16,12))
+        
+        fac = 1.0 if rad else 180.0/np.pi
         times = np.arange(0,joints_traj.shape[0]) * dt
-        lines = plt.plot(times, joints_traj.reshape(-1, 7)) if rad else plt.plot(joints_traj.reshape(-1, 7) * 180.0/np.pi)
-        ax.legend(iter(lines), (r"$\theta_{}$".format(i+1) for i in range(len(lines))), loc=1)
+        
+        lines = [axs[iii].plot(times, fac* joints_traj.reshape(-1, 7)[:,iii], color=colors[iii], label=r"$\theta_{}$".format(iii+1))[0] for iii in range(7)]
+        for iii in range(7):  # limits
+            if True:
+                axs[iii].axhline(fac*self.limits[iii].a, color=lines[iii].get_color(), linestyle='dashed')
+                axs[iii].axhline(fac*self.limits[iii].b, color=lines[iii].get_color(), linestyle='dashed')                
+                axs[iii].axhspan(fac*self.limits[iii].a, fac*self.limits[iii].b, color=lines[iii].get_color(), alpha=0.3, label='feasible set')
+                axs[iii].legend(loc=1)
 
         if noax:
             plt.show()
-        return ax
+        return axs
 
 
 if __name__ == "__main__":
@@ -168,7 +171,7 @@ if __name__ == "__main__":
 
     rArmInterface = ApolloInterface(r_arm=True)
     rArmKinematics = ApolloArmKinematics(r_arm=True)
-    
+
     N = 200
     T_start = rArmKinematics.FK(home_pose)
     T_start[:3, :3] = np.array([[0.0, -1.0, 0.0,],  # uppword orientation(cup is up)
@@ -180,17 +183,17 @@ if __name__ == "__main__":
     position_traj[:, 0] = -np.sin(np.arange(N)*dt)*0.1
     # position_traj[:, 1] = np.sin(np.arange(N)*dt)*0.1
     # position_traj[:, 2] = np.sin(np.arange(N)*dt)*0.1
-    
+
     joints_traj, q_start, _ = rArmKinematics.seqIK(position_traj, thetas_traj, T_start, verbose=True)
-    
-    
+
+
     rArmInterface.go_to_home_position(q_start, 2000)
     for i in range(N):
         q_i = joints_traj[i,:].reshape(-1, 1)
         rArmInterface.go_to_posture_array(joints_traj[i], int(dt*1000), False)
     rArmInterface.go_to_home_position(q_start, 2000)
-    
-    
+
+
     # plt.plot([np.linalg.norm(position_traj[i] + T_start[:3, -1] - rArmKinematics.FK(joints_traj[i])[:3, -1] ) for i in range(N)])
     # plt.title("ERROR on IK")
     # plt.show()
