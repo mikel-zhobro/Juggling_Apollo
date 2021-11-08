@@ -29,6 +29,7 @@ def plot_A(lines_list, indexes_list, labels, dt=1, xlabel="", ylabel=""):
     for i in range(N):
     #   axs.flatten()[iii].plot(timesteps, lines_list[i][:, ix].squeeze(), color=colors[i], linestyle=line_types[i], label=r"$\theta_{}$ {}".format(ix, labels[i]))
       axs.flatten()[iii].plot(lines_list[i][:, ix].squeeze(), label=r"$\theta_{}$ {}".format(ix, labels[i]))
+      r"$\theta_{}$ {}".format(ix, labels[i])
     # axs.flatten()[iii].legend(loc=1)
     axs.flatten()[iii].grid(True)
   axs.flatten()[iii].legend(loc=1)
@@ -43,11 +44,12 @@ error_list = []
 label_list = []
 
 
-for j in range(1):
+fig, axs = plt.subplots(3,3, figsize=(12,8))
+axs = np.array(axs)
+for j in range(7):
     # fig = plt.figure(figsize=(12,8))
-        
-    # with open('data/SingleJoints/list_files.txt') as topo_file:
-    with open('data/AllJoints/list_files_all.txt') as topo_file:
+    with open('data/SingleJoints/list_files.txt') as topo_file:
+    # with open('data/AllJoints/list_files_all.txt') as topo_file:
         for filename in topo_file:
             filename = filename.strip()  # The comma to suppress the extra new line char
             if False and filename.split('/')[-1][6] != str(j):
@@ -91,10 +93,13 @@ for j in range(1):
             N_ILC = joints_q_vec.shape[0]
             
             
-            if False and error_norms[:,j][-1] > 0.50:
+            if error_norms[:,j][-1] > 0.50:
                 continue
             # print(title)
-            # plt.plot(error_norms[:,j], label=r"$\alpha={}, \epsilon={}$".format(alpha, ep_s[j]))
+            axs.flatten()[j].plot(180.0/np.pi*error_norms[:,j], label=r"$\alpha={}, \epsilon={}$".format(alpha, ep_s[j]))
+            axs.flatten()[j].set_ylabel(r"Error [$rad$]")
+            axs.flatten()[j].set_xlabel(r"Iteration [i]")
+            axs.flatten()[j].legend()
             
             
             # Joint Velocity trajectories
@@ -104,11 +109,6 @@ for j in range(1):
                 plt.show(block=True)
 
             # Errors
-            if alpha>12.0:
-                error_list.append(error_norms)
-                label_list.append(r"$\alpha={}, \epsilon={}$".format(alpha, ep_s[j]))
-            else:
-                continue
             if False:
                 plot_A([error_norms], learnable_joints, ["des"], dt=1.0, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
                 plt.suptitle("Error Norms__" + r"$\alpha={}, \epsilon={}$".format(alpha, ep_s[j]))
@@ -129,7 +129,7 @@ for j in range(1):
             # Cartesian trajectories
             if False:
                 ls = ['x', 'y', 'z']
-                fig, axs = plt.subplots(3,1, figsize=(16,11))
+                fig, axs = plt.subplots(3,1, figsize=(12,8))
                 for ii in range(3):
                     # axs[ii].plot(xyz_vec[-1][:, ii], c=colors[ii], label=ls[ii])
                     axs[ii].plot(xyz_traj[:, ii] + T_home[ii, -1] - xyz_vec[-1][:, ii], c=colors[ii], linestyle='--', label=ls[ii]+'')
@@ -143,11 +143,12 @@ for j in range(1):
                 plt.suptitle(r"Cartesian Space errors for: $\alpha={}, \epsilon={}$".format(alpha, ep_s[j]))
                 plt.show()
             
-        # plt.title(r"$\theta_{}$ - Error Norm Trajectories".format(j+1))
-        # plt.legend()
-        # plt.show()
+    axs.flatten()[j].set_title(r"$\theta_{}$".format(j+1))
+plt.suptitle("Trajectories Error Norm")
+plt.legend()
+plt.show()
 
 
-plot_A(error_list, learnable_joints, label_list, dt=1.0, xlabel=r"$ITERATION$ [j]", ylabel=r"Angle Trajectory Error [$rad$]")
-plt.suptitle("Error Norms")
-plt.show(block=True)
+# plot_A(error_list, learnable_joints, label_list, dt=1.0, xlabel=r"$ITERATION$ [j]", ylabel=r"Angle Trajectory Error [$rad$]")
+# plt.suptitle("Error Norms")
+# plt.show(block=True)
