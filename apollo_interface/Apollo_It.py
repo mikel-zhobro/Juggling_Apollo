@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.spatial.transform import Rotation
+# from scipy.spatial.transform import Rotation
 try:
     import O8O_apollo as apollo
 except:
@@ -234,15 +234,15 @@ class ApolloInterface:
         self.go_to_speed_array(np.zeros_like(home_pose), it_time/4, False)
         return obs
         
-    def get_TCP_pose(self):
-        observation = apollo.read()
-        cartesian_states = observation.get_cartesian()
-        if self.r_arm:
-            hand = cartesian_states.hands[0]
-        else:
-            hand = cartesian_states.hands[1]
+    # def get_TCP_pose(self):
+    #     observation = apollo.read()
+    #     cartesian_states = observation.get_cartesian()
+    #     if self.r_arm:
+    #         hand = cartesian_states.hands[0]
+    #     else:
+    #         hand = cartesian_states.hands[1]
         
-        return np.array(hand.position).reshape(-1,1), Rotation.from_quat(hand.orientation).as_dcm()
+    #     return np.array(hand.position).reshape(-1,1), Rotation.from_quat(hand.orientation).as_dcm()
         
 
 
