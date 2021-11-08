@@ -415,7 +415,8 @@ def plot_type(axis, theta_f, grad_theta_f, theta_min, theta_max, stat_psi, roots
     if not singular_feasible_set.empty:
         for i, psi in enumerate(singular_feasible_set.inverse(-np.pi, np.pi)):
             ax2.bar(psi.a, height=1, width=psi.b-psi.a, bottom=0, align='edge', color='red', alpha=0.3, label="_"*i + 'singularity')
-        
+
+
 def IK_heuristic1(p07_d, R07_d, DH_model, verbose=False):
     GC2_plus = ContinuousSet(-np.pi/2 , np.pi)
     GC2_minus = ContinuousSet(-np.pi , -np.pi/2) + ContinuousSet(np.pi/2 , np.pi)
@@ -427,8 +428,8 @@ def IK_heuristic1(p07_d, R07_d, DH_model, verbose=False):
     GC4 = 1.0 if (GC46_plus - DH_model.joint(3).limit_range).size >= (GC46_minus - DH_model.joint(3).limit_range).size else 1.0
     GC6 = 1.0 if (GC46_plus - DH_model.joint(5).limit_range).size >= (GC46_minus - DH_model.joint(5).limit_range).size else -1.0
 
-    return IK_anallytical(p07_d, R07_d, DH_model, GC2=GC2, GC4=GC4, GC6=GC6, verbose=verbose, p06=None, p07=None)
-
+    solu_function, psi_feasible_set = IK_anallytical(p07_d, R07_d, DH_model, GC2=GC2, GC4=GC4, GC6=GC6, verbose=verbose, p06=None, p07=None)
+    return GC2, GC4, GC6, solu_function
 
 def IK_heuristic2(p07_d, R07_d, DH_model):
     # Finds best branch of solutions
@@ -440,8 +441,8 @@ def IK_heuristic2(p07_d, R07_d, DH_model):
     GCs = [(i, ii, iii) for i in [-1.0, 1.0] for ii in [-1.0, 1.0] for iii in [-1.0, 1.0]]
     for GC2, GC4, GC6 in GCs:
         sf, psi_feasible_set = IK_anallytical(p07_d, R07_d, DH_model, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False, p06=None, p07=None)
-        if psi_feasible_set.size > biggest_feasible_set:
-            biggest_feasible_set = psi_feasible_set
+        if psi_feasible_set.max_range().size > biggest_feasible_set.size:
+            biggest_feasible_set = psi_feasible_set.max_range()
             solu_function = sf
             GC2_final = GC2
             GC4_final = GC4
@@ -528,7 +529,7 @@ if __name__ == "__main__":
     # Test with random goal poses
     if True:
         GCs = [(i, ii, iii) for i in [-1.0, 1.0] for ii in [-1.0, 1.0] for iii in [-1.0, 1.0]]
-        for i in tqdm(range(1)):
+        for i in tqdm(range(12)):
             home_new = np.array([ j.limit_range.sample() for j in my_fk_dh.joints ]).reshape(7,1)
 
             # print(home_new.T)
@@ -541,7 +542,7 @@ if __name__ == "__main__":
                 # solu, feasible_set = IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False)  # , p06=my_fk_dh.get_i_T_j(0,6,home_new.flatten())[:3, 3]
                 # solu, feasible_set = IK_heuristic1(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, verbose=True)
             GC2, GC4, GC6, _, _ =  IK_heuristic2(p07_d=p07, R07_d=R07, DH_model=my_fk_dh)
-            solu, feasible_set = IK_anallytical(p07, R07, my_fk_dh, GC2, GC4, GC6, verbose=False)
+            solu, feasible_set = IK_anallytical(p07, R07, my_fk_dh, GC2, GC4, GC6, verbose=True)
 
             for f in np.arange(-1.0, 1.0, 0.02):
                 s = solu(f*np.pi)
