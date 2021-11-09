@@ -1,4 +1,3 @@
-# %%
 import numpy as np
 import time
 
@@ -8,61 +7,35 @@ from juggling_apollo.JugglingPlanner import calc
 from juggling_apollo.settings import dt
 from juggling_apollo.ILC import ILC
 from juggling_apollo.MinJerk import plotMJ, get_minjerk_trajectory
-from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal
+from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal, ApolloDynSys2
 from apollo_interface.Apollo_It import ApolloInterface, plot_simulation
 from kinematics.ApolloKinematics import ApolloArmKinematics
+from utils import plot_A
+
 
 np.set_printoptions(precision=4, suppress=True)
 
-SAVING = False
-colors = ["r", 'g', 'b', 'k', 'c', 'm', 'y']
-line_types = ["-", "--", ":", '-.']
-
-def plot_A(lines_list, indexes_list=list(range(7)), labels=None, dt=1, xlabel="", ylabel="", limits=None):
-  # assert len(lines_list) == len(labels), "Please use same number of lines and labels"
-  N = len(lines_list)
-  M = len(indexes_list)
-  if M >= 3:
-    a = M//3 + (1 if M%3 !=0 else 0)
-    b = 3
-  else:
-    a = 1
-    b = M
-  timesteps = dt*np.arange(lines_list[0].shape[0])
-  fig, axs = plt.subplots(a,b, figsize=(12,8))
-  axs = np.array(axs)
-  for iii, ix in enumerate(indexes_list):
-    for i in range(N):
-      axs.flatten()[iii].plot(timesteps, lines_list[i][:, ix].squeeze(), color=colors[ix], linestyle=line_types[i], label=r"$\theta_{}$ {}".format(ix, labels[i] if labels is not None else ""))
-      if limits is not None:
-        axs.flatten()[iii].axhspan(limits[iii].a, limits[iii].b, color=colors[iii], alpha=0.3, label='feasible set')
-        axs.flatten()[iii].set_ylim([min(-np.pi, limits[iii].a), max(np.pi, limits[iii].b)])
-      axs.flatten()[iii].legend(loc=1)
-      axs.flatten()[iii].grid(True)
-  fig.text(0.5, 0.04, xlabel, ha='center')
-  fig.text(0.04, 0.5, ylabel, va='center', rotation='vertical')
-
+end_repeat = 154   # repeat the last position value this many time
+SAVING = True
 
 print("juggling_apollo")
 
 # 0. Create Apollo objects
-# Init state  ([{ 1-Dim }])
-home_pose = np.array([ 0.6484, -0.6194, -1.8816, 1.0706, -2.4248, 1.1782, -2.4401])
-N_joints = len(home_pose)
-
 # A) INTERFACE: create rArmInterface and go to home position
+N_joints = 7
 rArmInterface = ApolloInterface(r_arm=True)
 
 # B) KINEMATICS: create rArmInterface and go to home position
 rArmKinematics = ApolloArmKinematics(r_arm=True)
-T_home = rArmKinematics.FK(home_pose)
-print(T_home)
-# T_home = np.eye(4, dtype='float')
+T_home = np.eye(4, dtype='float')
 T_home[:3, -1] = [0.32, 0.81, -0.49]
 T_home[:3, :3] = np.array([[0.0, -1.0, 0.0],  # uppword orientation(cup is up)
                            [0.0,  0.0, 1.0],
                            [-1.0, 0.0, 0.0]], dtype='float')
 
+####################################################################################################################################
+####################################################################################################################################
+# A. COMPUTE TRAJECTORIES IN CARTESIAN AND JOINT SPACE
 # 1. --------------- Compute juggling params for given E, tau and ---------------
 # A) Orientation
 #    World: x-left, y-forward, z-up
@@ -84,11 +57,60 @@ N_repeat_point = steps_from_time(T_throw_first, dt)-1                     # time
 print('H: ' + str(H))
 print('T_fly: ' + str(T_fly))
 # ---------------           ---------------
+# --------------- Min Jerk ---------------
+smooth_acc = False
+ub_catch = -ub_throw*0.9
+i_a_end = 0
+tt=[0.0,      T_throw_first,     T_throw_first+T_empty,   T_FULL  ]
+xx=[0.0,      0.0,               z_catch,                 0.0     ]
+uu=[0.0,      ub_throw/4.0,      ub_catch/4.0,            0.0     ]
 
-# %%
-end_repeat = 15
+y_des, velo, accel, jerk = get_minjerk_trajectory(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=xx, uu=uu, extra_at_end=end_repeat+1)  # Min jerk trajectories (out of the loop since trajectory doesn't change)
+
+if True:
+  print(z_catch)
+  plotMJ(dt, tt, xx, uu, smooth_acc, (y_des, velo, accel, jerk))
+#---------------        ---------------
+
+
+# Cartesian -> JointSpace
+thetas                   = np.zeros_like(y_des)
+xyz_traj                 = np.zeros((thetas.size, 3))
+xyz_traj[:,2]            = y_des
+q_traj_des_, q_start, psi_params   = rArmKinematics.seqIK(xyz_traj, thetas, T_home)  # [N, 7]
+
+if False:
+  rArmKinematics.plot(q_traj_des_, *psi_params)
+####################################################################################################################################
+####################################################################################################################################
+
+# B. Initialize ILC
+def kf_params(n_m=0.02, epsilon=1e-5, n_d=0.06):
+  kf_dpn_params = {
+    'M': n_m*np.eye(N_1+end_repeat, dtype='float'),       # covariance of noise on the measurment
+    'P0': n_d*np.eye(N_1+end_repeat, dtype='float'),      # initial disturbance covariance
+    'd0': np.zeros((N_1+end_repeat, 1), dtype='float'),   # initial disturbance value
+    'epsilon0': epsilon,                                  # initial variance of noise on the disturbance
+    'epsilon_decrease_rate': 1.0                          # the decreasing factor of noise on the disturbance
+  }
+  return kf_dpn_params
+
+n_ms = [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02]
+n_ds = [0.06, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06]
+ep_s = [1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-4]
+# ep_s = [5e-3] * 7     # works well for velocity disturbance
+# ep_s = [1e-2] * 7     # works well for velocity disturbance
+alpha = 16.0
+my_ilcs = [
+  ILC(dt=dt, sys=ApolloDynSys(dt, alpha_=alpha), kf_dpn_params=kf_params(n_ms[i], ep_s[i], n_ds[i]), x_0=[q_start[i, 0], 0])
+  for i in range(N_joints)]
+
+for ilc in my_ilcs:
+  ilc.initILC(N_1=N_1+end_repeat, impact_timesteps=[False]*(N_1+end_repeat))  # ignore the ball
+
+# C. LEARN BY ITERATING
 # Learn Throw
-ILC_it = 10  # number of ILC iteration
+ILC_it = 20  # number of ILC iteration
 
 # Data collection
 # a. System Trajectories
@@ -105,66 +127,13 @@ torque_vec     = np.zeros([ILC_it, N_1+1+end_repeat, N_joints], dtype='float')
 # d. Trajectory error norms
 error_norms    = np.zeros([ILC_it, N_joints, 1], dtype='float')
 
-# --------------- Min Jerk ---------------
-smooth_acc = False
-ub_catch = -ub_throw*0.9
-i_a_end = 0
-tt=[0.0,      T_throw_first,     T_throw_first+T_empty,   T_FULL  ]
-xx=[0.0,      0.0,               z_catch,                 0.0     ]
-uu=[0.0,      ub_throw/4.0,      ub_catch/4.0,            0.0     ]
-
-y_des, velo, accel, jerk = get_minjerk_trajectory(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=xx, uu=uu, extra_at_end=end_repeat+1)  # Min jerk trajectories (out of the loop since trajectory doesn't change)
-#---------------        ---------------
-
-if True:
-  print(z_catch)
-  plotMJ(dt, tt, xx, uu, smooth_acc, (y_des, velo, accel, jerk))
-
-
-# Cartesian -> JointSpace
-thetas                   = np.zeros_like(y_des)
-xyz_traj                 = np.zeros((thetas.size, 3))
-xyz_traj[:,2]            = y_des
-q_traj_des_, q_start, psi_params   = rArmKinematics.seqIK(xyz_traj, thetas, T_home)  # [N, 7]
-
-if False:
-  rArmKinematics.plot(q_traj_des_, *psi_params)
-
-print(q_start)
-# q_traj, q_v_traj, q_a_traj, dP_N_vec, u_vec = rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL, u=q_traj_des.squeeze(), joint_home_config=q_start, repetitions=10, it=0, go2position=True)
-
-
-# ILC Loop
+# ILC Vectors Init
 u_ff = [None] * N_joints
 y_meas = np.zeros((N_1+end_repeat, N_joints), dtype='float')
 
-# ILC
-def kf_params(n_m=0.02, epsilon=1e-5, n_d=0.06):
-  kf_dpn_params = {
-    'M': n_m*np.eye(N_1+end_repeat, dtype='float'),       # covariance of noise on the measurment
-    'P0': n_d*np.eye(N_1+end_repeat, dtype='float'),      # initial disturbance covariance
-    'd0': np.zeros((N_1+end_repeat, 1), dtype='float'),   # initial disturbance value
-    'epsilon0': epsilon,                           # initial variance of noise on the disturbance
-    'epsilon_decrease_rate': 1.0                  # the decreasing factor of noise on the disturbance
-  }
-  return kf_dpn_params
-
-n_ms = [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02]
-n_ds = [0.06, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06]
-ep_s = [1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-4]
-alpha = 16.0
-my_ilcs = [
-  ILC(dt=dt, sys=ApolloDynSys(dt, alpha_=alpha), kf_dpn_params=kf_params(n_ms[i], ep_s[i], n_ds[i]), x_0=[q_start[i, 0], 0])
-  for i in range(N_joints)]
-
-for ilc in my_ilcs:
-  ilc.initILC(N_1=N_1+end_repeat, impact_timesteps=[False]*(N_1+end_repeat))  # ignore the ball
-
 learnable_joints = [0,1,2,3,4,5,6]
-every_N = 3
-
-
-# Extra Loop 2
+every_N = 10
+# Extra Loop (In case we want to try out smth on different combination of joints)
 for jjoint in range(1):
   ## CHOOOSE JOINTS THAT LEARN
   jjoint = "all"
@@ -207,12 +176,14 @@ for jjoint in range(1):
 
 
     if True and j%every_N==0:
-      plot_A([u_arr, q_v_traj[1:]], learnable_joints, ["desired", "real"], dt=dt, xlabel=r"$t$ [s]", ylabel=r" angle velocity [$\frac{rad}{s}$]")
+      
+      plot_A([u_arr, q_v_traj[1:]], learnable_joints, fill_between=[np.max(u_ff_vec, axis=0)[1:], np.min(u_ff_vec, axis=0)[1:]],
+             labels=["desired", "real"], dt=dt, xlabel=r"$t$ [s]", ylabel=r" angle velocity [$\frac{rad}{s}$]")
       plt.suptitle("Angle Velocities")
       plt.show(block=False)
 
     if True and j%every_N==0:
-      plot_A([q_traj_des, q_traj, joints_q_vec[j-4], joints_q_vec[0]], learnable_joints, ["des", "it="+str(j), "it="+str(j-4), "it=0"], dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
+      plot_A([q_traj_des, q_traj, joints_q_vec[j-1], joints_q_vec[0]], learnable_joints, ["des", "it="+str(j), "it="+str(j-4), "it=0"], dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
       plt.suptitle("Angle Positions")
       plt.show()
 
@@ -237,6 +208,12 @@ for jjoint in range(1):
     for i in learnable_joints:
       print(str(i) + ". Trajectory_track_error_norm: " + str(np.linalg.norm(joints_d_vec[j, :, i]))
           )
+
+
+  plot_A([u_arr, q_v_traj[1:]], learnable_joints, fill_between=[np.max(u_ff_vec, axis=0)[1:], np.min(u_ff_vec, axis=0)[1:]],
+          labels=["desired", "real"], dt=dt, xlabel=r"$t$ [s]", ylabel=r" angle velocity [$\frac{rad}{s}$]")
+  plt.suptitle("Angle Velocities")
+  plt.show(block=True)
 
   if SAVING:
     # Saving Results
@@ -277,6 +254,7 @@ for jjoint in range(1):
     with open('data/AllJoints2/list_files_all.txt', 'a') as f:
         f.write(filename + "\n")
         
+# rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL, u=u_arr[:-end_repeat], joint_home_config=q_start, repetitions=25, it=j)
 rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL+end_repeat*dt, u=u_arr, joint_home_config=q_start, repetitions=25, it=j)
 
 if False:

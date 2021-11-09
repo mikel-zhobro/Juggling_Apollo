@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 # from scipy.spatial.transform import Rotation
 try:
     import O8O_apollo as apollo
+    import globals
 except:
     pass
 
@@ -217,18 +218,26 @@ class ApolloInterface:
         obs_np = self.obs_to_numpy(observation)
         return obs_np
 
-    def go_to_home_position(self, home_pose=home_pose, it_time=4000, zero_pose=False):
-        if zero_pose:
-            des = np.zeros_like(home_pose)
-            while True:
-                obs = self.go_to_posture_array(des, it_time, False)
-                if np.linalg.norm(des-obs[:,0]) <= 1e-4:
-                    break
-        else:
+    def go_to_home_position(self, home_pose=None, it_time=4000):
+        eps = 1e-4
+        # eps = 0.2
+        if home_pose is None:
+            home_pose = np.zeros((7,1))
+            
+        if globals.IK_dynamics:
+            print("Using IK_dynamics")
             while True:
                 obs = self.go_to_posture_array(home_pose, it_time, False)
                 print("HOME with error:", np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze()))
-                if np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze()) <= 1e-4:
+                if np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze()) <= eps:
+                    break
+        else:
+            print("Not using IK_dynamics")
+            obs = self.go_to_posture_array(home_pose, it_time, False)
+            while True:
+                obs = self.go_to_speed_array(np.array(home_pose).squeeze()-obs[:,0].squeeze(), it_time/4, False)
+                print("HOME with error:", np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze()))
+                if np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze()) <= eps:
                     break
             
         self.go_to_speed_array(np.zeros_like(home_pose), it_time/4, False)
@@ -290,7 +299,7 @@ def main():
     r_arm = ApolloInterface(r_arm=True)
     print("GOING HOME!")
     r_arm.calibration()
-    r_arm.go_to_home_position(zero_pose=True)
+    r_arm.go_to_home_position()
 
     if False:
         # Run apollo
