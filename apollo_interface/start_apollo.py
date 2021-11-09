@@ -1,7 +1,7 @@
 import subprocess
 import sys
 
-import globals
+import globs
 import O8O_apollo as apollo
 
 
@@ -24,15 +24,15 @@ else:
 
 
 
-# Meant for quick manual changes:
-IK_dynamics = True
-bursting = False
+# # Meant for quick manual changes:
+# IK_dynamics = True
+# bursting = True
 
-globals.IK_dynamics = IK_dynamics
-globals.bursting    = bursting
+# globs.IK_dynamics = IK_dynamics
+# globs.bursting    = bursting
 
-apollo.set_inverse_dynamics(globals.IK_dynamics)
-apollo.set_bursting(globals.bursting)
+apollo.set_inverse_dynamics(globs.IK_dynamics)
+apollo.set_bursting(globs.bursting)
 
 # Some Warning Prints
 if not IK_dynamics:

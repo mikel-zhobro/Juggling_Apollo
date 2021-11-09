@@ -1,9 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 # from scipy.spatial.transform import Rotation
+
+import globs
 try:
     import O8O_apollo as apollo
-    import globals
 except:
     pass
 
@@ -176,9 +177,9 @@ class ApolloInterface:
         for i in range(N-1):
             # one step simulation
             if go2position:
-                obs_np = self.go_to_posture_array(u[i], delta_it, False)
+                obs_np = self.go_to_posture_array(u[i], delta_it, globs.bursting)
             else:
-                obs_np = self.go_to_speed_array(u[i], delta_it, False)
+                obs_np = self.go_to_speed_array(u[i], delta_it, globs.bursting)
             # collect state of the system
             thetas_s[i+1] = obs_np[:,0].reshape(7, 1)
             vel_s[i+1] = obs_np[:,1].reshape(7, 1)
@@ -224,23 +225,23 @@ class ApolloInterface:
         if home_pose is None:
             home_pose = np.zeros((7,1))
             
-        if globals.IK_dynamics:
+        if globs.IK_dynamics:
             print("Using IK_dynamics")
             while True:
-                obs = self.go_to_posture_array(home_pose, it_time, False)
+                obs = self.go_to_posture_array(home_pose, it_time, globs.bursting)
                 print("HOME with error:", np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze()))
                 if np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze()) <= eps:
                     break
         else:
             print("Not using IK_dynamics")
-            obs = self.go_to_posture_array(home_pose, it_time, False)
+            obs = self.go_to_posture_array(home_pose, it_time, globs.bursting)
             while True:
-                obs = self.go_to_speed_array(np.array(home_pose).squeeze()-obs[:,0].squeeze(), it_time/4, False)
+                obs = self.go_to_speed_array(np.array(home_pose).squeeze()-obs[:,0].squeeze(), it_time/4, globs.bursting)
                 print("HOME with error:", np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze()))
                 if np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze()) <= eps:
                     break
             
-        self.go_to_speed_array(np.zeros_like(home_pose), it_time/4, False)
+        self.go_to_speed_array(np.zeros_like(home_pose), it_time/4, globs.bursting)
         return obs
         
     # def get_TCP_pose(self):
