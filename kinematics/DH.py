@@ -116,12 +116,13 @@ class DH_revolut():
 
         return p_ret, R_ret
 
-    def i_J_j(self, i, j, Qi_j):
+    def i_J_j(self, i, j, Qi_j, rbase_frame=False):
         assert i < j, 'i:{} and j:{} cannot be equal'.format(i,j)
-        if True:
-            A = T_base_rbase.dot(T_rbase_dhbase.copy())
-        else:
-            A = np.eye(4)
+        
+        A = T_rbase_dhbase.copy() if i == 0 else np.eye(4)
+        if not rbase_frame:  # dont enter if we want fk in rbase frame
+            A = T_base_rbase.dot(A)
+
         N = j-i
         z_s = [None]*(N+1); z_s[0] = A[:3, 2:3]
         p_s = np.zeros((3, N+1)); p_s[:,0] = A[:3, -1]
@@ -141,8 +142,8 @@ class DH_revolut():
         J = np.vstack([JP, JO])
         return J
 
-    def J(self, q):
-        return self.i_J_j(0, 7, q)
+    def J(self, q, rbase_frame=False):
+        return self.i_J_j(0, 7, q, rbase_frame=rbase_frame)
     
     def plot(self):
         T0wshoulder = self.get_i_T_j(0, 2)

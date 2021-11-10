@@ -26,8 +26,11 @@ offsets = [0.0, 0.0, th3_offset, 0.0, 0.0, 0.0, 0.0]
 my_fk_dh = DH_revolut()
 for a, alpha, d, theta, name, offset in zip(a_s, alpha_s, d_s, theta_s, R_joints, offsets):
     my_fk_dh.add_joint(a, alpha, d, theta, JOINTS_LIMITS[name], name, offset)
-fk_dh = lambda *q: my_fk_dh.FK(np.array(q), False)
-J_dh = lambda *q: my_fk_dh.J(np.array(q))
+    
+    
+# rbase_frame = False
+fk_dh = lambda rbase_frame: lambda *q: my_fk_dh.FK(np.array(q), rbase_frame)
+J_dh = lambda rbase_frame: lambda *q: my_fk_dh.J(np.array(q), rbase_frame)
 
 
 def numerical_J_pos(q, fk):
@@ -69,6 +72,12 @@ def check_FK_FKDH():
 
         print(np.linalg.norm(T-T_DH))
 
-check_J_position(fk_dh, J_dh)
+print("1. DH Jacobian Test")
+print("\n-- a) Not rBase --\n")
+check_J_position(fk_dh(False), J_dh(False))
+print("\n-- b) rBase --\n")
+check_J_position(fk_dh(True), J_dh(True))
+print("\n2. Analytical Jacobian Test\n")
 check_J_position(FK, J)
-# check_FK_FKDH()
+print("\n-- Position fk-fk_dh --\n")
+check_FK_FKDH()
