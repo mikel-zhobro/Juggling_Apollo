@@ -10,12 +10,18 @@ from fk_pin_local import PinRobot
 from AnalyticalIK import IK_anallytical, IK_heuristic2
 
 class ApolloArmKinematics():
-    def __init__(self, r_arm=True):
+    def __init__(self, r_arm=True, noise=None):
         self.r_arm = r_arm
-        self.dh_rob = self.init_dh()
+        self.dh_rob = self.init_dh(noise)
         self.pin_rob = PinRobot(r_arm=r_arm)
 
-    def init_dh(self):
+    def init_dh(self, noise=None):
+        """[summary]
+
+        Args:
+            noise (float, optional): If not none gives the amplitude of distance noise for the 4 distances of LWR. Defaults to None.
+                                     Allow noiy parameters of forward kinematics  
+        """
         joints2Use = R_joints if self.r_arm else L_joints
         pi2 = np.pi/2
         d_bs = 0.378724; d_se = 0.4; d_ew = 0.39; d_wt = 0.186
@@ -26,18 +32,28 @@ class ApolloArmKinematics():
         offsets = [0.0, 0.0, np.pi/6, 0.0, 0.0, 0.0, 0.0]
 
         # Create DH Robot
+        n_ds = [0.0]*7
+        if noise is not None:
+            for i in [0, 2, 4, 6]:
+                n_ds[i] = noise*(np.random.rand()-0.5)
         dh_rob = DH_revolut()
-        for a, alpha, d, theta, name, offset in zip(a_s, alpha_s, d_s, theta_s, joints2Use, offsets):
-            dh_rob.add_joint(a, alpha, d, theta, JOINTS_LIMITS[name], name, offset)
+        for a, alpha, d, theta, name, offset, n_d in zip(a_s, alpha_s, d_s, theta_s, joints2Use, offsets, n_ds):
+            dh_rob.add_joint(a, alpha, d+n_d, theta, JOINTS_LIMITS[name], name, offset)
         return dh_rob
 
     def FK(self, q):
         """
         returns the Transformationsmatrix base_T_tcp
         """
-        return self.pin_rob.FK(q.reshape(7, 1)).homogeneous
-        # return self.dh_rob.FK(q)
+        # return self.pin_rob.FK(q.reshape(7, 1)).homogeneous
+        return self.dh_rob.FK(q)
 
+    def J(self, q):
+        """
+        returns the Transformationsmatrix base_T_tcp
+        """
+        return self.dh_rob.J(q.reshape(7, 1))
+    
     def seqFK(self, qs):
         return np.array([self.FK(q) for q in qs]).reshape(-1, 4, 4)
 
