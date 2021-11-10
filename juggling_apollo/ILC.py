@@ -1,10 +1,8 @@
 import numpy as np
-from settings import g, m_b, m_p, k_c
+from settings import g
 from LiftedStateSpace import LiftedStateSpace
 from OptimLss import OptimLss
-from MinJerk import get_min_jerk_trajectory, plotMinJerkTraj, get_minjerk_trajectory
 from KalmanFilter import KalmanFilter
-from utils import steps_from_time, DotDict, plt
 from JugglingPlanner import traj_nb_2_na_1
 
 class ILC:

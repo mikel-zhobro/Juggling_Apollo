@@ -1,5 +1,9 @@
+import __add_path__
 import matplotlib.pyplot as plt
 import numpy as np
+import pickle
+
+from juggling_apollo.utils import DotDict
 
 colors = ["r", 'g', 'b', 'k', 'c', 'm', 'y']
 line_types = ["-", "--", ":", '-.']
@@ -30,3 +34,20 @@ def plot_A(lines_list, indexes_list=list(range(7)), labels=None, dt=1, xlabel=""
     axs.flatten()[iii].grid(True)
   fig.text(0.5, 0.04, xlabel, ha='center')
   fig.text(0.04, 0.5, ylabel, va='center', rotation='vertical')
+
+
+def save(filename, **kwargs):
+  with open(filename, 'w') as f:
+    pickle.dump(kwargs, f)
+    
+def load(filename):
+  with open(filename, 'rb') as f:
+    dd = pickle.load(f)
+  return DotDict(dd)
+
+# USAGE
+# filename = os.path.join("data", '{}_simdata_raw.dat'.format(time.strftime("%Y_%m_%d-%H_%M_%S")))
+# aa = DotDict(mikel=np.eye(7), andy=12)
+# save(filename, **aa)
+# sd = load(filename)
+# print(sd.mikel.shape)

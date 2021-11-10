@@ -1,2 +1,2 @@
-IK_dynamics = False
-bursting = True
+IK_dynamics = True
+bursting = False
