@@ -96,8 +96,8 @@ for j in range(1):
                 fig, axs = plt.subplots(3,1, figsize=(16,11))
                 for ii in range(3):
                     # axs[ii].plot(xyz_vec[-1][:, ii], c=colors[ii], label=ls[ii])
-                    axs[ii].plot(ld.xyz_traj[:, ii] + ld.T_home[ii, -1] - ld.xyz_vec[-1][:, ii], c=colors[ii], linestyle='--', label=ls[ii]+'')
-                    # lines = plt.plot(xyz_vec[j, ] - xyz_traj - T_home[:3, -1])
+                    axs[ii].plot(ld.xyz_traj_des[:, ii] + ld.T_home[ii, -1] - ld.xyz_vec[-1][:, ii], c=colors[ii], linestyle='--', label=ls[ii]+'')
+                    # lines = plt.plot(xyz_vec[j, ] - xyz_traj_des - T_home[:3, -1])
                     # plt.legend(iter(lines), (i for i in ['x', 'y', 'z']))
                     axs[ii].legend(loc=1)
                     axs[ii].grid(True)
