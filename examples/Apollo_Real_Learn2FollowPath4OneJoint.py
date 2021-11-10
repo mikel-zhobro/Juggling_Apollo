@@ -77,6 +77,7 @@ if True:
 thetas                   = np.zeros_like(y_des)
 xyz_traj                 = np.zeros((thetas.size, 3))
 xyz_traj[:,2]            = y_des
+xyz_traj[:,0]            = y_des
 q_traj_des_, q_start, psi_params   = rArmKinematics.seqIK(xyz_traj, thetas, T_home)  # [N, 7]
 
 if False:
@@ -205,9 +206,10 @@ for jjoint in range(1):
 
 
     print("ITERATION: " + str(j+1))
+    print(          "j. ---------------------------     L2-norm       L1-norm")
     for i in learnable_joints:
-      print(str(i) + ". Trajectory_track_error_norm: " + str(np.linalg.norm(joints_d_vec[j, :, i]))
-          )
+      print(str(i) + ". Trajectory_track_error_norm: {:10.10f}  {:10.10f}".format(np.linalg.norm(joints_d_vec[j, :, i]), 
+                                                                                  np.linalg.norm(joints_d_vec[j, :, i], ord=1)))
 
 
   plot_A([u_arr, q_v_traj[1:]], learnable_joints, fill_between=[np.max(u_ff_vec, axis=0)[1:], np.min(u_ff_vec, axis=0)[1:]],
