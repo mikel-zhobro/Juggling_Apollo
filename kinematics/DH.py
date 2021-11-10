@@ -95,13 +95,12 @@ class DH_revolut():
             i_R_j = i_R_j.T
         return i_R_j
 
-    def get_i_T_j(self, i, j, Qi_j, s_11=0, rot=False):
+    def get_i_T_j(self, i, j, Qi_j):
         assert i < j, 'i:{} and j:{} cannot be equal'.format(i,j)
 
-        a = 3 if rot else 4
-        i_T_j = np.eye(a)
+        i_T_j = np.eye(4)
         for joint, th_j in zip(self.joints[i:j], Qi_j):
-            i_T_j = i_T_j.dot(self.getT(joint, th_j)[:a, :a])
+            i_T_j = i_T_j.dot(self.getT(joint, th_j))
         return i_T_j
 
     def get_goal_in_dh_base_frame(self, p, R):
@@ -117,6 +116,34 @@ class DH_revolut():
 
         return p_ret, R_ret
 
+    def i_J_j(self, i, j, Qi_j):
+        assert i < j, 'i:{} and j:{} cannot be equal'.format(i,j)
+        if True:
+            A = T_base_rbase.dot(T_rbase_dhbase.copy())
+        else:
+            A = np.eye(4)
+        N = j-i
+        z_s = [None]*(N+1); z_s[0] = A[:3, 2:3]
+        p_s = np.zeros((3, N+1)); p_s[:,0] = A[:3, -1]
+        i_T_j = np.eye(4)
+        for n, joint, th_j in zip(range(N), self.joints[i:j], Qi_j):
+            i_T_j = i_T_j.dot(self.getT(joint, th_j)) if n>0 else A.dot(i_T_j.dot(self.getT(joint, th_j)))
+            z_s[n+1]    = i_T_j[:3, 2:3]
+            p_s[:, n+1] = i_T_j[:3, 3]
+        
+        J_s = []
+        for n in range(N):
+            J_s.append(np.cross(z_s[n], p_s[:, N:N+1]-p_s[:, n:n+1], axis=0))
+
+        JP = np.hstack(J_s)
+        JO = np.hstack(z_s[:-1])
+
+        J = np.vstack([JP, JO])
+        return J
+
+    def J(self, q):
+        return self.i_J_j(0, 7, q)
+    
     def plot(self):
         T0wshoulder = self.get_i_T_j(0, 2)
         T0wselbo    = self.get_i_T_j(0, 4)
