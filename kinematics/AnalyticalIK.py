@@ -41,13 +41,12 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
         * Offset the solution accordingly
     """
     plot_params = [None]*7
+    d_bs = DH_model.joint(0).d; l0bs = vec([0,   0,     d_bs])
+    d_se = DH_model.joint(2).d; l3se = vec([0,  -d_se,  0])
+    d_ew = DH_model.joint(4).d; l4ew = vec([0,   0,     d_ew])
+    d_wt = DH_model.joint(6).d; l7wt = vec([0,   0,     d_wt])
     
     p07_d, R07_d = DH_model.get_goal_in_dh_base_frame(p07_d, R07_d)
-    l0bs = vec([0,   0,     d_bs])
-    l3se = vec([0,  -d_se,  0])
-    l4ew = vec([0,   0,     d_ew])
-    l7wt = vec([0,   0,     d_wt])
-
     # Shoulder to Wrist axis
     x0sw = p07_d - l0bs - R07_d.dot(l7wt)  # p26
 

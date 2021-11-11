@@ -29,13 +29,10 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
     GC4  = np.sign((DH_model.joint(3).limit_range.a + DH_model.joint(3).limit_range.b)/2)
     GC6  = np.sign((DH_model.joint(5).limit_range.a + DH_model.joint(5).limit_range.b)/2)
 
-    GC2 = -1.0 if GC2==0.0 else GC2
-    GC4 = -1.0 if GC4==0.0 else GC4
-    GC6 = -1.0 if GC6==0.0 else GC6
-    l0bs = vec([0,   0,     d_bs])
-    l3se = vec([0,  -d_se,  0])
-    l4ew = vec([0,   0,     d_ew])
-    l7wt = vec([0,   0,     d_wt])
+    d_bs = DH_model.joint(0).d; l0bs = vec([0,   0,     d_bs])  
+    d_se = DH_model.joint(2).d; l3se = vec([0,  -d_se,  0])     
+    d_ew = DH_model.joint(4).d; l4ew = vec([0,   0,     d_ew])  
+    d_wt = DH_model.joint(6).d; l7wt = vec([0,   0,     d_wt])  
 
     # shoulder to wrist axis
     x0sw = p07_d - l0bs - R07_d.dot(l7wt)  # p26
