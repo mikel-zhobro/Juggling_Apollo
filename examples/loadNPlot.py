@@ -47,8 +47,8 @@ label_list = []
 for j in range(1):
     # fig = plt.figure(figsize=(12,8))
         
-    # with open('data/SingleJoints/list_files.txt') as topo_file:
-    with open('data/AllJoints3/list_files_all.txt') as topo_file:
+    # with open('examples/data/SingleJoints/list_files.txt') as topo_file:
+    with open('examples/data/AllJoints3/list_files_all.txt') as topo_file:
         for filename in topo_file:
             filename = filename.strip()  # The comma to suppress the extra new line char
             if False and filename.split('/')[-1][6] != str(j):

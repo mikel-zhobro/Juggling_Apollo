@@ -33,7 +33,7 @@ T_home[:3, :3] = np.array([[0.0, -1.0, 0.0],  # uppword orientation(cup is up)
                            [-1.0, 0.0, 0.0]], dtype='float')
 
 for j in range(1):
-    with open('data/AllJoints/list_files_all.txt') as topo_file:
+    with open('examples/data/AllJoints/list_files_all.txt') as topo_file:
         for filename in topo_file:
             filename = filename.strip()  # The comma to suppress the extra new line char
 

@@ -22,7 +22,7 @@ rArmKinematics = ApolloArmKinematics(r_arm=True)
 
 
 
-filename = "data/AllJoints3/joint_all_alpha_16.0_eps_0.0001_2021_11_10-11_00_56"
+filename = "examples/data/AllJoints3/joint_all_alpha_16.0_eps_0.0001_2021_11_10-11_00_56"
 
 ld = load(filename)
 

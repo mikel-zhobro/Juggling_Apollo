@@ -255,7 +255,7 @@ for eps, alpha in elems[:-1]:
 
 
     # Saving Results
-    filename = "data/AllJoints2/joint_{}_alpha_{}_eps_{}_".format(jjoint, alpha, eps) + time.strftime("%Y_%m_%d-%H_%M_%S")
+    filename = "examples/data/AllJoints2/joint_{}_alpha_{}_eps_{}_".format(jjoint, alpha, eps) + time.strftime("%Y_%m_%d-%H_%M_%S")
     with open(filename, 'wb') as f:
       # Home
       np.save(f, q_start)
@@ -289,7 +289,7 @@ for eps, alpha in elems[:-1]:
       np.save(f, n_ds)
       np.save(f, ep_s)
 
-    with open('data/AllJoints2/list_files_all.txt', 'a') as f:
+    with open('examples/data/AllJoints2/list_files_all.txt', 'a') as f:
         f.write(filename + "\n")
 
 if False:

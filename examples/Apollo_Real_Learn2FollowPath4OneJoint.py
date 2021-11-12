@@ -257,7 +257,7 @@ for jjoint in range(1):
 
   if SAVING:
     # Saving Results
-    filename = "data/AllJoints3/joint_{}_alpha_{}_eps_{}_".format(jjoint, alpha, ep_s[0]) + time.strftime("%Y_%m_%d-%H_%M_%S")
+    filename = "examples/data/AllJoints3/joint_{}_alpha_{}_eps_{}_".format(jjoint, alpha, ep_s[0]) + time.strftime("%Y_%m_%d-%H_%M_%S")
     save(filename,
          q_start=q_start, T_home=T_home,                                                   # Home
          xyz_traj_des=xyz_traj_des, q_traj_des=q_traj_des,                                         # Desired Trajectories
@@ -268,7 +268,7 @@ for jjoint in range(1):
          tt=tt, xx=xx, uu=uu,                                                              # Minjerk Params
          learnable_joints=learnable_joints, alpha=alpha, n_ms=n_ms, n_ds=n_ds, ep_s=ep_s)  # ILC parameters
 
-    with open('data/AllJoints3/list_files_all.txt', 'a') as f:
+    with open('examples/data/AllJoints3/list_files_all.txt', 'a') as f:
         f.write(filename + "\n")
 
 
