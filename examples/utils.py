@@ -73,8 +73,9 @@ def print_info(j, learnable_joints, joints_d_vec, d_xyz):
 def plot_info(dt, j, learnable_joints, 
           joints_q_vec, q_traj_des, 
           u_ff_vec, q_v_traj,
+          joint_torque_vec=None,
           disturbanc_vec=None, d_xyz=None, error_norms=None,
-          v=True, p=True, dp=False, e_xyz=False, e=False):
+          v=True, p=True, dp=False, e_xyz=False, e=False, torque=False):
   if p:
     plot_A([q_traj_des, joints_q_vec[j], joints_q_vec[j-1], joints_q_vec[0]], learnable_joints, ["des", "it="+str(j), "it="+str(j-4), "it=0"], dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
     plt.suptitle("Angle Positions")
@@ -104,5 +105,12 @@ def plot_info(dt, j, learnable_joints,
     plot_A([error_norms[:j+1]], learnable_joints, ["L2-norm"], xlabel=r"$IT$", ylabel=r"angle [$rad$]")
     plt.suptitle("Joint angle errors through iterations")
     plt.show(block=False)
+
+
+  if joint_torque_vec is not None and torque:
+    plot_A([joint_torque_vec[j]], learnable_joints, ["torque"], dt=dt, xlabel=r"$t$", ylabel=r"Newton")
+    plt.suptitle("Torque trajectories for each joint")
+    plt.show(block=False)
+
 
   plt.show()

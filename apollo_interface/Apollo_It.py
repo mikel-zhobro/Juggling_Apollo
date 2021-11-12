@@ -131,16 +131,17 @@ class ApolloInterface:
             obs ([type]): O8O observation
 
         Returns:
-            [type]: a [10, 3] numpy array
+            [type]: a [10, 4] numpy array:  angle, angle_velocity, angle_acceleration, sensed_torque
         """
         # first for loop traverses the joints, second one the angle, ang_vel, ang_acc of the end effector!!!
         obs = obs.get_observed_states()
 
-        obs_np = np.zeros((len(self.joints_list), 3))
+        obs_np = np.zeros((len(self.joints_list), 4))
         for joint in self.joints_list:
             i = jointsToIndexDict[joint]
             for k in range(3):
                 obs_np[i][k] = obs.get(i).get()[k]
+            obs_np[i][3] = obs.get(i).get_sensed_load()
         return obs_np
 
     def apollo_run_one_iteration(self, dt, T, u, joint_home_config=None, repetitions=1, it=0, go2position=False):
@@ -170,7 +171,7 @@ class ApolloInterface:
         thetas_s = np.zeros((N, n_joints, 1));  thetas_s[0] = joint_home_config
         vel_s    = np.zeros((N, n_joints, 1))
         acc_s    = np.zeros((N, n_joints, 1))
-        dP_N_vec = np.zeros((N, n_joints))  # TODO: hand torque sensor
+        dP_N_vec = np.zeros((N, n_joints, 1))
 
         # Action Loop
         delta_it = int(1000*dt)
@@ -185,7 +186,8 @@ class ApolloInterface:
             vel_s[i+1] = obs_np[:,1].reshape(7, 1)
             acc_s[i+1] = obs_np[:,2].reshape(7, 1)
             # collect helpers
-            dP_N_vec[i+1] = 0
+            dP_N_vec[i+1] = obs_np[:,3].reshape(7, 1)
+
         if joint_home_config is not None:
             return thetas_s, vel_s, acc_s, dP_N_vec, u
         else:

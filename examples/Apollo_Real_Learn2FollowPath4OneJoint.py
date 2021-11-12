@@ -147,7 +147,7 @@ disturbanc_vec = np.zeros([ILC_it, N_1+1+end_repeat, N_joints], dtype='float')
 joints_d_vec   = np.zeros([ILC_it, N_1+1+end_repeat, N_joints], dtype='float')
 u_ff_vec       = np.zeros([ILC_it, N_1+1+end_repeat, N_joints], dtype='float')
 # c. Measurments
-joint_torque_vec     = np.zeros([ILC_it, N_1+1+end_repeat, N_joints], dtype='float')
+joint_torque_vec     = np.zeros([ILC_it, N_1+1+end_repeat, N_joints, 1], dtype='float')
 # d. Trajectory error norms
 error_norms    = np.zeros([ILC_it, N_joints, 1], dtype='float')
 
@@ -203,7 +203,7 @@ for jjoint in range(1):
     # CLIP
     # u_arr = np.clip(u_arr,-1.0,1.0)
     # Main Simulation
-    q_traj, q_v_traj, q_a_traj, dP_N_vec, _ = rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL+end_repeat*dt, u=u_arr, joint_home_config=q_start, repetitions=1, it=j)
+    q_traj, q_v_traj, q_a_traj, F_N_vec, _ = rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL+end_repeat*dt, u=u_arr, joint_home_config=q_start, repetitions=1, it=j)
 
     # For the next iteration
     if CARTESIAN_ERROR:
@@ -227,17 +227,18 @@ for jjoint in range(1):
     joints_vq_vec[j]      = q_v_traj
     joints_aq_vec[j]      = q_a_traj
     u_ff_vec[j, :-1]      = u_arr
-    joint_torque_vec[j]   = dP_N_vec
+    joint_torque_vec[j]   = F_N_vec
     disturbanc_vec[j, 1:] = np.squeeze([ilc.d for ilc in my_ilcs]).T  # learned joint space disturbances
     joints_d_vec[j, 1:]   = np.squeeze(q_traj_des[1:]-y_meas)         # actual joint space error
     xyz_vec[j]            = rArmKinematics.seqFK(q_traj)[:, :3, -1]   # actual cartesian errors
     error_norms[j]        = np.linalg.norm(joints_d_vec[j, :], axis=0, keepdims=True).T
 
 
-    if False and j%every_N==0: plot_info(dt, j, learnable_joints, 
+    if True and j%every_N==0: plot_info(dt, j, learnable_joints, 
                                         joints_q_vec, q_traj_des, u_ff_vec, q_v_traj, 
+                                        joint_torque_vec,
                                         disturbanc_vec, d_xyz, error_norms,
-                                        v=True, p=True, dp=False, e_xyz=True, e=True)
+                                        v=True, p=True, dp=False, e_xyz=True, e=True, torque=True)
 
     if False and j%every_N==0:  # How desired  trajectory changes
       plot_A([q_traj_des, q_traj_des_vec[j], q_traj_des_vec[j-1], q_traj_des_vec[0]], learnable_joints, ["des", "it="+str(j), "it="+str(j-1), "it=0"], dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
