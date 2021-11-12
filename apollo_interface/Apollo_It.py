@@ -65,7 +65,7 @@ def ref_name_to_index(posture):
     return { jointsToIndexDict[joint]: posture for joint, posture in posture.items()}
 
 
-def go_to_speed(speeds, nb_iterations, bursting):
+def go_to_speed(speeds, nb_iterations, bursting, override=False):
     """Move robot to a certain speed-joint configuration.
 
     Args:
@@ -91,7 +91,7 @@ def go_to_speed(speeds, nb_iterations, bursting):
     return observation
 
 
-def go_to_posture(posture, nb_iterations, bursting):
+def go_to_posture(posture, nb_iterations, bursting, override=False):
     """Move robot to a certain joint configuration.
 
     Args:
@@ -106,7 +106,7 @@ def go_to_posture(posture, nb_iterations, bursting):
 
     # creating command stacks
     for joint, position in posture.iteritems():
-        apollo.add_position_command(joint, float(position), target_iteration, False)
+        apollo.add_position_command(joint, float(position), target_iteration, override)
 
     # sending stack to robot and waiting for the desired number of iterations
     if not bursting:  # if blocking:
@@ -191,7 +191,7 @@ class ApolloInterface:
         else:
             return thetas_s[1:], vel_s[1:], acc_s[1:],dP_N_vec[1:], u
 
-    def go_to_speed_array(self, speeds, nb_iterations, bursting):
+    def go_to_speed_array(self, speeds, nb_iterations, bursting, override=True):
         """Move right arm to a certain joint configuration and reset pinocchio jointstates.
 
         Args:
@@ -205,7 +205,7 @@ class ApolloInterface:
         obs_np = self.obs_to_numpy(observation)
         return obs_np
 
-    def go_to_posture_array(self, posture, nb_iterations, bursting):
+    def go_to_posture_array(self, posture, nb_iterations, bursting, override=False):
         """Move right arm to a certain joint configuration and reset pinocchio jointstates.
 
         Args:
@@ -215,7 +215,7 @@ class ApolloInterface:
         """
         posture_dict = {self.joints_list[i]: p for i, p in enumerate(posture)}
         posture_dict = ref_name_to_index(posture_dict)
-        observation = go_to_posture(posture_dict, nb_iterations, bursting)
+        observation = go_to_posture(posture_dict, nb_iterations, bursting, override)
         obs_np = self.obs_to_numpy(observation)
         return obs_np
 
@@ -228,7 +228,7 @@ class ApolloInterface:
         if globs.IK_dynamics:
             print("Using IK_dynamics")
             while True:
-                obs = self.go_to_posture_array(home_pose, it_time, globs.bursting)
+                obs = self.go_to_posture_array(home_pose, it_time, bursting=globs.bursting, override=True)
                 print("HOME with error:", np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze()))
                 if np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze()) <= eps:
                     break
