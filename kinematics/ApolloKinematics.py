@@ -7,7 +7,7 @@ from DH import DH_revolut
 from utilities import R_joints, L_joints, JOINTS_LIMITS
 from utilities import skew, vec, clip_c
 from fk_pin_local import PinRobot
-from AnalyticalIK import IK_anallytical, IK_heuristic2
+from AnalyticalIK import IK_anallytical, IK_heuristic2, IK_heuristic3
 
 class ApolloArmKinematics():
     def __init__(self, r_arm=True, noise=None):
@@ -63,7 +63,7 @@ class ApolloArmKinematics():
     def IK_best(self, T_d, for_seqik=False):
         # Returns joint configuration that correspond to the IK solutions with biggest PSI feasible set
         # PSI is choosen from the middle of the set
-        GC2, GC4, GC6, feasible_set, solu =  IK_heuristic2(p07_d=T_d[:3, 3:4], R07_d=T_d[:3, :3], DH_model=self.dh_rob) # decide branch of solutions
+        GC2, GC4, GC6, feasible_set, solu =  IK_heuristic3(p07_d=T_d[:3, 3:4], R07_d=T_d[:3, :3], DH_model=self.dh_rob) # decide branch of solutions
         assert not feasible_set.empty, "Not possible to calculate IK"
         feasible_set = feasible_set.max_range()
         psi = feasible_set.middle                     # Choose psi for start configuration
@@ -92,6 +92,7 @@ class ApolloArmKinematics():
         R_start = T_start[:3, :3]
         p_start = T_start[:3, 3:4]
         q_joint_state_i, GC2, GC4, GC6, psi = self.IK_best(T_start, for_seqik=True)   # Start configuration
+        print(GC2, GC4)
 
         # Init lists
         N = position_traj.shape[0]
@@ -132,26 +133,27 @@ class ApolloArmKinematics():
     def limits(self):
         return [j.limit_range for j in self.dh_rob.joints]
 
-    def plot(self, joint_trajs=None, psis=None, psi_mins=None, psi_maxs=None, dt=1):
+    def plot(self, joint_trajs=None, psis=None, psi_mins=None, psi_maxs=None, dt=1, rad=False):
         if psis is None:
-            self.plot_joints(joint_trajs)
+            self.plot_joints(joint_trajs, dt, rad=rad)
         elif joint_trajs is None:
-            self.plot_psis(psis, psi_mins, psi_maxs)
+            self.plot_psis(psis, psi_mins, psi_maxs, dt=dt, rad=rad)
         else:
             fig, axs = plt.subplots(8,1, figsize=(16,12))
-            self.plot_psis(psis, psi_mins, psi_maxs, ax=axs[0])
-            self.plot_joints(joints_traj=joint_trajs, axs=axs[1:])
+            self.plot_psis(psis, psi_mins, psi_maxs, dt=dt, ax=axs[0], rad=rad)
+            self.plot_joints(joints_traj=joint_trajs, dt=dt, axs=axs[1:], rad=rad)
             plt.show()
 
 
-    def plot_psis(self, psis, psi_mins, psi_maxs, dt=1.0, ax=None):
+    def plot_psis(self, psis, psi_mins, psi_maxs, dt=1.0, ax=None, rad=False):
         noax = ax is None
         if noax:
             fig, ax = plt.subplots(1, figsize=(16,12))
 
+        fac = 1.0 if rad else 180.0/np.pi
         times = np.arange(0, len(psis)) * dt
-        ax.plot(times, psis, '-', color='k', label="psi")
-        ax.fill_between(times, psi_mins, psi_maxs, color='gray', alpha=0.2, label="psimin<->psimax")
+        ax.plot(times, fac*psis, '-', color='k', label="psi")
+        ax.fill_between(times, fac*psi_mins, fac*psi_maxs, color='gray', alpha=0.2, label="psimin<->psimax")
         ax.legend()
 
         if noax:

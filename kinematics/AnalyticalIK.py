@@ -448,6 +448,22 @@ def IK_heuristic2(p07_d, R07_d, DH_model):
             GC6_final = GC6
     return GC2_final, GC4_final, GC6_final, biggest_feasible_set, solu_function
 
+def IK_heuristic3(p07_d, R07_d, DH_model):
+    # Finds best branch of solutions (with elbo human like)
+    biggest_feasible_set = ContinuousSet()
+    solu_function = None
+    GC2_final = 1.0
+    GC4_final = 1.0
+    GC6_final = 1.0
+    GCs = [(i, ii) for i in [-1.0, 1.0] for ii in [-1.0, 1.0]]
+    for GC2, GC6 in GCs:
+        sf, psi_feasible_set = IK_anallytical(p07_d, R07_d, DH_model, GC2=GC2_final, GC4=GC4_final, GC6=GC6, verbose=False, p06=None, p07=None)
+        if psi_feasible_set.max_range().size > biggest_feasible_set.size:
+            biggest_feasible_set = psi_feasible_set.max_range()
+            solu_function = sf
+            GC2_final = GC2_final
+            GC6_final = GC6
+    return GC2_final, GC4_final, GC6_final, biggest_feasible_set, solu_function
 
 def plt_analIK(plot_params, psi_feasible_set):
     import matplotlib.pyplot as plt
