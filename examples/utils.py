@@ -70,18 +70,18 @@ def print_info(j, learnable_joints, joints_d_vec, d_xyz):
                                                                                       ))
     
     
-def plot_info(dt, j, learnable_joints, 
-          joints_q_vec, q_traj_des, 
-          u_ff_vec, q_v_traj,
+def plot_info(dt, j=0, learnable_joints=list(range(7)), 
+          joints_q_vec=None, q_traj_des=None, 
+          u_ff_vec=None, q_v_traj=None,
           joint_torque_vec=None,
           disturbanc_vec=None, d_xyz=None, error_norms=None,
           v=True, p=True, dp=False, e_xyz=False, e=False, torque=False):
-  if p:
+  if joints_q_vec is not None and q_traj_des is not None and p:
     plot_A([q_traj_des, joints_q_vec[j], joints_q_vec[j-1], joints_q_vec[0]], learnable_joints, ["des", "it="+str(j), "it="+str(j-4), "it=0"], dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
     plt.suptitle("Angle Positions")
     plt.show(block=False)
   
-  if v:
+  if u_ff_vec is not None and q_v_traj is not None and v:
     plot_A([u_ff_vec[j, :-1], q_v_traj[1:]], learnable_joints, fill_between=[np.max(u_ff_vec, axis=0)[1:], np.min(u_ff_vec, axis=0)[1:]],
             labels=["desired", "real"], dt=dt, xlabel=r"$t$ [s]", ylabel=r" angle velocity [$\frac{rad}{s}$]")
     plt.suptitle("Angle Velocities")
