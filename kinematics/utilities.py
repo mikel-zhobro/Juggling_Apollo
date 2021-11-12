@@ -77,8 +77,8 @@ def skew(v):
 def vec(elems):
     return np.array(elems, dtype='float').reshape(-1, 1)
 
-def clip_c(v):
-    return np.clip(v, -1.0, 1.0)
+def clip_c(v, min=-1.0, max=1.0):
+    return np.clip(v, min, max)
 
 def pR2T(p,R):
     T = np.eye(4)
