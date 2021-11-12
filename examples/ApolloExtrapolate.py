@@ -46,4 +46,3 @@ rArmInterface.apollo_run_one_iteration(dt=dt*sf, T=sf*N_1*dt-0.00001, u=ld.u_arr
 
 sf = 1.0  # shrink factor
 rArmInterface.apollo_run_one_iteration(dt=dt*sf, T=sf*N_1*dt-0.00001, u=ld.u_arr/sf**2, joint_home_config=ld.q_start, repetitions=12)
-            

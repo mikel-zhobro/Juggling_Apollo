@@ -14,7 +14,7 @@ def calc(tau, dwell_ration, E, slower=1.0):
   # ball height and velocity
   H, ub_throw = flyTime2HeightAndVelocity(T_fly)
 
-  return T_hand*slower, T_empty*slower, ub_throw, H, z_catch
+  return T_hand*slower, T_empty*slower, ub_throw/slower, H, z_catch
 
 def traj_nb_2_na_1(T_throw, T_hand, ub_catch, ub_throw, T_empty, z_catch, x_0, dt, smooth_acc, plot=False):
   # 2balls 1hand
