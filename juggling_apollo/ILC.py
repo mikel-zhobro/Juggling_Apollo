@@ -51,12 +51,12 @@ class ILC:
     u_ff_new = self.quad_input_optim.calcDesiredInput(self.kf_dpn.d, np.array(y_des[1:], dtype='float').reshape(-1, 1), True)
     return y_des, u_ff_new, ub_throw, 0
 
-  def learnWhole(self, y_des, u_ff_old=None, y_meas=None, verbose=False):
+  def learnWhole(self, y_des, u_ff_old=None, y_meas=None, verbose=False, lb=None, ub=None):
     # 1. Throw
     disturbance = self.kf_dpn.d
     if u_ff_old is not None:  # we are calculating u_ff for the first time(so just use the linear model for that)
       disturbance = self.kf_dpn.updateStep(u_ff_old.reshape(-1, 1), y_meas.reshape(-1, 1))  # estimate dpn disturbance
 
-    u_ff_new = self.quad_input_optim.calcDesiredInput(disturbance, np.array(y_des[1:], dtype='float').reshape(-1, 1), verbose)
+    u_ff_new = self.quad_input_optim.calcDesiredInput(disturbance, np.array(y_des[1:], dtype='float').reshape(-1, 1), verbose, lb, ub)
 
     return u_ff_new
