@@ -1,10 +1,11 @@
 ### Tests to be performed on real Apollo
 
+- [ ] Test if home position makes sense
 
-1. Test if home position makes sense
+- [ ] Test trapezoid trajectories for single joints
+
+- [ ] Test trapezoid trajectories for joitn groups (0,1,2) (0,1,2,3), (0,1,2,3,4)
    
-2. Choose the MinJerks we want to try out and make sure the velocities are under the constraints
-3. Path Tracking for each Joint
-4. Different joint groups together (0,1,2) (0,1,2,3), (0,1,2,3,4) -- record data
+- [ ] Test Minjerk
 
-5. Torque Messsurments (arm stays in place and we measure torques, record data of ball catching) 
+- [ ] Torque Messsurments (arm stays in place and we measure torques, record data of ball catching) 
