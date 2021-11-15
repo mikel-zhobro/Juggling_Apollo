@@ -30,7 +30,7 @@ N_joints = 7
 N_joints = 7
 rArmInterface = ApolloInterface(r_arm=True)
 
-N_1 = 2300
+N_1 = 4300
 T_FULL=N_1*dt-0.00001
 
 

@@ -15,23 +15,23 @@ with open('examplesReal/dataReal/MinJerkTest/list_files.txt') as topo_file:
         filename = filename.strip()  # The comma to suppress the extra new line char
         
         ld = load(filename)
+        print(filename)
 
+        if False:
+          plotMJ(ld.dt, ld.tt, ld.yy, ld.uu)
+          plotMJ(ld.dt, ld.tt, ld.zz, ld.uu)
+          plt.show()
+          
 
-    if True:
-      plotMJ(ld.dt, ld.tt, ld.yy, ld.uu)
-      plotMJ(ld.dt, ld.tt, ld.zz, ld.uu)
-      plt.show()
-      
+        if True:
+          from mpl_toolkits.mplot3d import axes3d, Axes3D  # noqa: F401
+          fig = plt.figure()
+          ax = fig.add_subplot(111, projection='3d')
+          ax.plot3D(ld.xyz_traj_des[:,0], ld.xyz_traj_des[:,1], ld.xyz_traj_des[:,2], 'gray')
+          plt.show()
 
-    if True:
-      from mpl_toolkits.mplot3d import axes3d, Axes3D  # noqa: F401
-      fig = plt.figure()
-      ax = fig.add_subplot(111, projection='3d')
-      ax.plot3D(ld.xyz_traj_des[:,0], ld.xyz_traj_des[:,1], ld.xyz_traj_des[:,2], 'gray')
-      plt.show()
-
-    plot_info(ld.dt, -1, ld.learnable_joints, 
-              ld.joints_q_vec, ld.q_traj_des, ld.u_ff_vec, ld.joints_vq_vec[-1], 
-              ld.joint_torque_vec,
-              ld.disturbanc_vec, ld.d_xyz, ld.error_norms,
-              v=True, p=True, dp=False, e_xyz=True, e=True, torque=True)
+        plot_info(ld.dt, -1, ld.learnable_joints, 
+                  ld.joints_q_vec, ld.q_traj_des, ld.u_ff_vec, ld.joints_vq_vec[-1], 
+                  ld.joint_torque_vec,
+                  ld.disturbanc_vec, ld.d_xyz, ld.error_norms,
+                  v=True, p=True, dp=False, e_xyz=True, e=True, torque=True)

@@ -15,6 +15,7 @@ with open('examplesReal/dataReal/TrapezoidTest/list_files.txt') as topo_file:
         filename = filename.strip()  # The comma to suppress the extra new line char
         
         ld = load(filename)
+    print(filename)
 
     plot_info(ld.dt, -1, ld.learnable_joints, 
               ld.joints_q_vec, ld.q_traj_des, ld.u_ff_vec, ld.joints_vq_vec[-1], 

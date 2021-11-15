@@ -79,8 +79,9 @@ y_des, velo2, accel2, jerk2 = get_minjerk_trajectory(dt, smooth_acc=smooth_acc, 
 if True:
   print(z_catch)
   plotMJ(dt, tt, yy, uu, smooth_acc, (z_des, velo, accel, jerk))
-  plotMJ(dt, tt, zz, uu, smooth_acc, (y_des, velo2, accel2, jerk2))
+  # plotMJ(dt, tt, zz, uu, smooth_acc, (y_des, velo2, accel2, jerk2))
   plt.show()
+
 #---------------        ---------------
 ####################################################################################################################################
 ####################################################################################################################################
@@ -162,12 +163,13 @@ y_meas = np.zeros((N_1+end_repeat, N_joints), dtype='float')
 ####################################################################################################################################
 
 # Extra Loop (In case we want to try out smth on different combination of joints)
-every_N = 113
+every_N = 13
+UB = 0.8
 for jjoint in range(1):
   ## CHOOOSE JOINTS THAT LEARN
   jjoint = "all"
   # learnable_joints = [0,1,2,3,5]
-  learnable_joints = [0,1,2,3,5]
+  learnable_joints = [0,1,2,3,4,5,6]
   non_learnable_joints = set(range(7)) - set(learnable_joints)
   for i in non_learnable_joints:
     q_traj_des[:,i] = 0.0
@@ -184,7 +186,11 @@ for jjoint in range(1):
   damp            = 1e-12
   mu              = 1e-2
   CARTESIAN_ERROR = False
+  q_traj_des[:,3] =   q_traj_des[:,3]*0.7 + q_traj_des[0,3]*0.3   # AUGMENTATION so that the desired velicities stay inside the limits -0.8<v<0.8
+  q_traj_des[:,4] =   q_traj_des[:,4]*0.4 + q_traj_des[0,4]*0.6   # AUGMENTATION so that the desired velicities stay inside the limits -0.8<v<0.8
+  q_traj_des[:,6] =   q_traj_des[:,6]*0.4 + q_traj_des[0,6]*0.6   # AUGMENTATION so that the desired velicities stay inside the limits -0.8<v<0.8
   q_traj_des_i    = q_traj_des.copy()   # Changing (possibly wrong/noisy) desired trajectory to make up for kinematics errors
+  
 
   for j in range(ILC_it):  
     # Learn feed-forward signal
@@ -197,10 +203,13 @@ for jjoint in range(1):
     for i in non_learnable_joints:
       u_arr[:,i] = 0.0
 
-  
-  
     # CLIP
-    # u_arr = np.clip(u_arr,-1.0,1.0)
+    u_arr = np.clip(u_arr, -UB, UB)
+  
+    plot_A([u_arr])
+    plt.suptitle("Velocity inputs")
+    plt.show()
+
     # Main Simulation
     q_traj, q_v_traj, q_a_traj, F_N_vec, u_vec = rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL+end_repeat*dt, u=u_arr, joint_home_config=q_start, repetitions=1, it=j)
 
@@ -233,25 +242,25 @@ for jjoint in range(1):
     error_norms[j]        = np.linalg.norm(joints_d_vec[j, :], axis=0, keepdims=True).T
 
 
-    if False and j%every_N==0: plot_info(dt, j, learnable_joints, 
+    if True and j%every_N==0: plot_info(dt, j, learnable_joints, 
                                         joints_q_vec, q_traj_des, u_ff_vec, q_v_traj, 
                                         joint_torque_vec,
                                         disturbanc_vec, d_xyz, error_norms,
-                                        v=True, p=True, dp=False, e_xyz=True, e=True, torque=True)
+                                        v=True, p=True, dp=False, e_xyz=False, e=False, torque=False)
     print_info(j, learnable_joints, joints_d_vec, d_xyz)
     
 
-  if False:
+  if True:
     plot_info(dt, j, learnable_joints, 
               joints_q_vec, q_traj_des, u_ff_vec, q_v_traj, 
               joint_torque_vec,
               disturbanc_vec, d_xyz, error_norms,
-              v=True, p=True, dp=False, e_xyz=True, e=True, torque=True)
+              v=True, p=True, dp=False, e_xyz=True, e=True, torque=False)
 
   SAVING = True
   if SAVING:
     # Saving Results
-    filename = "examplesReal/dataReal/MinJerkTest/joint_".format(learnable_joints[0]) + time.strftime("%Y_%m_%d-%H_%M_%S.txt")
+    filename = "examplesReal/dataReal/MinJerkTest/joint_{}".format(learnable_joints) + time.strftime("%Y_%m_%d-%H_%M_%S.txt")
 
     save(filename,
          dt=dt, q_start=q_start, T_home=T_home,                                            # Home
@@ -263,7 +272,7 @@ for jjoint in range(1):
          tt=tt, yy=yy, zz=zz, uu=uu,                                                       # Minjerk Params
          learnable_joints=learnable_joints, alpha=alpha, n_ms=n_ms, n_ds=n_ds, ep_s=ep_s)  # ILC parameters
 
-    with open('examplesReal/dataReal/MinJerkTest/list_files_all.txt', 'a') as f:
+    with open('examplesReal/dataReal/MinJerkTest/list_files.txt', 'a') as f:
         f.write(filename + "\n")
 
 

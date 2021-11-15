@@ -51,11 +51,11 @@ repeat[-1] = end_repeat+2
 q_traj_des = np.repeat(q_traj_des, repeats=repeat, axis=0)
 q_traj_des += q_start
 
-# q_traj_des = np.tile(q_traj_des, (7,1,1))
-print(q_traj_des. shape)
-plot_A([q_traj_des], dt=dt, limits=rArmKinematics.limits)
-plt.legend("Desired Velocity")
-plt.show()
+if False:
+  print(q_traj_des. shape)
+  plot_A([q_traj_des], dt=dt, limits=rArmKinematics.limits)
+  plt.legend("Desired Velocity")
+  plt.show()
 # Cartesian -> JointSpace                   <------------------------------------------------------------------------------------------ Mean Jerk Trajectory (CARTESIAN AND JOINT SPACE)
 xyz_traj_des = rArmKinematics.seqFK(q_traj_des)[:, :3, -1] - T_home[:3, -1]
 
@@ -88,7 +88,7 @@ for ilc in my_ilcs:
 
 # C. LEARN BY ITERATING
 # Learn Throw
-ILC_it = 2  # number of ILC iteration
+ILC_it = 21  # number of ILC iteration
 
 # Data collection
 q_traj_des_vec   = np.zeros([ILC_it, N_1+1+end_repeat, N_joints, 1], dtype='float')
@@ -116,7 +116,7 @@ y_meas = np.zeros((N_1+end_repeat, N_joints), dtype='float')
 ####################################################################################################################################
 
 # Extra Loop (In case we want to try out smth on different combination of joints)
-every_N = 113
+every_N = 3
 ## CHOOOSE JOINTS THAT LEARN
 jjoint = "all"
 # learnable_joints = [0,1,2,3,5]
@@ -153,6 +153,11 @@ for j in range(ILC_it):
 
   # CLIP
   u_arr = np.clip(u_arr,-0.8,0.8)
+  
+  plot_A([u_arr])
+  plt.suptitle("Velocity inputs")
+  plt.show()
+  
   # Main Simulation
   q_traj, q_v_traj, q_a_traj, dP_N_vec, u_vec = rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL+end_repeat*dt, u=u_arr, joint_home_config=q_start, repetitions=1, it=j)
 
@@ -184,13 +189,13 @@ for j in range(ILC_it):
   xyz_vec[j]            = rArmKinematics.seqFK(q_traj)[:, :3, -1]   # actual cartesian errors
   error_norms[j]        = np.linalg.norm(joints_d_vec[j, :], axis=0, keepdims=True).T
 
-  if False and j%every_N==0: plot_info(dt, j, learnable_joints, 
+  if True and j%every_N==0: plot_info(dt, j, learnable_joints, 
                                       joints_q_vec, q_traj_des, u_ff_vec, q_v_traj, 
                                       joint_torque_vec,
                                       disturbanc_vec, d_xyz, error_norms,
-                                      v=True, p=True, dp=False, e_xyz=True, e=True, torque=True)
+                                      v=True, p=True, dp=False, e_xyz=True, e=True, torque=False)
   print_info(j, learnable_joints, joints_d_vec, d_xyz)
-    
+
 
 if False:
   plot_info(dt, j, learnable_joints, 
@@ -202,7 +207,7 @@ if False:
 SAVING = True
 if SAVING:
   # Saving Results
-  filename = "examplesReal/dataReal/TrapezoidTest/joint_".format(learnable_joints[0]) + time.strftime("%Y_%m_%d-%H_%M_%S.txt")
+  filename = "examplesReal/dataReal/TrapezoidTest/joint_{}".format(learnable_joints) + time.strftime("%Y_%m_%d-%H_%M_%S.txt")
 
   save(filename,
         dt=dt, q_start=q_start, T_home=T_home,                                            # Home
@@ -213,11 +218,11 @@ if SAVING:
         xyz_vec=xyz_vec, joints_d_vec=joints_d_vec, error_norms=error_norms, d_xyz=d_xyz, # Progress Measurments
         learnable_joints=learnable_joints, alpha=alpha, n_ms=n_ms, n_ds=n_ds, ep_s=ep_s)  # ILC parameters
 
-  with open('examplesReal/dataReal/TrapezoidTest/list_files_all.txt', 'a') as f:
+  with open('examplesReal/dataReal/TrapezoidTest/list_files.txt', 'a') as f:
     f.write(filename + "\n")
 
 
 
 # Run Simulation with several repetition
 # rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL, u=u_arr[:-end_repeat], joint_home_config=q_start, repetitions=25, it=j)
-rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL+end_repeat*dt, u=u_arr, joint_home_config=q_start, repetitions=25, it=j)
+rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL+end_repeat*dt, u=u_arr, joint_home_config=q_start, repetitions=5, it=j)
