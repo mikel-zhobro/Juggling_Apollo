@@ -9,7 +9,6 @@ from juggling_apollo.MinJerk import plotMJ
 np.set_printoptions(precision=4, suppress=True)
 
 
-
 with open('examplesReal/dataReal/MinJerkTest/list_files.txt') as topo_file:
     for filename in topo_file:
         filename = filename.strip()  # The comma to suppress the extra new line char

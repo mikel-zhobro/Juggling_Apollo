@@ -1,13 +1,9 @@
 import numpy as np
-import time
 
 import __add_path__
-
 from utils import plot_info, load
 
-
 np.set_printoptions(precision=4, suppress=True)
-
 
 
 with open('examplesReal/dataReal/TrapezoidTest/list_files.txt') as topo_file:

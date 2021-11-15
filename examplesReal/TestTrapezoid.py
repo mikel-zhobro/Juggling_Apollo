@@ -6,12 +6,12 @@ from juggling_apollo.utils import plt
 from juggling_apollo.settings import dt
 from juggling_apollo.ILC import ILC
 from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal, ApolloDynSys2
-from apollo_interface.Apollo_It import ApolloInterface, plot_simulation
+from apollo_interface.Apollo_It import ApolloInterface
 from kinematics.ApolloKinematics import ApolloArmKinematics
 from utils import plot_A, save, print_info, plot_info
 
-
 np.set_printoptions(precision=4, suppress=True)
+
 
 end_repeat = 14   # repeat the last position value this many time
 SAVING = False

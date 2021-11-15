@@ -8,13 +8,12 @@ from juggling_apollo.settings import dt
 from juggling_apollo.ILC import ILC
 from juggling_apollo.MinJerk import plotMJ, get_minjerk_trajectory
 from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal, ApolloDynSys2
-from apollo_interface.Apollo_It import ApolloInterface, plot_simulation
+from apollo_interface.Apollo_It import ApolloInterface
 from kinematics.ApolloKinematics import ApolloArmKinematics
-from kinematics.utilities import clip_c
-from utils import plot_A, save, colors, line_types, print_info, plot_info
-
+from utils import plot_A, save, print_info, plot_info
 
 np.set_printoptions(precision=4, suppress=True)
+
 
 end_repeat = 14   # repeat the last position value this many time
 
