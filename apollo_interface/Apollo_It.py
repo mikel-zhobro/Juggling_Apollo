@@ -222,12 +222,11 @@ class ApolloInterface:
         return obs_np
 
     def go_to_home_position(self, home_pose=None, it_time=4000):
-        eps = 1e-4
-        # eps = 0.2
+        eps = 2e-3  # <2mm
         if home_pose is None:
             home_pose = np.zeros((7,1))
-            
-        if globs.IK_dynamics:
+
+        if False:
             print("Using IK_dynamics")
             while True:
                 obs = self.go_to_posture_array(home_pose, it_time, bursting=globs.bursting, override=True)
@@ -235,17 +234,37 @@ class ApolloInterface:
                 if np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze()) <= eps:
                     break
         else:
+            dt = 0.002
+            P = 1.6
+            I = 0.04
+            D = 0.2
             print("Not using IK_dynamics")
             obs = self.go_to_posture_array(home_pose, it_time, globs.bursting)
+
+            error_P = np.zeros(7)
+            error_I = np.zeros(7)
+            error_D = np.zeros(7)
             while True:
-                obs = self.go_to_speed_array(np.array(home_pose).squeeze()-obs[:,0].squeeze(), it_time/4, globs.bursting)
-                print("HOME with error:", np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze()))
-                if np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze()) <= eps:
+                error = np.array(home_pose).squeeze()-obs[:,0].squeeze()
+                error_D = (error - error_P)/dt
+                error_P = error
+                error_I += error_P*dt
+
+                controller_Input = error_P*P + error_I*I + error_D*D
+                obs = self.go_to_speed_array(controller_Input, int(dt*1000), globs.bursting)
+                # print("HOME with error:", np.linalg.norm(error_P))
+                # print(error)
+                # print(error_P*P)
+                # print(error_I*I)
+                # print(error_D*D)
+                # print(error_D)
+                if np.linalg.norm(error_P) <= eps:
                     break
-            
-        self.go_to_speed_array(np.zeros_like(home_pose), it_time/4, globs.bursting)
-        return obs
-        
+
+        obs = self.go_to_speed_array(np.zeros_like(home_pose), it_time/4, globs.bursting)
+        print("HOME with error: {} mm".format(np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze())))
+        return obs[:,0].reshape(7, 1)
+
     # def get_TCP_pose(self):
     #     observation = apollo.read()
     #     cartesian_states = observation.get_cartesian()
@@ -253,9 +272,9 @@ class ApolloInterface:
     #         hand = cartesian_states.hands[0]
     #     else:
     #         hand = cartesian_states.hands[1]
-        
+
     #     return np.array(hand.position).reshape(-1,1), Rotation.from_quat(hand.orientation).as_dcm()
-        
+
 
 
 

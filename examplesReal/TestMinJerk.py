@@ -15,7 +15,7 @@ from utils import plot_A, save, print_info, plot_info
 np.set_printoptions(precision=4, suppress=True)
 
 
-end_repeat = 14   # repeat the last position value this many time
+end_repeat = 50   # repeat the last position value this many time
 
 print("juggling_apollo")
 
@@ -45,7 +45,7 @@ T_home[:3, :3] = np.array([[0.0, -1.0, 0.0],  # uppword orientation(cup is up)
 Ex = 0.15                                                                 # Ex = z_catch - z_throw
 tau = 0.5                                                                 # tau = T_hand + T_empty (length of the repeatable part)
 dwell_ration = 0.6                                                        # what part of tau is used for T_hand
-T_hand, T_empty, ub_throw, H, z_catch = calc(tau, dwell_ration, Ex, slower=3.21)  # 2.0 gives error
+T_hand, T_empty, ub_throw, H, z_catch = calc(tau, dwell_ration, Ex, slower=3.6)  # 2.0 gives error
 T_throw_first = T_hand*0.5                                                # Time to use for the first throw from home position
 
 T_fly = T_hand + 2*T_empty
@@ -75,7 +75,7 @@ uu=[0.0,      ub_throw/12.0,      ub_catch/12.0,            0.0     ]
 y_des, velo2, accel2, jerk2 = get_minjerk_trajectory(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=yy, uu=uu, extra_at_end=end_repeat+1)  # Min jerk trajectories (out of the loop since trajectory doesn't change)
 
 
-if True:
+if False:
   print(z_catch)
   plotMJ(dt, tt, yy, uu, smooth_acc, (z_des, velo, accel, jerk))
   # plotMJ(dt, tt, zz, uu, smooth_acc, (y_des, velo2, accel2, jerk2))
@@ -97,7 +97,7 @@ assert np.allclose(q_start_nn , q_traj_des_nn[0])
 
 if False:
   rArmKinematics.plot(q_traj_des, *psi_params)
-  
+
 if False:
   from mpl_toolkits.mplot3d import axes3d, Axes3D  # noqa: F401
   fig = plt.figure()
@@ -117,7 +117,12 @@ def kf_params(n_m=0.02, epsilon=1e-5, n_d=0.06):
   return kf_dpn_params
 
 n_ms = [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02]
-n_ds = [0.06, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06]
+n_ds = [0.04, 0.01, 0.002, 0.0005, 0.0002, 0.00005, 0.000001]
+
+max_d = 0.04
+decrease_rate_d = 5.0
+n_ds = [max_d/decrease_rate_d**i for i in range(7)]
+print(n_ds)
 ep_s = [1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-4]
 # ep_s = [5e-3] * 7     # works well for velocity disturbance
 # ep_s = [1e-2] * 7     # works well for velocity disturbance
@@ -132,7 +137,7 @@ for ilc in my_ilcs:
 
 # C. LEARN BY ITERATING
 # Learn Throw
-ILC_it = 2  # number of ILC iteration
+ILC_it = 19  # number of ILC iteration
 
 # Data collection
 q_traj_des_vec  = np.zeros([ILC_it, N_1+1+end_repeat, N_joints, 1], dtype='float')
@@ -162,13 +167,14 @@ y_meas = np.zeros((N_1+end_repeat, N_joints), dtype='float')
 ####################################################################################################################################
 
 # Extra Loop (In case we want to try out smth on different combination of joints)
-every_N = 13
-UB = 0.8
+every_N = 5
+eps = 1e-3
+UB = 0.8-eps
 for jjoint in range(1):
   ## CHOOOSE JOINTS THAT LEARN
   jjoint = "all"
-  # learnable_joints = [0,1,2,3,5]
-  learnable_joints = [0,1,2,3,4,5,6]
+  learnable_joints = [0,1,2,4]
+  # learnable_joints = [0,1,2,3,4,5,6]
   non_learnable_joints = set(range(7)) - set(learnable_joints)
   for i in non_learnable_joints:
     q_traj_des[:,i] = 0.0
@@ -189,9 +195,9 @@ for jjoint in range(1):
   q_traj_des[:,4] =   q_traj_des[:,4]*0.4 + q_traj_des[0,4]*0.6   # AUGMENTATION so that the desired velicities stay inside the limits -0.8<v<0.8
   q_traj_des[:,6] =   q_traj_des[:,6]*0.4 + q_traj_des[0,6]*0.6   # AUGMENTATION so that the desired velicities stay inside the limits -0.8<v<0.8
   q_traj_des_i    = q_traj_des.copy()   # Changing (possibly wrong/noisy) desired trajectory to make up for kinematics errors
-  
 
-  for j in range(ILC_it):  
+
+  for j in range(ILC_it):
     # Learn feed-forward signal
     # u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=q_traj_des_i[:, i], y_meas=y_meas[:, i],             # initial state considered in the dynamics
     u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=q_traj_des_i[:, i] - q_start[i], y_meas=y_meas[:, i] - q_start[i],             # substract the initial state from the desired joint traj
@@ -204,10 +210,10 @@ for jjoint in range(1):
 
     # CLIP
     u_arr = np.clip(u_arr, -UB, UB)
-  
-    plot_A([u_arr])
-    plt.suptitle("Velocity inputs")
-    plt.show()
+
+    # plot_A([u_arr])
+    # plt.suptitle("Velocity inputs")
+    # plt.show()
 
     # Main Simulation
     q_traj, q_v_traj, q_a_traj, F_N_vec, u_vec = rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL+end_repeat*dt, u=u_arr, joint_home_config=q_start, repetitions=1, it=j)
@@ -241,17 +247,17 @@ for jjoint in range(1):
     error_norms[j]        = np.linalg.norm(joints_d_vec[j, :], axis=0, keepdims=True).T
 
 
-    if True and j%every_N==0: plot_info(dt, j, learnable_joints, 
-                                        joints_q_vec, q_traj_des, u_ff_vec, q_v_traj, 
+    if False and j%every_N==0: plot_info(dt, j, learnable_joints,
+                                        joints_q_vec, q_traj_des, u_ff_vec, q_v_traj,
                                         joint_torque_vec,
                                         disturbanc_vec, d_xyz, error_norms,
                                         v=True, p=True, dp=False, e_xyz=False, e=False, torque=False)
     print_info(j, learnable_joints, joints_d_vec, d_xyz)
-    
+
 
   if True:
-    plot_info(dt, j, learnable_joints, 
-              joints_q_vec, q_traj_des, u_ff_vec, q_v_traj, 
+    plot_info(dt, j, learnable_joints,
+              joints_q_vec, q_traj_des, u_ff_vec, q_v_traj,
               joint_torque_vec,
               disturbanc_vec, d_xyz, error_norms,
               v=True, p=True, dp=False, e_xyz=True, e=True, torque=False)
@@ -278,4 +284,4 @@ for jjoint in range(1):
 
 # Run Simulation with several repetition
 # rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL, u=u_arr[:-end_repeat], joint_home_config=q_start, repetitions=25, it=j)
-rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL+end_repeat*dt, u=u_arr, joint_home_config=q_start, repetitions=5, it=j)
+# rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL+end_repeat*dt, u=u_arr, joint_home_config=q_start, repetitions=5, it=j)
