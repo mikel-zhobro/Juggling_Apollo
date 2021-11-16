@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from tqdm import tqdm
 from math import sin, cos, acos, sqrt, atan2, asin
 
 from DH import DH_revolut
@@ -20,7 +19,7 @@ class ApolloArmKinematics():
 
         Args:
             noise (float, optional): If not none gives the amplitude of distance noise for the 4 distances of LWR. Defaults to None.
-                                     Allow noiy parameters of forward kinematics  
+                                     Allow noiy parameters of forward kinematics
         """
         joints2Use = R_joints if self.r_arm else L_joints
         pi2 = np.pi/2
@@ -53,7 +52,7 @@ class ApolloArmKinematics():
         returns the Transformationsmatrix base_T_tcp
         """
         return self.dh_rob.J(q.reshape(7, 1))
-    
+
     def seqFK(self, qs):
         return np.array([self.FK(q) for q in qs]).reshape(-1, 4, 4)
 
@@ -165,15 +164,15 @@ class ApolloArmKinematics():
         noax = axs is None
         if noax:
             fig, axs = plt.subplots(7,1, figsize=(16,12))
-        
+
         fac = 1.0 if rad else 180.0/np.pi
         times = np.arange(0,joints_traj.shape[0]) * dt
-        
+
         lines = [axs[iii].plot(times, fac* joints_traj.reshape(-1, 7)[:,iii], color=colors[iii], label=r"$\theta_{}$".format(iii+1))[0] for iii in range(7)]
         for iii in range(7):  # limits
             if True:
                 axs[iii].axhline(fac*self.limits[iii].a, color=lines[iii].get_color(), linestyle='dashed')
-                axs[iii].axhline(fac*self.limits[iii].b, color=lines[iii].get_color(), linestyle='dashed')                
+                axs[iii].axhline(fac*self.limits[iii].b, color=lines[iii].get_color(), linestyle='dashed')
                 axs[iii].axhspan(fac*self.limits[iii].a, fac*self.limits[iii].b, color=lines[iii].get_color(), alpha=0.3, label='feasible set')
                 axs[iii].legend(loc=1)
 

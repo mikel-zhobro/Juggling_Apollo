@@ -38,7 +38,7 @@ N_1 = 300 + N_delay
 T_FULL=N_1*dt-0.00001
 
 
-amplitudes = np.array([0.1, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]).reshape(7,1)
+amplitudes = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]).reshape(7,1)
 q_traj_des = np.zeros((N_1,7,1))
 q_traj_des[N_delay:100+N_delay,:,0] = -np.arange(100).reshape(-1,1)/100.0
 q_traj_des[100+N_delay:200+N_delay,:] = q_traj_des[99+N_delay]
@@ -71,8 +71,8 @@ def kf_params(n_m=0.02, epsilon=1e-5, n_d=0.06):
   }
   return kf_dpn_params
 
-n_ms = [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02]
-n_ds = [0.06, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06]
+n_ms = [0.02, 0.02, 0.04, 0.02, 0.02, 0.04, 0.02]
+n_ds = [0.03, 0.03, 1e-7, 0.03, 0.06, 1e-7, 0.03]
 ep_s = [1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-4]
 # ep_s = [5e-3] * 7     # works well for velocity disturbance
 # ep_s = [1e-2] * 7     # works well for velocity disturbance
@@ -93,7 +93,7 @@ ILC_it = 21  # number of ILC iteration
 # Data collection
 q_traj_des_vec   = np.zeros([ILC_it, N_1+1+end_repeat, N_joints, 1], dtype='float')
 # a. System Trajectories
-joints_q_vec   = np.zeros([ILC_it, N_1+1+end_repeat, N_joints, 1], dtype='float')
+joints_q_vec   = np.zeros([ILC_it, N_1+1+end_repeat, N_joints, 1], dtype='float');  joints_q_vec[:,:] = q_start
 joints_vq_vec  = np.zeros([ILC_it, N_1+1+end_repeat, N_joints, 1], dtype='float')
 joints_aq_vec  = np.zeros([ILC_it, N_1+1+end_repeat, N_joints, 1], dtype='float')
 xyz_vec        = np.zeros([ILC_it, N_1+1+end_repeat, 3], dtype='float')
@@ -120,7 +120,9 @@ every_N = 3
 ## CHOOOSE JOINTS THAT LEARN
 jjoint = "all"
 # learnable_joints = [0,1,2,3,5]
-learnable_joints = [0,1,2,3,4,5]
+# learnable_joints = [0,1,2,3,4,5]
+learnable_joints = [3]
+learnable_joints = [0,1,2,3,5]
 non_learnable_joints = set(range(7)) - set(learnable_joints)
 for i in non_learnable_joints:
   q_traj_des[:,i] = 0.0
@@ -128,7 +130,8 @@ for ilc in my_ilcs:
   ilc.resetILC()
 y_meas = np.zeros((N_1+end_repeat, N_joints), dtype='float')
 u_ff = [None] * 7
-
+eps = 1e-3
+UB = 0.8-eps
 
 # Main Loop
 ## Cartesian error params
@@ -139,7 +142,7 @@ mu              = 1e-2
 CARTESIAN_ERROR = False
 q_traj_des_i    = q_traj_des.copy()   # Changing (possibly wrong/noisy) desired trajectory to make up for kinematics errors
 
-for j in range(ILC_it):  
+for j in range(ILC_it):
   # Learn feed-forward signal
   # u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=q_traj_des_i[:, i], y_meas=y_meas[:, i],             # initial state considered in the dynamics
   u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=q_traj_des_i[:, i] - q_start[i], y_meas=y_meas[:, i] - q_start[i],             # substract the initial state from the desired joint traj
@@ -152,12 +155,12 @@ for j in range(ILC_it):
     u_arr[:,i] = 0.0
 
   # CLIP
-  u_arr = np.clip(u_arr,-0.8,0.8)
-  
-  plot_A([u_arr])
-  plt.suptitle("Velocity inputs")
-  plt.show()
-  
+  u_arr = np.clip(u_arr,-UB,UB)
+
+  # plot_A([u_arr])
+  # plt.suptitle("Velocity inputs")
+  # plt.show()
+
   # Main Simulation
   q_traj, q_v_traj, q_a_traj, dP_N_vec, u_vec = rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL+end_repeat*dt, u=u_arr, joint_home_config=q_start, repetitions=1, it=j)
 
@@ -189,17 +192,17 @@ for j in range(ILC_it):
   xyz_vec[j]            = rArmKinematics.seqFK(q_traj)[:, :3, -1]   # actual cartesian errors
   error_norms[j]        = np.linalg.norm(joints_d_vec[j, :], axis=0, keepdims=True).T
 
-  if True and j%every_N==0: plot_info(dt, j, learnable_joints, 
-                                      joints_q_vec, q_traj_des, u_ff_vec, q_v_traj, 
+  if True and j%every_N==0: plot_info(dt, j, learnable_joints,
+                                      joints_q_vec, q_traj_des, u_ff_vec, q_v_traj,
                                       joint_torque_vec,
                                       disturbanc_vec, d_xyz, error_norms,
-                                      v=True, p=True, dp=False, e_xyz=True, e=True, torque=False)
+                                      v=True, p=True, dp=False, e_xyz=False, e=False, torque=False)
   print_info(j, learnable_joints, joints_d_vec, d_xyz)
 
 
 if False:
-  plot_info(dt, j, learnable_joints, 
-            joints_q_vec, q_traj_des, u_ff_vec, q_v_traj, 
+  plot_info(dt, j, learnable_joints,
+            joints_q_vec, q_traj_des, u_ff_vec, q_v_traj,
             joint_torque_vec,
             disturbanc_vec, d_xyz, error_norms,
             v=True, p=True, dp=False, e_xyz=True, e=True, torque=True)

@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from tqdm import tqdm
 from math import sin, cos, acos, sqrt, atan2, asin, atan ,tan
 
 from DH import DH_revolut
@@ -45,7 +44,7 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
     d_se = DH_model.joint(2).d; l3se = vec([0,  -d_se,  0])
     d_ew = DH_model.joint(4).d; l4ew = vec([0,   0,     d_ew])
     d_wt = DH_model.joint(6).d; l7wt = vec([0,   0,     d_wt])
-    
+
     p07_d, R07_d = DH_model.get_goal_in_dh_base_frame(p07_d, R07_d)
     # Shoulder to Wrist axis
     x0sw = p07_d - l0bs - R07_d.dot(l7wt)  # p26
@@ -130,7 +129,7 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
 
     if verbose:
         plt_analIK(plot_params, psi_feasible_set)
-                
+
     # print(psi_feasible_set)
 
     return (lambda psi: np.array([ th1(psi), th2(psi), th3(psi), th4, th5(psi), th6(psi), th7(psi)]).reshape(-1,1), psi_feasible_set)
@@ -368,7 +367,7 @@ def plot_type(axis, theta_f, grad_theta_f, theta_min, theta_max, stat_psi, roots
     psi_s =  np.linspace(-np.pi, np.pi, np.pi/0.01)
     thetas =   [theta_f(psi) for psi in psi_s]
     grad_thetas =   [grad_theta_f(psi) for psi in psi_s]
-    
+
 
     ax = axis[0]
     ax2 = axis[1]
@@ -467,7 +466,7 @@ def IK_heuristic3(p07_d, R07_d, DH_model):
 
 def plt_analIK(plot_params, psi_feasible_set):
     import matplotlib.pyplot as plt
-    import matplotlib.gridspec as gridspec    
+    import matplotlib.gridspec as gridspec
     from matplotlib.lines import Line2D
 
     fig = plt.figure(figsize=(15, 10))
@@ -506,14 +505,14 @@ def plt_analIK(plot_params, psi_feasible_set):
     # Legend
     lines_labels = [ax.get_legend_handles_labels() for ax in fig.axes]
     lines, labels = [sum(lol, []) for lol in zip(*lines_labels)]
-    
+
     blue_patch = Line2D([0], [0], marker='o', color='w', label='Scatter', markerfacecolor='b', markersize=12),
     red_patch = Line2D([0], [0], marker='o', color='w', label='Scatter', markerfacecolor='r', markersize=12),
     green_patch = Line2D([0], [0], marker='o', color='w', label='Scatter', markerfacecolor='g', markersize=12),
-    
+
     lines2 = [blue_patch, red_patch, green_patch]
     labels2 = ['Statpoitns', 'Limit Roots', 'Jumpings']
-    
+
     liness = []
     labelss = []
     for i in range(3):
@@ -521,7 +520,7 @@ def plt_analIK(plot_params, psi_feasible_set):
         liness.append(lines2[i])
         labelss.append(labels[i])
         labelss.append(labels2[i])
-        
+
     fig.legend(liness, labelss, loc ="lower right",
             mode=None, borderaxespad=1, ncol=3, fontsize=12)
     fig.suptitle("Feasibility ranges for each joint")
@@ -529,12 +528,12 @@ def plt_analIK(plot_params, psi_feasible_set):
 
 
 if __name__ == "__main__":
-
+    from tqdm import tqdm
     # Create Robot
     my_fk_dh = DH_revolut()
     for a, alpha, d, theta, name, offset in zip(a_s, alpha_s, d_s, theta_s, R_joints, offsets):
         my_fk_dh.add_joint(a, alpha, d, theta, JOINTS_LIMITS[name], name, offset)
-        
+
 
     home_pose = np.array([0.0, -0.0, -np.pi/6, np.pi/2, 0.0, -0.0, 0.0]).reshape(-1,1)
     home_pose = np.array([1.0, 1.0, np.pi/6, 1.0, np.pi/4, 1.0, 2.0]).reshape(-1,1)
