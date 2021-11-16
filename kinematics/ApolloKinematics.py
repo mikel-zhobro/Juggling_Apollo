@@ -91,7 +91,6 @@ class ApolloArmKinematics():
         R_start = T_start[:3, :3]
         p_start = T_start[:3, 3:4]
         q_joint_state_i, GC2, GC4, GC6, psi = self.IK_best(T_start, for_seqik=True)   # Start configuration
-        print(GC2, GC4)
 
         # Init lists
         N = position_traj.shape[0]

@@ -10,7 +10,7 @@ class OptimLss:
     # as optimization
     # u_des = argmin_u |Weight[ydes - (GKd + Gd0) - GFu]|_2 + sigma*|u|_2 + mu*|(I-I_1) u|_2
     # Which corresponds in setting the first gradient to 0, i.e. solving
-    # (GF^T*W*GF + sigma*I + mu*(I-I_1)) * u = GF^T*W * (ydes - (GKd + Gd0) - GFu])  <=> Au = b
+    # (GF^T*W*GF + sigma*I + mu*(I-I_1)) * u = GF^T* W * (ydes - (GKd + Gd0) - GFu])  <=> Au = b
     N = y_des.shape[0]
     N_impo = N//30
     Weight = np.eye(N)
@@ -23,8 +23,9 @@ class OptimLss:
       A = P + Q + S
       b = self.lss.GF.T.dot(Weight).dot(y_des - self.lss.GK.dot(d) - self.lss.Gd0)
 
-      # u_des = np.linalg.lstsq(A, b, rcond=None)[0]
       u_des = np.linalg.inv(A).dot(b)
+      
+      # u_des = np.linalg.lstsq(A, b, rcond=None)[0]
       # u_des = np.linalg.lstsq((self.lss.GF.T).dot(self.lss.GF) + 0.0000001*np.eye(self.lss.GF.shape[1]),
       #                          self.lss.GF.T.dot(y_des - self.lss.GK.dot(d) - self.lss.Gd0), rcond=None)[0]
       # u_des = np.linalg.lstsq(self.lss.GF, y_des - self.lss.GK.dot(d) - self.lss.Gd0, rcond=None)[0]

@@ -55,10 +55,10 @@ class LiftedStateSpace:
     #      AN-1..A1S AN-2..A1S  .. S]
     K = np.zeros((nx*N, ndup*N), dtype='float')
     # -------------------------------------------------------------
-    # G = [Cd 0  .. .. 0
-    #      0  Cd 0  .. 0
-    #      .. .. .. .. ..
-    #      0  0  0  .. Cd]
+    # G = [C  0  .  .  0
+    #      0  C  0  .  0
+    #      .  .  .  .  .
+    #      0  0  0  .  C]
     self.G = np.zeros((ny*N, nx*N), dtype='float')
     # M = [I         0      0 .. 0
     #      A1        I      0 .. 0
