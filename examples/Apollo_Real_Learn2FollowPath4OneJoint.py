@@ -1,3 +1,4 @@
+from operator import index
 import numpy as np
 import time
 
@@ -10,14 +11,13 @@ from juggling_apollo.MinJerk import plotMJ, get_minjerk_trajectory
 from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal, ApolloDynSys2
 from apollo_interface.Apollo_It import ApolloInterface, plot_simulation
 from kinematics.ApolloKinematics import ApolloArmKinematics
-from kinematics.utilities import clip_c
 from utils import plot_A, save, colors, line_types, print_info, plot_info
 
 
 np.set_printoptions(precision=4, suppress=True)
 
 end_repeat = 200   # repeat the last position value this many time
-SAVING = False
+SAVING = True
 
 print("juggling_apollo")
 T_home = np.array([[0.0, -1.0, 0.0,  0.32],  # uppword orientation(cup is up)
@@ -47,7 +47,7 @@ rArmKinematics_nn = ApolloArmKinematics(r_arm=True)  ## noise noisifies the forw
 Ex = 0.15                                                                 # Ex = z_catch - z_throw
 tau = 0.5                                                                 # tau = T_hand + T_empty (length of the repeatable part)
 dwell_ration = 0.6                                                        # what part of tau is used for T_hand
-T_hand, T_empty, ub_throw, H, z_catch = calc(tau, dwell_ration, Ex, slower=3.21)  # 2.0 gives error
+T_hand, T_empty, ub_throw, H, z_catch = calc(tau, dwell_ration, Ex, slower=2.51)  # 2.0 gives error
 T_throw_first = T_hand*0.5                                                # Time to use for the first throw from home position
 
 T_fly = T_hand + 2*T_empty
@@ -99,7 +99,7 @@ assert np.allclose(q_start_nn , q_traj_des_nn[0])
 if False:
   rArmKinematics.plot(q_traj_des, *psi_params)
   
-if True:
+if False:
   from mpl_toolkits.mplot3d import axes3d, Axes3D  # noqa: F401
   fig = plt.figure()
   ax = fig.add_subplot(111, projection='3d')
@@ -133,7 +133,7 @@ for ilc in my_ilcs:
 
 # C. LEARN BY ITERATING
 # Learn Throw
-ILC_it = 10  # number of ILC iteration
+ILC_it = 12  # number of ILC iteration
 
 # Data collection
 q_traj_des_vec  = np.zeros([ILC_it, N_1+1+end_repeat, N_joints, 1], dtype='float')
@@ -163,7 +163,7 @@ y_meas = np.zeros((N_1+end_repeat, N_joints), dtype='float')
 ####################################################################################################################################
 
 # Extra Loop (In case we want to try out smth on different combination of joints)
-every_N = 113
+every_N = 3
 for jjoint in range(1):
   ## CHOOOSE JOINTS THAT LEARN
   jjoint = "all"
@@ -186,24 +186,31 @@ for jjoint in range(1):
   mu              = 1e-2
   CARTESIAN_ERROR = False
   q_traj_des_i    = q_traj_des.copy()   # Changing (possibly wrong/noisy) desired trajectory to make up for kinematics errors
-
+  UB = 0.87
   for j in range(ILC_it):  
     # Learn feed-forward signal
     # u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=q_traj_des_i[:, i], y_meas=y_meas[:, i],             # initial state considered in the dynamics
     u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=q_traj_des_i[:, i] - q_start[i], y_meas=y_meas[:, i] - q_start[i],             # substract the initial state from the desired joint traj
                            verbose=False,  # bool(i in learnable_joints and j%every_N==0 and False),
-                          #  lb=-1.0,ub=1.0
+                          #  lb=-UB,ub=UB
                            ) for i, ilc in enumerate(my_ilcs)]
     u_arr = np.array(u_ff, dtype='float').squeeze().T
     for i in non_learnable_joints:
       u_arr[:,i] = 0.0
 
-  
-  
     # CLIP
-    # u_arr = np.clip(u_arr,-1.0,1.0)
+    u_arr = np.clip(u_arr,-UB,UB)
+  
     # Main Simulation
     q_traj, q_v_traj, q_a_traj, F_N_vec, _ = rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL+end_repeat*dt, u=u_arr, joint_home_config=q_start, repetitions=1, it=j)
+
+    if False and j%every_N==0:
+      y_no_d_s = np.array([ilc.lss.GF.dot(u_arr[:, indx:indx+1]) + ilc.lss.Gd0  + q_start[indx] for indx, ilc in enumerate(my_ilcs)]).transpose(1,0,2) # predicted y
+      y_with_d_s = np.array([ilc.lss.GF.dot(u_arr[:, indx:indx+1]) + ilc.lss.Gd0  + ilc.lss.GK.dot(ilc.d) + q_start[indx] for indx, ilc in enumerate(my_ilcs)]).transpose(1,0,2) # predicted y
+      fillbetween = [y_no_d_s, y_with_d_s]
+      plot_A([y_no_d_s, q_traj[1:]], labels=["aimed_trajectory", "realized_trajectory"], indexes_list=learnable_joints, fill_between=fillbetween)
+      plt.show()
+      
 
     # For the next iteration
     if CARTESIAN_ERROR:
@@ -234,11 +241,11 @@ for jjoint in range(1):
     error_norms[j]        = np.linalg.norm(joints_d_vec[j, :], axis=0, keepdims=True).T
 
 
-    if True and j%every_N==0: plot_info(dt, j, learnable_joints, 
+    if False and j%every_N==0: plot_info(dt, j, learnable_joints, 
                                         joints_q_vec, q_traj_des, u_ff_vec, q_v_traj, 
                                         joint_torque_vec,
                                         disturbanc_vec, d_xyz, error_norms,
-                                        v=True, p=True, dp=False, e_xyz=True, e=True, torque=True)
+                                        v=True, p=True, dp=False, e_xyz=False, e=False, torque=False)
 
     if False and j%every_N==0:  # How desired  trajectory changes
       plot_A([q_traj_des, q_traj_des_vec[j], q_traj_des_vec[j-1], q_traj_des_vec[0]], learnable_joints, ["des", "it="+str(j), "it="+str(j-1), "it=0"], dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
@@ -249,7 +256,7 @@ for jjoint in range(1):
     print_info(j, learnable_joints, joints_d_vec, d_xyz)
      
   
-  if True: 
+  if False: 
     plot_info(dt, j, learnable_joints, 
               joints_q_vec, q_traj_des, u_ff_vec, q_v_traj, 
               disturbanc_vec, d_xyz, error_norms,
@@ -257,7 +264,7 @@ for jjoint in range(1):
 
   if SAVING:
     # Saving Results
-    filename = "examples/data/AllJoints3/joint_{}_alpha_{}_eps_{}_".format(jjoint, alpha, ep_s[0]) + time.strftime("%Y_%m_%d-%H_%M_%S")
+    filename = "examples/data/AllJoints3/joint_{}_alpha_{}_eps_{}_no_knowledge".format(jjoint, alpha, ep_s[0]) + time.strftime("%Y_%m_%d-%H_%M_%S")
     save(filename,
          q_start=q_start, T_home=T_home,                                                   # Home
          xyz_traj_des=xyz_traj_des, q_traj_des=q_traj_des,                                         # Desired Trajectories
