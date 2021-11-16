@@ -82,15 +82,24 @@ if False:
   plotMJ(dt, tt, xx, uu, smooth_acc, (z_des, velo, accel, jerk))
   plotMJ(dt, tt, xx, uu, smooth_acc, (y_des, velo2, accel2, jerk2))
   plt.show()
-#---------------        ---------------
-####################################################################################################################################
-####################################################################################################################################
 
 # Cartesian -> JointSpace                   <------------------------------------------------------------------------------------------ Min Jerk Trajectory (CARTESIAN AND JOINT SPACE)
 thetas                   = np.zeros_like(z_des)
 xyz_traj_des             = np.zeros((thetas.size, 3))
 xyz_traj_des[:,2]        = z_des
 xyz_traj_des[:,1]        = y_des
+
+if False:
+  from mpl_toolkits.mplot3d import axes3d, Axes3D  # noqa: F401
+  fig = plt.figure()
+  ax = fig.add_subplot(111, projection='3d')
+  ax.plot3D(xyz_traj_des[:,0], xyz_traj_des[:,1], xyz_traj_des[:,2], 'gray')
+  plt.show()
+
+#---------------        ---------------
+####################################################################################################################################
+####################################################################################################################################
+
 q_traj_des, q_start, psi_params   = rArmKinematics.seqIK(xyz_traj_des, thetas, T_home)  # [N_1, 7]
 q_traj_des_nn, q_start_nn, _      = rArmKinematics_nn.seqIK(xyz_traj_des, thetas, T_home)  # [N_1, 7]
 assert np.allclose(q_start , q_traj_des[0])
@@ -98,13 +107,6 @@ assert np.allclose(q_start_nn , q_traj_des_nn[0])
 
 if False:
   rArmKinematics.plot(q_traj_des, *psi_params)
-  
-if False:
-  from mpl_toolkits.mplot3d import axes3d, Axes3D  # noqa: F401
-  fig = plt.figure()
-  ax = fig.add_subplot(111, projection='3d')
-  ax.plot3D(xyz_traj_des[:,0], xyz_traj_des[:,1], xyz_traj_des[:,2], 'gray')
-  plt.show()
 
 # B. Initialize ILC
 def kf_params(n_m=0.02, epsilon=1e-5, n_d=0.06):
@@ -113,19 +115,22 @@ def kf_params(n_m=0.02, epsilon=1e-5, n_d=0.06):
     'P0': n_d*np.eye(N_1+end_repeat, dtype='float'),      # initial disturbance covariance
     'd0': np.zeros((N_1+end_repeat, 1), dtype='float'),   # initial disturbance value
     'epsilon0': epsilon,                                  # initial variance of noise on the disturbance
-    'epsilon_decrease_rate': 1.0                          # the decreasing factor of noise on the disturbance
+    'epsilon_decrease_rate': 0.9                          # the decreasing factor of noise on the disturbance
   }
   return kf_dpn_params
 
-n_ms = [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02]
-n_ds = [0.06, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06]
-ep_s = [1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-4]
+n_ms = [0.02]*7
+n_ds = [6e-4]*7
+ep_s = [1e-6]*7
 # ep_s = [5e-3] * 7     # works well for velocity disturbance
 # ep_s = [1e-2] * 7     # works well for velocity disturbance
+n_ms = [3e-5]*7
+n_ds = [6e-3]*7
+ep_s = [1e-4]*7
 alpha = 16.0
 my_ilcs = [
   # ILC(dt=dt, sys=ApolloDynSys(dt, alpha_=alpha), kf_dpn_params=kf_params(n_ms[i], ep_s[i], n_ds[i]), x_0=[q_start[i, 0], 0.0])    # include the initial state in the dynamics of the system
-  ILC(dt=dt, sys=ApolloDynSys(dt, alpha_=alpha), kf_dpn_params=kf_params(n_ms[i], ep_s[i], n_ds[i]), x_0=[0.0, 0.0])                # make sure to make up for the initial state during learning
+  ILC(dt=dt, sys=ApolloDynSys2(dt, alpha_=alpha), kf_dpn_params=kf_params(n_ms[i], ep_s[i], n_ds[i]), x_0=[0.0, 0.0])                # make sure to make up for the initial state during learning
   for i in range(N_joints)]
 
 for ilc in my_ilcs:
@@ -133,7 +138,7 @@ for ilc in my_ilcs:
 
 # C. LEARN BY ITERATING
 # Learn Throw
-ILC_it = 12  # number of ILC iteration
+ILC_it = 14  # number of ILC iteration
 
 # Data collection
 q_traj_des_vec  = np.zeros([ILC_it, N_1+1+end_repeat, N_joints, 1], dtype='float')
@@ -163,15 +168,16 @@ y_meas = np.zeros((N_1+end_repeat, N_joints), dtype='float')
 ####################################################################################################################################
 
 # Extra Loop (In case we want to try out smth on different combination of joints)
-every_N = 3
+every_N = 2
 for jjoint in range(1):
   ## CHOOOSE JOINTS THAT LEARN
   jjoint = "all"
   # learnable_joints = [0,1,2,3,5]
-  learnable_joints = [0,1,2,3,5]
+  learnable_joints = [0,1,2,3,4,5,6]
   non_learnable_joints = set(range(7)) - set(learnable_joints)
   for i in non_learnable_joints:
     q_traj_des[:,i] = 0.0
+    # q_start[i] = 0.0
   for ilc in my_ilcs:
     ilc.resetILC()
   y_meas = np.zeros((N_1+end_repeat, N_joints), dtype='float')
@@ -189,28 +195,24 @@ for jjoint in range(1):
   UB = 0.87
   for j in range(ILC_it):  
     # Learn feed-forward signal
-    # u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=q_traj_des_i[:, i], y_meas=y_meas[:, i],             # initial state considered in the dynamics
-    u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=q_traj_des_i[:, i] - q_start[i], y_meas=y_meas[:, i] - q_start[i],             # substract the initial state from the desired joint traj
+    # u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=q_traj_des_i[:, i], y_meas=y_meas,             # initial state considered in the dynamics
+    # u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=q_traj_des_i[:, i] - q_start[i], y_meas=y_meas,             # substract the initial state from the desired joint traj
+    u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=q_traj_des_i[:, i] - q_traj_des_i[1, i], y_meas=y_meas[:,i],             # substract the initial state from the desired joint traj
                            verbose=False,  # bool(i in learnable_joints and j%every_N==0 and False),
                           #  lb=-UB,ub=UB
                            ) for i, ilc in enumerate(my_ilcs)]
+
     u_arr = np.array(u_ff, dtype='float').squeeze().T
     for i in non_learnable_joints:
       u_arr[:,i] = 0.0
 
     # CLIP
-    u_arr = np.clip(u_arr,-UB,UB)
+    # u_arr = np.clip(u_arr,-UB,UB)
   
     # Main Simulation
     q_traj, q_v_traj, q_a_traj, F_N_vec, _ = rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL+end_repeat*dt, u=u_arr, joint_home_config=q_start, repetitions=1, it=j)
+    y_meas = q_traj[1:] - q_traj[1]
 
-    if False and j%every_N==0:
-      y_no_d_s = np.array([ilc.lss.GF.dot(u_arr[:, indx:indx+1]) + ilc.lss.Gd0  + q_start[indx] for indx, ilc in enumerate(my_ilcs)]).transpose(1,0,2) # predicted y
-      y_with_d_s = np.array([ilc.lss.GF.dot(u_arr[:, indx:indx+1]) + ilc.lss.Gd0  + ilc.lss.GK.dot(ilc.d) + q_start[indx] for indx, ilc in enumerate(my_ilcs)]).transpose(1,0,2) # predicted y
-      fillbetween = [y_no_d_s, y_with_d_s]
-      plot_A([y_no_d_s, q_traj[1:]], labels=["aimed_trajectory", "realized_trajectory"], indexes_list=learnable_joints, fill_between=fillbetween)
-      plt.show()
-      
 
     # For the next iteration
     if CARTESIAN_ERROR:
@@ -223,7 +225,6 @@ for jjoint in range(1):
 
 
     # System Output
-    y_meas = q_traj[1:]
     d_xyz =      xyz_traj_des + T_home[:3, -1] - rArmKinematics_nn.seqFK(q_traj)[:, :3, -1]         # measured cartesian error: calculated using the noise-less FK
     d_xyz_best = xyz_traj_des + T_home[:3, -1] - rArmKinematics_nn.seqFK(q_traj_des)[:, :3, -1]
     d_xyz_achievable = xyz_traj_des + T_home[:3, -1] - rArmKinematics.seqFK(q_traj_des)[:, :3, -1]
@@ -236,27 +237,35 @@ for jjoint in range(1):
     u_ff_vec[j, :-1]      = u_arr
     joint_torque_vec[j]   = F_N_vec
     disturbanc_vec[j, 1:] = np.squeeze([ilc.d for ilc in my_ilcs]).T  # learned joint space disturbances
-    joints_d_vec[j, 1:]   = np.squeeze(q_traj_des[1:]-y_meas)         # actual joint space error
+    joints_d_vec[j, 1:]   = np.squeeze(q_traj_des[1:]-q_traj[1:])         # actual joint space error
     xyz_vec[j]            = rArmKinematics.seqFK(q_traj)[:, :3, -1]   # actual cartesian errors
     error_norms[j]        = np.linalg.norm(joints_d_vec[j, :], axis=0, keepdims=True).T
 
+    print_info(j, learnable_joints, joints_d_vec, d_xyz)
 
     if False and j%every_N==0: plot_info(dt, j, learnable_joints, 
-                                        joints_q_vec, q_traj_des, u_ff_vec, q_v_traj, 
+                                        joints_q_vec, q_traj_des, 
+                                        u_ff_vec[:,:-1], q_v_traj[1:], 
                                         joint_torque_vec,
                                         disturbanc_vec, d_xyz, error_norms,
-                                        v=True, p=True, dp=False, e_xyz=False, e=False, torque=False)
+                                        v=True, p=True, dp=True, e_xyz=False, e=False, torque=False)
 
     if False and j%every_N==0:  # How desired  trajectory changes
       plot_A([q_traj_des, q_traj_des_vec[j], q_traj_des_vec[j-1], q_traj_des_vec[0]], learnable_joints, ["des", "it="+str(j), "it="+str(j-1), "it=0"], dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
       plt.suptitle("Desired Joint Trajectories")
       plt.show(block=False)
 
-    
-    print_info(j, learnable_joints, joints_d_vec, d_xyz)
-     
-  
-  if False: 
+    if False and j%every_N==0:  # Whether disturbance makes up for differences
+      y_no_d_s = np.array([ilc.lss.GF.dot(u_arr[:, indx:indx+1]) + ilc.lss.Gd0  + q_start[indx] for indx, ilc in enumerate(my_ilcs)]).transpose(1,0,2) # predicted y
+      y_with_d_s = np.array([ilc.lss.GF.dot(u_arr[:, indx:indx+1]) + ilc.lss.Gd0  + ilc.lss.GK.dot(ilc.d) + q_start[indx] for indx, ilc in enumerate(my_ilcs)]).transpose(1,0,2) # predicted y
+      fillbetween = [y_no_d_s, y_with_d_s]
+      plot_A([y_no_d_s, q_traj[1:]], labels=["aimed_trajectory", "realized_trajectory"], indexes_list=learnable_joints, fill_between=fillbetween)
+      plt.show()
+
+
+
+  # After Main Loop has finished  
+  if True: 
     plot_info(dt, j, learnable_joints, 
               joints_q_vec, q_traj_des, u_ff_vec, q_v_traj, 
               disturbanc_vec, d_xyz, error_norms,
@@ -282,5 +291,6 @@ for jjoint in range(1):
 
 # Run Simulation with several repetition
 # rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL, u=u_arr[:-end_repeat], joint_home_config=q_start, repetitions=25, it=j)
-# rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL+end_repeat*dt, u=u_arr, joint_home_config=q_start, repetitions=25, it=j)
-rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL, u=u_arr[:-end_repeat], joint_home_config=q_start, repetitions=25, it=j)
+rArmInterface.apollo_run_one_iteration(dt=dt, T=end_repeat*dt, u=u_arr[:end_repeat], joint_home_config=q_start, repetitions=1, it=j)
+rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL, u=u_arr[end_repeat:], repetitions=25, it=j)
+# rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL, u=u_arr[:-end_repeat], joint_home_config=q_start, repetitions=25, it=j)
