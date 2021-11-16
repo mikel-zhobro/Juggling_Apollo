@@ -3,15 +3,16 @@ import numpy as np
 
 class KalmanFilter:
   def __init__(self, lss, M, d0, P0, epsilon0, epsilon_decrease_rate=0.9):
-    # initial values
-    self.d0 = d0
-    self.P0 = P0
-    self.epsilon0 = epsilon0
 
     # pointer to the lifted space (can be changed from outside)
     self.lss = lss
-    self.M = M
     self.epsilon_decrease_rate = epsilon_decrease_rate
+
+    # initial values
+    self.M = M            # covariance of noise on the measurment
+    self.d0 = d0          # initial disturbance value
+    self.P0 = P0          # initial disturbance covariance
+    self.epsilon0 = epsilon0
 
     # current values
     self._d = None
@@ -28,7 +29,8 @@ class KalmanFilter:
 
   def resetKF(self):
       self._d = self.d0
-      self._P = self.P0
+      # self._P = self.P0
+      self._P = self.lss.GK.dot(self.P0).dot(self.lss.GK.T)
       self.epsilon = self.epsilon0
 
   def updateStep(self, u, y_meas):
