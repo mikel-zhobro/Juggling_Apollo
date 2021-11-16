@@ -23,12 +23,14 @@ def plot_A(lines_list, indexes_list=list(range(7)), labels=None, dt=1, xlabel=""
   axs = np.array(axs)
   for iii, ix in enumerate(indexes_list):
     for i in range(N):
-      axs.flatten()[iii].plot(timesteps, lines_list[i][:, ix].squeeze(), color=colors[iii], linestyle=line_types[i], label=r"$\theta_{}$ {}".format(ix, labels[i] if labels is not None else ""))
+      l = axs.flatten()[iii].plot(timesteps, lines_list[i][:, ix].squeeze(), 
+                              # color=colors[iii%len(colors)], 
+                              linestyle=line_types[i%len(line_types)], label=r"$\theta_{}$ {}".format(ix, labels[i] if labels is not None else ""))
     if limits is not None:
-      axs.flatten()[iii].axhspan(limits[iii].a, limits[iii].b, color=colors[iii], alpha=0.3, label='feasible set')
+      axs.flatten()[iii].axhspan(limits[iii].a, limits[iii].b, color='gray', alpha=0.2, label='feasible set')  # color=l[0].get_color()
       axs.flatten()[iii].set_ylim([min(-np.pi, limits[iii].a), max(np.pi, limits[iii].b)])
     if fill_between is not None:
-      axs.flatten()[iii].fill_between(timesteps, fill_between[0][:, ix].squeeze(), fill_between[1][:, ix].squeeze(), color=colors[iii], alpha=0.5)
+      axs.flatten()[iii].fill_between(timesteps, fill_between[0][:, ix].squeeze(), fill_between[1][:, ix].squeeze(), color='gray', alpha=0.2)
 
     axs.flatten()[iii].legend(loc=1)
     axs.flatten()[iii].grid(True)
@@ -76,19 +78,26 @@ def plot_info(dt, j=0, learnable_joints=list(range(7)),
           joint_torque_vec=None,
           disturbanc_vec=None, d_xyz=None, error_norms=None,
           v=True, p=True, dp=False, e_xyz=False, e=False, torque=False):
+
   if joints_q_vec is not None and q_traj_des is not None and p:
-    plot_A([q_traj_des, joints_q_vec[j], joints_q_vec[j-1], joints_q_vec[0]], learnable_joints, ["des", "it="+str(j), "it="+str(j-1), "it=0"], dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
+    line_list = [q_traj_des] + [joints_q_vec[j-i] for i in range(4)]
+    label_list = ["des"] + ["it="+str(j-i) for i in range(4)]
+    plot_A(line_list, learnable_joints, label_list, dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
     plt.suptitle("Angle Positions")
     plt.show(block=False)
 
   if u_ff_vec is not None and q_v_traj is not None and v:
-    plot_A([u_ff_vec[j, :-1], u_ff_vec[j-1, :-1], q_v_traj[1:]], learnable_joints, fill_between=[np.max(u_ff_vec, axis=0)[1:], np.min(u_ff_vec, axis=0)[1:]],
-            labels=["des_"+str(j), 'des_'+str(j-1), "real"], dt=dt, xlabel=r"$t$ [s]", ylabel=r" angle velocity [$\frac{rad}{s}$]")
+    line_list = [q_v_traj] + [u_ff_vec[j-i] for i in range(4)]
+    label_list = ["performed"] + ["it="+str(j-i) for i in range(4)]
+    plot_A(line_list, learnable_joints, fill_between=[np.max(u_ff_vec, axis=0), np.min(u_ff_vec, axis=0)],
+           labels=label_list, dt=dt, xlabel=r"$t$ [s]", ylabel=r" angle velocity [$\frac{rad}{s}$]")
     plt.suptitle("Angle Velocities")
     plt.show(block=False)
 
   if disturbanc_vec is not None and dp:
-    plot_A([disturbanc_vec[j, 1:], disturbanc_vec[j-2, 1:], disturbanc_vec[j-4, 1:], disturbanc_vec[1, 1:]], learnable_joints, ["d", "it-2", "it-4", "it=1"], dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
+    line_list = [disturbanc_vec[j-i] for i in range(4)]
+    label_list = ["it="+str(j-i) for i in range(4)]
+    plot_A(line_list, learnable_joints, label_list, dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
     plt.suptitle("Disturbance")
     plt.show(block=False)
 
