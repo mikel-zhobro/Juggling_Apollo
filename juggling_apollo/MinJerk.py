@@ -93,13 +93,21 @@ def get_minjerk_trajectory(dt, tt, xx, uu, smooth_acc=False, i_a_end=None, only_
   a_ret[n_last:] = a[-1]
   j_ret[n_last:] = j[-1]
   
-  if extra_at_end is not None:
+  if False and extra_at_end is not None:
     repeat = [1]* N_Whole
     repeat[-1] = extra_at_end
     x_ret = np.repeat(x_ret, repeats=repeat, axis=0)
     v_ret = np.repeat(v_ret, repeats=repeat, axis=0)
     a_ret = np.repeat(a_ret, repeats=repeat, axis=0)
     j_ret = np.repeat(j_ret, repeats=repeat, axis=0)
+    
+  if extra_at_end is not None:
+    repeat = [1]* N_Whole
+    repeat[-1] = extra_at_end
+    x_ret = np.hstack((x_ret, x_ret[1:extra_at_end]))
+    v_ret = np.hstack((v_ret, v_ret[1:extra_at_end]))
+    a_ret = np.hstack((a_ret, a_ret[1:extra_at_end]))
+    j_ret = np.hstack((j_ret, j_ret[1:extra_at_end]))
   if only_x:
     return x_ret
   else:
