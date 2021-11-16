@@ -248,7 +248,8 @@ for jjoint in range(1):
 
 
     if False and j%every_N==0: plot_info(dt, j, learnable_joints,
-                                        joints_q_vec, q_traj_des, u_ff_vec, q_v_traj,
+                                        joints_q_vec, q_traj_des, 
+                                        u_ff_vec[:,:-1], q_v_traj[:,1:], 
                                         joint_torque_vec,
                                         disturbanc_vec, d_xyz, error_norms,
                                         v=True, p=True, dp=False, e_xyz=False, e=False, torque=False)
@@ -257,7 +258,8 @@ for jjoint in range(1):
 
   if True:
     plot_info(dt, j, learnable_joints,
-              joints_q_vec, q_traj_des, u_ff_vec, q_v_traj,
+              joints_q_vec, q_traj_des, 
+              u_ff_vec[:,:-1], q_v_traj[:,1:], 
               joint_torque_vec,
               disturbanc_vec, d_xyz, error_norms,
               v=True, p=True, dp=False, e_xyz=True, e=True, torque=False)

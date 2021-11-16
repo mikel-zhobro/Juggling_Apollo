@@ -192,8 +192,9 @@ for j in range(ILC_it):
   xyz_vec[j]            = rArmKinematics.seqFK(q_traj)[:, :3, -1]   # actual cartesian errors
   error_norms[j]        = np.linalg.norm(joints_d_vec[j, :], axis=0, keepdims=True).T
 
-  if True and j%every_N==0: plot_info(dt, j, learnable_joints,
-                                      joints_q_vec, q_traj_des, u_ff_vec, q_v_traj,
+  if False and j%every_N==0: plot_info(dt, j, learnable_joints,
+                                      joints_q_vec, q_traj_des, 
+                                      u_ff_vec[:,:-1], q_v_traj[:,1:], 
                                       joint_torque_vec,
                                       disturbanc_vec, d_xyz, error_norms,
                                       v=True, p=True, dp=False, e_xyz=False, e=False, torque=False)
@@ -202,7 +203,8 @@ for j in range(ILC_it):
 
 if False:
   plot_info(dt, j, learnable_joints,
-            joints_q_vec, q_traj_des, u_ff_vec, q_v_traj,
+            joints_q_vec, q_traj_des, 
+            u_ff_vec[:,:-1], q_v_traj[:,1:], 
             joint_torque_vec,
             disturbanc_vec, d_xyz, error_norms,
             v=True, p=True, dp=False, e_xyz=True, e=True, torque=True)
