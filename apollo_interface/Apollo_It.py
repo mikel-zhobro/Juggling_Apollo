@@ -222,7 +222,8 @@ class ApolloInterface:
         return obs_np
 
     def go_to_home_position(self, home_pose=None, it_time=4000):
-        eps = 2e-3  # <2mm
+        eps = 1e-4 # 2e-3  # <2mm
+        # eps = 2e-3
         if home_pose is None:
             home_pose = np.zeros((7,1))
 
@@ -320,7 +321,6 @@ def main():
 
     r_arm = ApolloInterface(r_arm=True)
     print("GOING HOME!")
-    r_arm.calibration()
     r_arm.go_to_home_position()
 
     if False:
