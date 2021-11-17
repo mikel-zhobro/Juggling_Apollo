@@ -77,26 +77,26 @@ def plot_info(dt, j=0, learnable_joints=list(range(7)),
           u_ff_vec=None, q_v_traj=None,
           joint_torque_vec=None,
           disturbanc_vec=None, d_xyz=None, error_norms=None,
-          v=True, p=True, dp=False, e_xyz=False, e=False, torque=False):
+          v=True, p=True, dp=False, e_xyz=False, e=False, torque=False, N=4):
 
   if joints_q_vec is not None and q_traj_des is not None and p:
-    line_list = [q_traj_des] + [joints_q_vec[j-i] for i in range(4)]
-    label_list = ["des"] + ["it="+str(j-i) for i in range(4)]
+    line_list = [q_traj_des] + [joints_q_vec[j-i] for i in range(N)]
+    label_list = ["des"] + ["it="+str(j-i) for i in range(N)]
     plot_A(line_list, learnable_joints, label_list, dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
     plt.suptitle("Angle Positions")
     plt.show(block=False)
 
   if u_ff_vec is not None and q_v_traj is not None and v:
-    line_list = [q_v_traj] + [u_ff_vec[j-i] for i in range(4)]
-    label_list = ["performed"] + ["it="+str(j-i) for i in range(4)]
+    line_list = [q_v_traj] + [u_ff_vec[j-i] for i in range(N)]
+    label_list = ["performed"] + ["it="+str(j-i) for i in range(N)]
     plot_A(line_list, learnable_joints, fill_between=[np.max(u_ff_vec, axis=0), np.min(u_ff_vec, axis=0)],
            labels=label_list, dt=dt, xlabel=r"$t$ [s]", ylabel=r" angle velocity [$\frac{rad}{s}$]")
     plt.suptitle("Angle Velocities")
     plt.show(block=False)
 
   if disturbanc_vec is not None and dp:
-    line_list = [disturbanc_vec[j-i] for i in range(4)]
-    label_list = ["it="+str(j-i) for i in range(4)]
+    line_list = [disturbanc_vec[j-i] for i in range(N)]
+    label_list = ["it="+str(j-i) for i in range(N)]
     plot_A(line_list, learnable_joints, label_list, dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
     plt.suptitle("Disturbance")
     plt.show(block=False)
