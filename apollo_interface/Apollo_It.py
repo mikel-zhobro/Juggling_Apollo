@@ -263,7 +263,7 @@ class ApolloInterface:
                     break
 
         obs = self.go_to_speed_array(np.zeros_like(home_pose), it_time/4, globs.bursting)
-        print("HOME with error: {} mm".format(np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze())))
+        print("HOME with error: {} mm".format(1000.0*np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze())))
         return obs[:,0].reshape(7, 1)
 
     # def get_TCP_pose(self):

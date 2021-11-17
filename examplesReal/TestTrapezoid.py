@@ -67,19 +67,22 @@ def kf_params(n_m=0.02, epsilon=1e-5, n_d=0.06):
     'P0': n_d*np.eye(N_1+end_repeat, dtype='float'),      # initial disturbance covariance
     'd0': np.zeros((N_1+end_repeat, 1), dtype='float'),   # initial disturbance value
     'epsilon0': epsilon,                                  # initial variance of noise on the disturbance
-    'epsilon_decrease_rate': 1.0                          # the decreasing factor of noise on the disturbance
+    'epsilon_decrease_rate': 0.9                          # the decreasing factor of noise on the disturbance
   }
   return kf_dpn_params
 
-n_ms = [0.02, 0.02, 0.04, 0.02, 0.02, 0.04, 0.02]
-n_ds = [0.03, 0.03, 1e-7, 0.03, 0.06, 1e-7, 0.03]
-ep_s = [1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-4]
+n_ms = [0.02]*7
+n_ds = [6e-4]*7
+ep_s = [1e-6]*7
 # ep_s = [5e-3] * 7     # works well for velocity disturbance
 # ep_s = [1e-2] * 7     # works well for velocity disturbance
+n_ms = [3e-5]*7
+n_ds = [6e-3]*7
+ep_s = [1e-4]*7
 alpha = 16.0
 my_ilcs = [
   # ILC(dt=dt, sys=ApolloDynSys(dt, alpha_=alpha), kf_dpn_params=kf_params(n_ms[i], ep_s[i], n_ds[i]), x_0=[q_start[i, 0], 0.0])    # include the initial state in the dynamics of the system
-  ILC(dt=dt, sys=ApolloDynSys(dt, alpha_=alpha), kf_dpn_params=kf_params(n_ms[i], ep_s[i], n_ds[i]), x_0=[0.0, 0.0])                # make sure to make up for the initial state during learning
+  ILC(dt=dt, sys=ApolloDynSys2(dt, alpha_=alpha), kf_dpn_params=kf_params(n_ms[i], ep_s[i], n_ds[i]), x_0=[0.0, 0.0])                # make sure to make up for the initial state during learning
   for i in range(N_joints)]
 
 for ilc in my_ilcs:
@@ -131,7 +134,7 @@ for ilc in my_ilcs:
 y_meas = np.zeros((N_1+end_repeat, N_joints), dtype='float')
 u_ff = [None] * 7
 eps = 1e-3
-UB = 0.8-eps
+UB = 1.0-eps
 
 # Main Loop
 ## Cartesian error params
@@ -145,7 +148,8 @@ q_traj_des_i    = q_traj_des.copy()   # Changing (possibly wrong/noisy) desired 
 for j in range(ILC_it):
   # Learn feed-forward signal
   # u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=q_traj_des_i[:, i], y_meas=y_meas[:, i],             # initial state considered in the dynamics
-  u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=q_traj_des_i[:, i] - q_start[i], y_meas=y_meas[:, i] - q_start[i],             # substract the initial state from the desired joint traj
+  # u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=q_traj_des_i[:, i] - q_start[i], y_meas=y_meas[:, i] - q_start[i],             # substract the initial state from the desired joint traj
+  u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=q_traj_des_i[:, i] - q_start[i], y_meas=y_meas[:, i] - y_meas[0,i],             # substract the initial state from the desired joint traj
                           verbose=False,  # bool(i in learnable_joints and j%every_N==0 and False),
                         #  lb=-0.8,ub=0.8
                           )

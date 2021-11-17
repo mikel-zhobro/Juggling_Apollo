@@ -47,7 +47,7 @@ rArmKinematics_nn = ApolloArmKinematics(r_arm=True)  ## noise noisifies the forw
 Ex = 0.15                                                                 # Ex = z_catch - z_throw
 tau = 0.5                                                                 # tau = T_hand + T_empty (length of the repeatable part)
 dwell_ration = 0.6                                                        # what part of tau is used for T_hand
-T_hand, T_empty, ub_throw, H, z_catch = calc(tau, dwell_ration, Ex, slower=2.51)  # 2.0 gives error
+T_hand, T_empty, ub_throw, H, z_catch = calc(tau, dwell_ration, Ex, slower=3.51)  # 2.0 gives error
 T_throw_first = T_hand*0.5                                                # Time to use for the first throw from home position
 
 T_fly = T_hand + 2*T_empty
@@ -138,7 +138,7 @@ for ilc in my_ilcs:
 
 # C. LEARN BY ITERATING
 # Learn Throw
-ILC_it = 14  # number of ILC iteration
+ILC_it = 1  # number of ILC iteration
 
 # Data collection
 q_traj_des_vec  = np.zeros([ILC_it, N_1+1+end_repeat, N_joints, 1], dtype='float')
@@ -267,9 +267,10 @@ for jjoint in range(1):
   # After Main Loop has finished  
   if True: 
     plot_info(dt, j, learnable_joints, 
-              joints_q_vec, q_traj_des, u_ff_vec, q_v_traj, 
-              disturbanc_vec, d_xyz, error_norms,
-              v=True, p=True, dp=False, e_xyz=True, e=True)
+              joints_q_vec=joints_q_vec, q_traj_des=q_traj_des, 
+              u_ff_vec=u_ff_vec, q_v_traj=q_v_traj, 
+              disturbanc_vec=disturbanc_vec, d_xyz=d_xyz, error_norms=error_norms,
+              v=True, p=True, dp=False, e_xyz=True, e=True, N=1)
 
   if SAVING:
     # Saving Results

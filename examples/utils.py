@@ -72,7 +72,7 @@ def print_info(j, learnable_joints, joints_d_vec, d_xyz):
                                                                                       ))
 
 
-def plot_info(dt, j=0, learnable_joints=list(range(7)),
+def plot_info(dt, j=-1, learnable_joints=list(range(7)),
           joints_q_vec=None, q_traj_des=None,
           u_ff_vec=None, q_v_traj=None,
           joint_torque_vec=None,
@@ -111,7 +111,7 @@ def plot_info(dt, j=0, learnable_joints=list(range(7)),
     plt.show(block=False)
 
   if error_norms is not None and e:
-    plot_A([error_norms[:j+1]], learnable_joints, ["L2-norm"], xlabel=r"$IT$", ylabel=r"angle [$rad$]")
+    plot_A([error_norms], learnable_joints, ["L2-norm"], xlabel=r"$IT$", ylabel=r"angle [$rad$]")
     plt.suptitle("Joint angle errors through iterations")
     plt.show(block=False)
 
