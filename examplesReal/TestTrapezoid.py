@@ -91,7 +91,7 @@ for ilc in my_ilcs:
 
 # C. LEARN BY ITERATING
 # Learn Throw
-ILC_it = 21  # number of ILC iteration
+ILC_it = 13  # number of ILC iteration
 
 # Data collection
 q_traj_des_vec   = np.zeros([ILC_it, N_1+1+end_repeat, N_joints, 1], dtype='float')
@@ -124,8 +124,7 @@ every_N = 3
 jjoint = "all"
 # learnable_joints = [0,1,2,3,5]
 # learnable_joints = [0,1,2,3,4,5]
-learnable_joints = [3]
-learnable_joints = [0,1,2,3,5]
+learnable_joints = [5]
 non_learnable_joints = set(range(7)) - set(learnable_joints)
 for i in non_learnable_joints:
   q_traj_des[:,i] = 0.0
@@ -197,8 +196,8 @@ for j in range(ILC_it):
   error_norms[j]        = np.linalg.norm(joints_d_vec[j, :], axis=0, keepdims=True).T
 
   if False and j%every_N==0: plot_info(dt, j, learnable_joints,
-                                      joints_q_vec, q_traj_des, 
-                                      u_ff_vec[:,:-1], q_v_traj[:,1:], 
+                                      joints_q_vec, q_traj_des,
+                                      u_ff_vec[:,:-1], q_v_traj[:,1:],
                                       joint_torque_vec,
                                       disturbanc_vec, d_xyz, error_norms,
                                       v=True, p=True, dp=False, e_xyz=False, e=False, torque=False)
@@ -207,8 +206,8 @@ for j in range(ILC_it):
 
 if False:
   plot_info(dt, j, learnable_joints,
-            joints_q_vec, q_traj_des, 
-            u_ff_vec[:,:-1], q_v_traj[:,1:], 
+            joints_q_vec, q_traj_des,
+            u_ff_vec[:,:-1], q_v_traj[:,1:],
             joint_torque_vec,
             disturbanc_vec, d_xyz, error_norms,
             v=True, p=True, dp=False, e_xyz=True, e=True, torque=True)

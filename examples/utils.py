@@ -23,8 +23,8 @@ def plot_A(lines_list, indexes_list=list(range(7)), labels=None, dt=1, xlabel=""
   axs = np.array(axs)
   for iii, ix in enumerate(indexes_list):
     for i in range(N):
-      l = axs.flatten()[iii].plot(timesteps, lines_list[i][:, ix].squeeze(), 
-                              # color=colors[iii%len(colors)], 
+      l = axs.flatten()[iii].plot(timesteps, lines_list[i][:, ix].squeeze(),
+                              # color=colors[iii%len(colors)],
                               linestyle=line_types[i%len(line_types)], label=r"$\theta_{}$ {}".format(ix, labels[i] if labels is not None else ""))
     if limits is not None:
       axs.flatten()[iii].axhspan(limits[iii].a, limits[iii].b, color='gray', alpha=0.2, label='feasible set')  # color=l[0].get_color()
