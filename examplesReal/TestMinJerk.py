@@ -199,7 +199,7 @@ for jjoint in range(1):
     # Learn feed-forward signal
     # u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=q_traj_des_i[:, i], y_meas=y_meas,             # initial state considered in the dynamics
     # u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=q_traj_des_i[:, i] - q_start[i], y_meas=y_meas,             # substract the initial state from the desired joint traj
-    u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=q_traj_des_i[:, i] - q_traj_des_i[1, i], y_meas=y_meas[:,i],             # substract the initial state from the desired joint traj
+    u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=q_traj_des_i[1:, i] - q_traj_des_i[1, i], y_meas=y_meas[:,i],             # substract the initial state from the desired joint traj
                            verbose=False,  # bool(i in learnable_joints and j%every_N==0 and False),
                           #  lb=-UB,ub=UB
                            ) for i, ilc in enumerate(my_ilcs)]
