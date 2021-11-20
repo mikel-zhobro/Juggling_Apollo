@@ -144,7 +144,7 @@ class Simulation:
     f_drag = 0
     if self.air_drag:
       # D is the diameter of the ball
-      D = 0.4  # ball has diameter of 5cm
+      D = 0.4  # ball has diameter of 4cm
       p = 1.225  # [kg/m]  air density
       c = np.pi/16*p* (D**2)  # c = 1/4*p*A = pi/16*p*D**2
       f_drag = np.sign(v)*c* (v**2)

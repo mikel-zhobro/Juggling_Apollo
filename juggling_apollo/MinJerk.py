@@ -7,6 +7,7 @@
 import numpy as np
 from utils import plot_intervals, plt, steps_from_time, plot_lines_coord
 
+
 def get_minjerk_xyz(dt, tt, xx, uu, smooth_acc=False, i_a_end=None, only_pos=True):
   """Computes a multi-interval minjerk trajectory in 3 dimension(xyz)
 
@@ -32,7 +33,6 @@ def get_minjerk_xyz(dt, tt, xx, uu, smooth_acc=False, i_a_end=None, only_pos=Tru
     for i in range(len(xx)):
       xxx[i],vvv[i],aaa[i],jjj[i] = get_minjerk_trajectory(dt, tt, xx[i], uu[i], smooth_acc=smooth_acc, i_a_end=i_a_end, only_x=False)
     return xxx, vvv, aaa, jjj
-
 
 
 def get_minjerk_trajectory(dt, tt, xx, uu, smooth_acc=False, i_a_end=None, only_x=False, extra_at_end=None):
@@ -115,14 +115,19 @@ def get_minjerk_trajectory(dt, tt, xx, uu, smooth_acc=False, i_a_end=None, only_
 
 
 def get_min_jerk_trajectory(dt, ta, tb, x_ta, x_tb, u_ta, u_tb, a_ta=None, a_tb=None):
-  # Input:
-  #   x_ta, u_ta, (optional: a.ta): conditions at t=ta
-  #   x_tb, u_tb, (optional: a.tb): conditions at t=tb
-  #   a: is set to [] if start and end acceleration are free
-  # Output:
-  #   xp_des(t) = [x(t)       u(t)         a(t)            u(t)]
-  #             = [position   velocity     acceleration    jerk]
+  """Computes a minjerk trajectory with set or free start and end conditions.
 
+  Args:
+      dt ([float]): timestep
+      ta ([float]): start time of the interval
+      tb ([float]): end time of the interval
+      a: is set to [] if start and end acceleration are free
+      x_ta, u_ta, (optional: a_ta): conditions at t=ta
+      x_tb, u_tb, (optional: a_tb): conditions at t=tb
+  Returns:
+      xp_des(t) = [x(t)       u(t)         a(t)            u(t)]
+                = [position   velocity     acceleration    jerk]
+  """
   # Get polynom parameters for different conditions
   T = tb-ta
   if a_ta:
@@ -150,6 +155,8 @@ def get_min_jerk_trajectory(dt, ta, tb, x_ta, x_tb, u_ta, u_tb, a_ta=None, a_tb=
 
 # Get  values from polynom parameters
 def get_trajectories(t, c1, c2, c3, c4, c5, c6):
+  """Given 5th order polynomial coeficients it returns values corresponing to timesteps t.
+  """
   # print(c1)
   t_5 = t**5
   t_4 = t**4
@@ -281,6 +288,7 @@ def plotMJ(dt, tt, xx, uu, smooth_acc=False, xvaj = None, i_a_end=0):
   else:
     x, v, a, j = xvaj
   plotMinJerkTraj(x, v, a, j, dt, title, tt=tt[0:4], xx=xx[0:4], uu=uu[0:4])
+
 
 if __name__ == "__main__":
   import matplotlib.pyplot as plt
