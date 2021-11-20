@@ -116,6 +116,12 @@ def go_to_posture(posture, nb_iterations, bursting, override=False):
     return observation
 
 
+def read():
+    """Returns an observation
+    """
+    return apollo.read()
+
+
 class ApolloInterface:
     def __init__(self, r_arm=True):
         self.r_arm = r_arm
@@ -143,6 +149,9 @@ class ApolloInterface:
                 obs_np[i][k] = obs.get(i).get()[k]
             obs_np[i][3] = obs.get(i).get_sensed_load()
         return obs_np
+    
+    def read(self):
+        return self.obs_to_numpy(read())
 
     def apollo_run_one_iteration(self, dt, T, u, joint_home_config=None, repetitions=1, it=0, go2position=False):
         """ Runs the system for the time interval 0->T
@@ -268,7 +277,7 @@ class ApolloInterface:
         return obs[:,0].reshape(7, 1)
 
     # def get_TCP_pose(self):
-    #     observation = apollo.read()
+    #     observation = self.read()
     #     cartesian_states = observation.get_cartesian()
     #     if self.r_arm:
     #         hand = cartesian_states.hands[0]
