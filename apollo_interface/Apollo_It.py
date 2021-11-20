@@ -169,15 +169,16 @@ class ApolloInterface:
         assert abs(T-len(u)*dt) <= dt, "Input signal is of length {} instead of length {}".format(len(u)*dt ,T)
 
         N0 = len(u)
-        u = np.squeeze(np.tile(u, [repetitions, 1]))
+        u = np.squeeze(np.tile(u.squeeze(), [repetitions, 1]))
 
+        real_home = 0.0
         if joint_home_config is not None:
-            self.go_to_home_position(joint_home_config)
+            real_home = self.go_to_home_position(joint_home_config)
 
         # Vectors to collect the history of the system states
         N = N0 * repetitions + 1
         n_joints = 7
-        thetas_s = np.zeros((N, n_joints, 1));  thetas_s[0] = joint_home_config
+        thetas_s = np.zeros((N, n_joints, 1));  thetas_s[0] = real_home
         vel_s    = np.zeros((N, n_joints, 1))
         acc_s    = np.zeros((N, n_joints, 1))
         dP_N_vec = np.zeros((N, n_joints, 1))
