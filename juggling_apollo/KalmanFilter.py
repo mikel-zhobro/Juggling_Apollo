@@ -3,6 +3,8 @@ import numpy as np
 
 class KalmanFilter:
   def __init__(self, lss, M, d0, P0, epsilon0, epsilon_decrease_rate=0.9):
+    # size of the state
+    self.N = d0.size
 
     # pointer to the lifted space (can be changed from outside)
     self.lss = lss
@@ -27,10 +29,17 @@ class KalmanFilter:
     else:
       return self._d
 
-  def resetKF(self):
-      self._d = self.d0
+  @property
+  def P(self):
+    if self._P is None:
+      raise ValueError("The Kalman Filter is not yet reseted(P is not initialized))")
+    else:
+      return self._P
+
+  def resetKF(self, d=None, P=None):
+      self._d = self.d0 if d is None else d
       # self._P = self.P0
-      self._P = self.lss.GK.dot(self.P0).dot(self.lss.GK.T)
+      self._P = self.lss.GK.dot(self.P0 if P is None else P).dot(self.lss.GK.T)
       self.epsilon = self.epsilon0
 
   def updateStep(self, u, y_meas):

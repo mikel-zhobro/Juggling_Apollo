@@ -5,6 +5,7 @@ import pickle
 
 from juggling_apollo.utils import DotDict
 
+
 colors = ["r", 'g', 'b', 'k', 'c', 'm', 'y']
 line_types = ["-", "--", ":", '-.']
 
@@ -42,17 +43,11 @@ def save(filename, **kwargs):
   with open(filename, 'w') as f:
     pickle.dump(kwargs, f)
 
+
 def load(filename):
   with open(filename, 'rb') as f:
     dd = pickle.load(f)
   return DotDict(dd)
-
-# USAGE
-# filename = os.path.join("data", '{}_simdata_raw.dat'.format(time.strftime("%Y_%m_%d-%H_%M_%S")))
-# aa = DotDict(mikel=np.eye(7), andy=12)
-# save(filename, **aa)
-# sd = load(filename)
-# print(sd.mikel.shape)
 
 
 def print_info(j, learnable_joints, joints_d_vec, d_xyz):
@@ -60,8 +55,8 @@ def print_info(j, learnable_joints, joints_d_vec, d_xyz):
   print(          "j. -----------degree----------      L2-norm        L1-norm        e_end      <- unnormalized")
   for i in learnable_joints:
     print(str(i) + ". Trajectory_track_error_norm: {:13.8f}  {:13.8f} {:13.8f}".format(np.linalg.norm(180.0/np.pi*joints_d_vec[j, :, i]),
-                                                                                        np.linalg.norm(180.0/np.pi*joints_d_vec[j, :, i], ord=1),
-                                                                                        np.abs(180.0/np.pi*joints_d_vec[j, -1, i])
+                                                                                       np.linalg.norm(180.0/np.pi*joints_d_vec[j, :, i], ord=1),
+                                                                                       float(np.abs(180.0/np.pi*joints_d_vec[j, -1, i]))
                                                                                         ))
   ls = ['x', 'y', 'z']
   print(          "j. -----------meters----------      L2-norm        L1-norm        e_end      <- unnormalized")

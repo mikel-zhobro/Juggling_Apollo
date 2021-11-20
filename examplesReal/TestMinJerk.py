@@ -135,8 +135,6 @@ my_ilcs = [
   ILC(dt=dt, sys=ApolloDynSys2(dt, alpha_=alpha), kf_dpn_params=kf_params(n_ms[i], ep_s[i], n_ds[i]), x_0=[0.0, 0.0])                # make sure to make up for the initial state during learning
   for i in range(N_joints)]
 
-for ilc in my_ilcs:
-  ilc.initILC(N_1=N_1+end_repeat, impact_timesteps=[False]*(N_1+end_repeat))  # ignore the ball
 
 # C. LEARN BY ITERATING
 # Learn Throw
