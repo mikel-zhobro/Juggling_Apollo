@@ -222,7 +222,7 @@ class ApolloInterface:
         return obs_np
 
     def go_to_home_position(self, home_pose=None, it_time=4000):
-        eps = 1e-4 # 2e-3  # <2mm
+        eps = 3e-3 # 2e-3  # <2mm
         # eps = 2e-3
         if home_pose is None:
             home_pose = np.zeros((7,1))
@@ -264,6 +264,7 @@ class ApolloInterface:
 
         obs = self.go_to_speed_array(np.zeros_like(home_pose), it_time/4, globs.bursting)
         print("HOME with error: {} mm".format(1000.0*np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze())))
+        print(np.array(home_pose).squeeze()- obs[:,0].squeeze())
         return obs[:,0].reshape(7, 1)
 
     # def get_TCP_pose(self):
