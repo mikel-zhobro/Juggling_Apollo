@@ -69,13 +69,13 @@ sim.reset()
 
 # Data collection
 # System Trajectories
-x_p_vec = np.zeros([ILC_it, my_ilc.N_1+1], dtype='float')
-u_p_vec = np.zeros([ILC_it, my_ilc.N_1+1], dtype='float')
-x_b_vec = np.zeros([ILC_it, my_ilc.N_1+1, len(x000[0])], dtype='float')
-u_b_vec = np.zeros([ILC_it, my_ilc.N_1+1, len(x000[0])], dtype='float')
+x_p_vec = np.zeros([ILC_it, my_ilc.N+1], dtype='float')
+u_p_vec = np.zeros([ILC_it, my_ilc.N+1], dtype='float')
+x_b_vec = np.zeros([ILC_it, my_ilc.N+1, len(x000[0])], dtype='float')
+u_b_vec = np.zeros([ILC_it, my_ilc.N+1, len(x000[0])], dtype='float')
 # ILC Trajectories
 d_vec = np.zeros([ILC_it, my_ilc.kf_dpn.d.size], dtype='float')
-u_ff_vec = np.zeros([ILC_it, my_ilc.N_1], dtype='float')
+u_ff_vec = np.zeros([ILC_it, my_ilc.N], dtype='float')
 # Measurments
 u_throw_vec = np.zeros([ILC_it, 1], dtype='float')
 u_d_T_catch_1_vec = np.zeros([ILC_it, 1], dtype='float')
@@ -92,7 +92,7 @@ d_T_catch_3 = 0
 
 # disturbance to be learned
 period = 0.02/dt
-disturbance = 240*np.sin(2*np.pi/period*np.arange(my_ilc.N_1), dtype='float')  # disturbance on the plate position(0:my_ilc.N_1-1)
+disturbance = 240*np.sin(2*np.pi/period*np.arange(my_ilc.N), dtype='float')  # disturbance on the plate position(0:my_ilc.N-1)
 
 # Min Jerk Params
 # new MinJerk
@@ -117,7 +117,7 @@ for j in range(ILC_it):
   uu[5] = ub_throw3  # update
   y_des, velo, accel, jerk = get_minjerk_trajectory(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=xx, uu=uu)
   y_des = y_des[:N_1+1]
-  u_ff = my_ilc.learnWhole(u_ff_old=u_ff, y_des=y_des, y_meas=y_meas)
+  u_ff = my_ilc.learnWhole(u_ff_old=u_ff, y_des=y_des[1:], y_meas=y_meas)
 
   # Main Simulation
   x000[0][1] = H  # update
