@@ -1,25 +1,68 @@
 import numpy as np
-
+from math import e
 
 class LiftedStateSpace:
   # Constructor
   def __init__(self, sys, x0):
     self.sys = sys
+    self.N = None  # length of traj
+    
+    # Time domain
+    self.timeDomain = False
     self.x0  = np.array(x0).reshape(-1, 1)
     self.G   = None       # [ny*N, nx*N]
     self.GF  = None      # G * F
     self.GK  = None      # G * k
-    self.Gd0 = None     # G * d0
+    self.Gd0 = None      # G * d0
 
-  def updateQuadrProgMatrixes(self, set_of_impact_timesteps):
+    # Freq Domain
+    self.freqDomain = False
+    self.GHu = None
+    self.GHd = None
+
+  
+  def updateQuadrProgMatrixes(self, N, freq_domain, **kwargs):
+    self.N = N
+    if freq_domain:
+      self.freqDomain = True
+      self.updateQuadrProgMatrixesFreqDomain(**kwargs)
+    else:
+      self.timeDomain = True
+      self.updateQuadrProgMatrixesTimeDomain(**kwargs)
+      
+    
+  def updateQuadrProgMatrixesFreqDomain(self, T, **kwargs):
+    """[summary]
+
+    Args:
+        T ([type]): periode of the periodic output
+        Nf ([type]): number of samples in freq domain 
+                     Nyquist Crit: fs >= 2*f_max = 2*f0*Nf <=> dt <= 1/(2*f0*Nf)  <=> Nf <= 1/(2*f0*dt)= T/(2*dt)
+    """
+    Nf = self.N
+    assert Nf <= 0.5*T/self.sys.dt, "Make sure that Nf{} is small enough{} to satisfy the Nyquist criterium.".format(Nf, 0.5*T/self.sys.dt)
+    w0 = 2*np.pi/T
+    self.Gd0 = 0.0
+    self.GF = np.diag([self.sys.Hu(e**(complex(0.0,-k*w0))).squeeze() for k in range(Nf)])  # SISO only
+    self.GK = np.diag([self.sys.Hd(e**(complex(0.0,-k*w0))).squeeze() for k in range(Nf)])
+    
+    
+
+  def updateQuadrProgMatrixesTimeDomain(self, impact_timesteps=None, **kwargs):
     """ Updates the lifted state space matrixes G, GF, GK, Gd0
 
     Args:
-        set_of_impact_timesteps ([tuple]): ith element is 1/True if there is an impact at timestep i
+        N[(int)]: nr of steps
+        impact_timesteps ([tuple]): ith element is 1/True if there is an impact at timestep i
     """
-    # set_of_impact_timesteps{t} = 1 if no impact, = 2 if impact for the timesteps 0 -> N-1
+    # impact_timesteps{t} = False if no impact, = True if impact for the timesteps 0 -> N-1
     # sizes
-    N    = len(set_of_impact_timesteps)    # nr of steps
+    if impact_timesteps is not None:
+      assert self.N == len(impact_timesteps)
+    else:
+      impact_timesteps = [False]*self.N
+
+    N    = self.N
     nx   = self.sys.Ad.shape[1]
     ny   = self.sys.Cd.shape[0]
     nu   = self.sys.Bd.shape[1]
@@ -29,7 +72,7 @@ class LiftedStateSpace:
     A_power_holder    = [None] * N
     A_power_holder[0] = np.eye(nx, dtype='float')
     for i in range(N-1):
-        A_power_holder[i+1] = self.get_Ad(set_of_impact_timesteps[i+1]).dot(A_power_holder[i])
+        A_power_holder[i+1] = self.get_Ad(impact_timesteps[i+1]).dot(A_power_holder[i])
 
     # Create lifted-space matrixes F, K, G, M:
     #    x[1:] = Fu + Kdu_p + d0,
@@ -68,17 +111,17 @@ class LiftedStateSpace:
     #      0   0    ..   AN-1AN-2..A0]
     L = np.zeros((nx*N, nx*N), dtype='float')
 
-    A_0 = self.get_Ad(set_of_impact_timesteps[0])
+    A_0 = self.get_Ad(impact_timesteps[0])
     for ll in range(N):
       self.G[ll*ny:(ll+1)*ny, ll*nx:(ll+1)*nx]  = self.sys.Cd
       L[ll*nx:(ll+1)*nx, ll*nx:(ll+1)*nx]       = A_power_holder[ll]*A_0
       for m in range(ll+1):
         M[ll*nx:(ll+1)*nx, m*nx:(m+1)*nx]       = A_power_holder[ll-m]
-        F[ll*nx:(ll+1)*nx, m*nu:(m+1)*nu]       = A_power_holder[ll-m].dot(self.get_Bd(set_of_impact_timesteps[m]))  # F_lm
+        F[ll*nx:(ll+1)*nx, m*nu:(m+1)*nu]       = A_power_holder[ll-m].dot(self.get_Bd(impact_timesteps[m]))  # F_lm
         K[ll*nx:(ll+1)*nx, m*ndup:(m+1)*ndup]   = A_power_holder[ll-m].dot(self.sys.S)
 
     # Create d0 = L*x0_N-1 + M*c0_N-1
-    c_vec = np.vstack([self.get_c(impact) for impact in set_of_impact_timesteps])
+    c_vec = np.vstack([self.get_c(impact) for impact in impact_timesteps])
     d0    = L.dot(np.tile(self.x0, [N, 1])) + M.dot(c_vec)
 
     # Prepare matrixes needed for the quadratic problem and KF

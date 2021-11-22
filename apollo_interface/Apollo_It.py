@@ -178,7 +178,7 @@ class ApolloInterface:
         # Vectors to collect the history of the system states
         N = N0 * repetitions + 1
         n_joints = 7
-        thetas_s = np.zeros((N, n_joints, 1));  thetas_s[0] = real_home
+        thetas_s = np.zeros((N, n_joints, 1));  thetas_s[0] = real_home[:,0]
         vel_s    = np.zeros((N, n_joints, 1))
         acc_s    = np.zeros((N, n_joints, 1))
         dP_N_vec = np.zeros((N, n_joints, 1))
@@ -202,6 +202,56 @@ class ApolloInterface:
             return thetas_s, vel_s, acc_s, dP_N_vec, u
         else:
             return thetas_s[1:], vel_s[1:], acc_s[1:],dP_N_vec[1:], u
+
+
+    def apollo_run_one_iteration2(self, dt, T, u, joint_home_config=None, repetitions=1, it=0, go2position=False):
+        """ Runs the system for the time interval 0->T
+
+        Args:
+            dt ([double]): timestep
+            T ([double]): approximate time required for the iteration
+            joint_home_config ([list]): home_state(if set the robot has to first go there before runing the inputs)
+            u ([np.array(double)]): inputs of the shape [N_steps, 7(n_joints)]
+            repetitions (int, optional): Nr of times to repeat the given input trajectory.
+
+        Returns:
+            [type]: x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec of shape [1, N]
+        """
+        assert abs(T-len(u)*dt) <= dt, "Input signal is of length {} instead of length {}".format(len(u)*dt ,T)
+
+        N0 = len(u)
+
+        real_home = np.zeros((7,2))
+        if joint_home_config is not None:
+            real_home = self.go_to_home_position(joint_home_config)
+
+        # Vectors to collect the history of the system states
+        N = N0 * repetitions + 1
+        n_joints = 7
+        thetas_s = np.zeros((repetitions, N0, n_joints, 1))
+        vel_s    = np.zeros((repetitions, N0, n_joints, 1))
+        acc_s    = np.zeros((repetitions, N0, n_joints, 1))
+        dP_N_vec = np.zeros((repetitions, N0, n_joints, 1))
+
+        # Action Loop
+        delta_it = int(1000*dt)
+        for r in range(repetitions):
+            for i in range(N0):
+                # one step simulation
+                if go2position:
+                    obs_np = self.go_to_posture_array(u[i], delta_it, globs.bursting)
+                else:
+                    obs_np = self.go_to_speed_array(u[i], delta_it, globs.bursting)
+                # collect state of the system
+                thetas_s[r,i] = obs_np[:,0].reshape(7, 1)
+                vel_s[r,i] = obs_np[:,1].reshape(7, 1)
+                acc_s[r,i] = obs_np[:,2].reshape(7, 1)
+                # collect helpers
+                dP_N_vec[r,i] = obs_np[:,3].reshape(7, 1)
+
+        return thetas_s, vel_s, acc_s, dP_N_vec, u, real_home.T[:,:,np.newaxis]
+
+
 
     def go_to_speed_array(self, speeds, nb_iterations, bursting, override=True):
         """Move right arm to a certain joint configuration and reset pinocchio jointstates.
@@ -275,7 +325,7 @@ class ApolloInterface:
         obs = self.go_to_speed_array(np.zeros_like(home_pose), it_time/4, globs.bursting)
         print("HOME with error: {} mm".format(1000.0*np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze())))
         print(np.array(home_pose).squeeze()- obs[:,0].squeeze())
-        return obs[:,0].reshape(7, 1)
+        return obs[:,0:2].reshape(7, 2)
 
     # def get_TCP_pose(self):
     #     observation = self.read()

@@ -1,25 +1,35 @@
 import numpy as np
 from settings import m_b, m_p, g, k_c, alpha
-
+from abc import ABCMeta, abstractmethod
 
 class DynamicSystem:
   """A abstract class implementing a dynamic system.
   """
-  def __init__(self, dt, input_is_velocity):
-    self.dt = dt    # time step
+  __metaclass__ = ABCMeta
+  def __init__(self, dt, freq_domain=False, **kwargs):
+    # TimeDomain
+    self.dt = dt           # time step
+    self.x0 = None         # initial state (xb0, xp0, ub0, up0)
     self.Ad = None
     self.Bd = None
-    self._Ad_impact = None  # [nx, nx]
+    self._Ad_impact = None # [nx, nx]
     self.Bd_impact = None  # [nx, nu]
     self.c_impact = None   # constants from gravity ~ dt, g, mp mb
     self.Cd = None         # [ny, nx]
     self.S = None          # [nx, ndup]
     self.c = None
-    self.x0 = None         # initial state (xb0, xp0, ub0, up0)
+    
+    # FreqDomain
+    self.Hu = None  # C(sI - A)^-1 B
+    self.Hd = None  # C(sI - A)^-1 Bd
 
-    self.initDynSys(dt, input_is_velocity)
+    if freq_domain:
+      self.initTransferFunction(**kwargs)
+    else:
+      self.initDynSys(dt, **kwargs)
 
-  def initDynSys(self, dt, input_is_velocity):
+  @abstractmethod
+  def initDynSys(self, dt, **kwargs):
     assert False, "The 'initDynSys' abstract method is not implemented for the used subclass."
 
   @property
@@ -27,12 +37,17 @@ class DynamicSystem:
     assert self._Ad_impact is not None, "Impact dynamics are not implemented."
     return self._Ad_impact
 
-class BallAndPlateDynSys(DynamicSystem):
+  def initTransferFunction(self, **kwargs):
+    assert False, "The frequence domain TransferFunction is not implemented for this dynamical system."
 
-  def initDynSys(self, dt, input_is_velocity):
+class BallAndPlateDynSys(DynamicSystem):
+  def __init__(self, dt, input_is_velocity=True):
+    DynamicSystem.__init__(self, dt=dt, input_is_velocity=input_is_velocity)
+
+  def initDynSys(self, dt, input_is_velocity=True):
     if input_is_velocity:
       self.Ad, self.Bd, self.Cd, self.S, self.c = self.getSystemMarixesVelocityControl(dt)
-      self.Ad_impact, self.Bd_impact, self.Cd, self.S, self.c_impact = self.getSystemMarixesVelocityControl(dt, True)
+      self._Ad_impact, self.Bd_impact, self.Cd, self.S, self.c_impact = self.getSystemMarixesVelocityControl(dt, True)
     else:
       self.Ad, self.Bd, self.Cd, self.S, self.c = self.getSystemMarixesForceControl(dt)
       self.Ad_impact, self.Bd_impact, self.Cd, self.S, self.c_impact = self.getSystemMarixesForceControl(dt, True)
@@ -108,12 +123,11 @@ class BallAndPlateDynSys(DynamicSystem):
 
 
 class ApolloDynSys(DynamicSystem):
-  def __init__(self, dt, input_is_velocity=True, alpha_=alpha):
+  def __init__(self, dt, alpha_=alpha):
     self.alpha = alpha_
-    DynamicSystem.__init__(self, dt, input_is_velocity)
+    DynamicSystem.__init__(self, dt=dt)
 
-  def initDynSys(self, dt, input_is_velocity=True):
-    assert input_is_velocity, "For apollo only dynamic system with velocity input is provided."
+  def initDynSys(self, dt):
     self.Ad, self.Bd, self.Cd, self.S, self.c = self.getSystemMarixesVelocityControl(dt)
 
   def getSystemMarixesVelocityControl(self, dt):
@@ -131,11 +145,10 @@ class ApolloDynSys(DynamicSystem):
   
   
 class ApolloDynSysIdeal(DynamicSystem):
-  def __init__(self, dt, input_is_velocity=True):
-    DynamicSystem.__init__(self, dt, input_is_velocity)
+  def __init__(self, dt):
+    DynamicSystem.__init__(self, dt)
 
-  def initDynSys(self, dt, input_is_velocity=True):
-    assert input_is_velocity, "For apollo only dynamic system with velocity input is provided."
+  def initDynSys(self, dt):
     self.Ad, self.Bd, self.Cd, self.S, self.c = self.getSystemMarixesVelocityControl(dt)
 
   def getSystemMarixesVelocityControl(self, dt):
@@ -151,12 +164,11 @@ class ApolloDynSysIdeal(DynamicSystem):
   
   
 class ApolloDynSys2(DynamicSystem):
-  def __init__(self, dt, input_is_velocity=True, alpha_=alpha):
+  def __init__(self, dt, alpha_=alpha, freq_domain=False):
     self.alpha = alpha_
-    DynamicSystem.__init__(self, dt, input_is_velocity)
+    DynamicSystem.__init__(self, dt, freq_domain)
 
-  def initDynSys(self, dt, input_is_velocity=True):
-    assert input_is_velocity, "For apollo only dynamic system with velocity input is provided."
+  def initDynSys(self, dt):
     self.Ad, self.Bd, self.Cd, self.S, self.c = self.getSystemMarixesVelocityControl(dt)
 
   def getSystemMarixesVelocityControl(self, dt):
@@ -171,3 +183,21 @@ class ApolloDynSys2(DynamicSystem):
     c = np.array([0.0, 0.0], dtype='float').reshape(2,1)
 
     return Ad, Bd, Cd, S, c
+
+  def initTransferFunction(self):
+    # x_dot = A*x + B*u + S*d
+    # y = C*x
+    # |
+    # X(s) = C(sI -A)^-1*B * U(s) + C(sI -A)^-1*S * D(s)
+    A = np.array([0.0,  1.0,
+                  0.0,  -self.alpha], dtype='float').reshape(2,2)
+    B = np.array([0.0,  self.alpha], dtype='float').reshape(2,1)
+    C = np.array([1.0, 0.0], dtype='float').reshape(1,2)
+    S = np.array([0.0, 1.0], dtype='float').reshape(2,1)
+
+    a = A[0,0]; b = A[0,1]
+    c = A[1,0]; d = A[1,1]
+    sI_A_1 = lambda s: 1/((s-a)*(s-d) - b*c) *  np.array([s-d,  -b,
+                                                          -c,  s-a], dtype=np.complex_).reshape(2,2)
+    self.Hu = lambda s: C.dot(sI_A_1(s)).dot(B)
+    self.Hd = lambda s: C.dot(sI_A_1(s)).dot(S)

@@ -17,7 +17,7 @@ from utils import plot_A, save, colors, line_types, print_info, plot_info
 np.set_printoptions(precision=4, suppress=True)
 
 FREQ_DOMAIN=True
-end_repeat = 200   # repeat the last position value this many time
+end_repeat = 0   # repeat the last position value this many time
 SAVING = True
 UB = 0.87
 
@@ -56,6 +56,7 @@ rArmKinematics_nn = ApolloArmKinematics(r_arm=True)  ## noise noisifies the forw
 
 
 # A. COMPUTE TRAJECTORIES IN CARTESIAN AND JOINT SPACE
+ND = 100
 N_1, delta_xyz_traj_des, thetas, mj = configs.get_minjerk_config(dt, end_repeat)
 xyz_traj_des = delta_xyz_traj_des + T_home[:3, -1]
 
@@ -75,9 +76,9 @@ if False:
 # B. Initialize ILC
 def kf_params(n_m=0.02, epsilon=1e-5, n_d=0.06):
   kf_dpn_params = {
-    'M': n_m*np.eye(N_1+end_repeat, dtype='float'),       # covariance of noise on the measurment
-    'P0': n_d*np.eye(N_1+end_repeat, dtype='float'),      # initial disturbance covariance
-    'd0': np.zeros((N_1+end_repeat, 1), dtype='float'),   # initial disturbance value
+    'M': n_m*np.eye(ND+end_repeat, dtype='float'),       # covariance of noise on the measurment
+    'P0': n_d*np.eye(ND+end_repeat, dtype='float'),      # initial disturbance covariance
+    'd0': np.zeros((ND+end_repeat, 1), dtype='float'),   # initial disturbance value
     'epsilon0': epsilon,                                  # initial variance of noise on the disturbance
     'epsilon_decrease_rate': 0.9                          # the decreasing factor of noise on the disturbance
   }
@@ -101,7 +102,7 @@ joints_aq_vec  = np.zeros([ILC_it, N_1+end_repeat, N_joints, 1], dtype='float')
 joint_torque_vec     = np.zeros([ILC_it, N_1+end_repeat, N_joints, 1], dtype='float')
 # b. ILC Trajectories
 u_ff_vec       = np.zeros([ILC_it, N_1+end_repeat, N_joints, 1], dtype='float')
-disturbanc_vec = np.zeros([ILC_it, N_1+end_repeat, N_joints], dtype='float')
+disturbanc_vec = np.zeros([ILC_it, ND+end_repeat, N_joints], dtype='float')
 # c. Trajectory errors
 error_norms    = np.zeros([ILC_it, N_joints, 1], dtype='float')
 joints_d_vec   = np.zeros([ILC_it, N_1+end_repeat, N_joints, 1], dtype='float')

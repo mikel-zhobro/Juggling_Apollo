@@ -90,7 +90,7 @@ def kf_params(n_m=0.02, epsilon=1e-5, n_d=0.06, d0=None, P0=None):
 
 # Initialize ILC from learned ilcparams
 my_ilcs = [
-  ILC(dt=dt, sys=syss[i], kf_dpn_params=kf_params(n_ms[i], ep_s[i], n_ds[i], *ld.ilc_learned_params[i]), x_0=[0.0, 0.0])                # make sure to make up for the initial state during learning
+  ILC(sys=syss[i], kf_dpn_params=kf_params(n_ms[i], ep_s[i], n_ds[i], *ld.ilc_learned_params[i]), x_0=[0.0, 0.0])                # make sure to make up for the initial state during learning
   for i in range(N_joints)]
 
 

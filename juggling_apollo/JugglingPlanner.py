@@ -66,6 +66,17 @@ def calc_minjerk(tau, dwell_ratio, catch_throw_ratio, E, F, n_b, n_a):
   assert n_a<3, "We can have up to 2 arms"
   pass
 
+
+
+
+class Interval():
+  def __init__(self):
+      self.xa = 0.0
+      self.xb = 0.0
+      self.va = 0.0
+      self.vb = 0.0
+
+
 if __name__ == "__main__":
   dt = 0.004
   x_0 = [-0.4, 0]

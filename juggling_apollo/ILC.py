@@ -6,11 +6,10 @@ from KalmanFilter import KalmanFilter
 
 
 class ILC:
-  def __init__(self, dt, sys, kf_dpn_params, x_0, impact_timesteps=None):
-    
+  def __init__(self, sys, kf_dpn_params, x_0, freq_domain=False, **kwargs):
+    # kwargs can be {impact_timesteps: [True/False]*N} for timedomain 
+    # and must be {T:Float} for freqdomain
     self.FirstTime = True
-    # design params
-    self.dt  = dt
     # starting state
     self.x_0 = x_0
     # components of ilc
@@ -19,16 +18,10 @@ class ILC:
     self.kf_dpn           = KalmanFilter(lss=self.lss, **kf_dpn_params)  # dpn estimator
     # size of the trajectoty
     self.N = self.kf_dpn.N
-    
-    self._initILC(impact_timesteps)
+    self._initILC(freq_domain, **kwargs)
 
-  def _initILC(self, impact_timesteps=None):
-    if impact_timesteps is not None:
-      assert self.N == len(impact_timesteps)
-    else:
-      impact_timesteps = [False]*self.N
-      
-    self.lss.updateQuadrProgMatrixes(impact_timesteps)  # init LSS
+  def _initILC(self, freq_domain, **kwargs):
+    self.lss.updateQuadrProgMatrixes(N=self.N, freq_domain=freq_domain, **kwargs)  # init LSS
     self.resetILC()  # init KFs
 
   def resetILC(self, d=None, P=None):

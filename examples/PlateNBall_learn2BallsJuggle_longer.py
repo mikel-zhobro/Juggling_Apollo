@@ -62,7 +62,7 @@ kf_dpn_params = {
   'epsilon0': 0.3,                          # initial variance of noise on the disturbance
   'epsilon_decrease_rate': 1              # the decreasing factor of noise on the disturbance
 }
-my_ilc = ILC(dt, sys, kf_dpn_params=kf_dpn_params, x_0=x0, impact_timesteps=[False]*N_1) # ignore the ball
+my_ilc = ILC(sys, kf_dpn_params=kf_dpn_params, x_0=x0, impact_timesteps=[False]*N_1) # ignore the ball
 
 sim = Simulation(input_is_force=False, x0=x0, air_drag=True, plate_friction=True)
 sim.reset()
