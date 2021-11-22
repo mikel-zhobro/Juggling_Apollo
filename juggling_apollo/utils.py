@@ -26,6 +26,9 @@ def flyTime2HeightAndVelocity(Tfly):
   return Hb, ub_0
 
 
+def time_from_step(N, dt):
+  return rtime((N-1.0)*dt, dt)
+
 def steps_from_time(T, dt):
     """ Method to find nr of timesteps
 
@@ -36,8 +39,20 @@ def steps_from_time(T, dt):
     Returns:
         int: Number of timesteps in T
     """
-    return int(np.ceil(T / dt))  # np.arange(0,T,dt)
+    assert T % dt < 1e-8
+    return int(T//dt) + 1  # np.arange(0,T+dt,dt)
 
+def rtime(T, dt):
+    """ Method to find nr of timesteps
+
+    Args:
+        T (double): Time in seconds
+        dt (double): Timestep in seconds
+
+    Returns:
+        int: Number of timesteps in T
+    """
+    return dt*(T // dt) + 1e-10  # np.arange(0,T,dt)
 
 def find_continuous_intervals(gN_vec):
     """ Find connected intervals of values

@@ -3,50 +3,41 @@ from math import e
 
 class LiftedStateSpace:
   # Constructor
-  def __init__(self, sys, x0):
+  def __init__(self, sys, T, N, freq_domain, **kwargs):
     self.sys = sys
-    self.N = None  # length of traj
-    
+    self.N = N  # length of traj
+    self.T = T  # time length of traj
+
     # Time domain
     self.timeDomain = False
-    self.x0  = np.array(x0).reshape(-1, 1)
+    self.x0  = np.array(sys.x0).reshape(-1, 1)
     self.G   = None       # [ny*N, nx*N]
     self.GF  = None      # G * F
     self.GK  = None      # G * k
     self.Gd0 = None      # G * d0
 
     # Freq Domain
-    self.freqDomain = False
-    self.GHu = None
-    self.GHd = None
+    self.freqDomain = freq_domain
+    self.updateQuadrProgMatrixes()
 
-  
-  def updateQuadrProgMatrixes(self, N, freq_domain, **kwargs):
-    self.N = N
-    if freq_domain:
-      self.freqDomain = True
+  def updateQuadrProgMatrixes(self, **kwargs):
+    if self.freqDomain:
       self.updateQuadrProgMatrixesFreqDomain(**kwargs)
     else:
-      self.timeDomain = True
       self.updateQuadrProgMatrixesTimeDomain(**kwargs)
-      
-    
-  def updateQuadrProgMatrixesFreqDomain(self, T, **kwargs):
-    """[summary]
 
+  def updateQuadrProgMatrixesFreqDomain(self, **kwargs):
+    """[summary]
     Args:
         T ([type]): periode of the periodic output
-        Nf ([type]): number of samples in freq domain 
+        Nf ([type]): number of samples in freq domain
                      Nyquist Crit: fs >= 2*f_max = 2*f0*Nf <=> dt <= 1/(2*f0*Nf)  <=> Nf <= 1/(2*f0*dt)= T/(2*dt)
     """
-    Nf = self.N
-    assert Nf <= 0.5*T/self.sys.dt, "Make sure that Nf{} is small enough{} to satisfy the Nyquist criterium.".format(Nf, 0.5*T/self.sys.dt)
-    w0 = 2*np.pi/T
+    assert self.N <= 0.5*self.T/self.sys.dt, "Make sure that Nf{} is small enough{} to satisfy the Nyquist criterium.".format(self.N, 0.5*self.T/self.sys.dt)
+    w0 = 2*np.pi/self.T
     self.Gd0 = 0.0
-    self.GF = np.diag([self.sys.Hu(e**(complex(0.0,-k*w0))).squeeze() for k in range(Nf)])  # SISO only
-    self.GK = np.diag([self.sys.Hd(e**(complex(0.0,-k*w0))).squeeze() for k in range(Nf)])
-    
-    
+    self.GF = np.diag([self.sys.Hu(e**(complex(0.0,-k*w0))).squeeze() for k in range(self.N)])  # SISO only
+    self.GK = np.diag([self.sys.Hd(e**(complex(0.0,-k*w0))).squeeze() for k in range(self.N)])
 
   def updateQuadrProgMatrixesTimeDomain(self, impact_timesteps=None, **kwargs):
     """ Updates the lifted state space matrixes G, GF, GK, Gd0

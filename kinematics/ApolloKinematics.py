@@ -12,7 +12,10 @@ class ApolloArmKinematics():
     def __init__(self, r_arm=True, noise=None):
         self.r_arm = r_arm
         self.dh_rob = self.init_dh(noise)
-        self.pin_rob = PinRobot(r_arm=r_arm)
+        try:
+            self.pin_rob = PinRobot(r_arm=r_arm)
+        except:
+            pass
 
     def init_dh(self, noise=None):
         """[summary]
@@ -125,7 +128,7 @@ class ApolloArmKinematics():
 
         if verbose:
             self.plot(joint_trajs, psis, psi_mins, psi_maxs)
-                
+
         return joint_trajs, q_joint_state_start, (psis, psi_mins, psi_maxs)
 
     @property
