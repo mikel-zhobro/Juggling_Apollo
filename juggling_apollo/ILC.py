@@ -64,3 +64,36 @@ class ILC:
     if self.freq_domain:
       u_ff_new = np.fft.ifft(u_ff_new, utils.steps_from_time(self.T, self.dt)) #TODO
     return u_ff_new
+
+
+  def fourier_series_coeff(f, Nf, complex=False):
+      """Calculates the first 2*N+1 Fourier series coeff. of a periodic function.
+
+      Given a periodic, function f(t) with period T, this function returns the
+      coefficients a0, {a1,a2,...},{b1,b2,...} such that:
+
+      f(t) ~= a0/2+ sum_{k=1}^{N} ( a_k*cos(2*pi*k*t/T) + b_k*sin(2*pi*k*t/T) )
+
+      Parameters
+      ----------
+      f : the periodic function values
+      Nf : the function will return the first N + 1 Fourier coeff.
+
+      Returns
+      -------
+      a0 : float
+      a,b : numpy float arrays describing respectively the cosine and sine coeff.
+      """
+      # In order for the nyquist theorem to be satisfied N_t > 2 N_f where N_t=f.size = T/dt
+      y = np.fft.rfft(f, norm=None) / f.size * 2.0
+      if complex:
+          return y[:Nf]
+      return y[0].real, y[1:].real[0:Nf], -y[1:].imag[0:Nf]
+
+  def series_real_coeff(a0, a, b, t, T):
+      """calculates the Fourier series with period T at times t,
+      from the real coeff. a0,a,b"""
+      tmp = np.ones_like(t) * a0 / 2.
+      for k, (ak, bk) in enumerate(zip(a, b)):
+          tmp += ak * np.cos(2 * np.pi * (k + 1) * t / T) + bk * np.sin(2 * np.pi * (k + 1) * t / T)
+      return tmp
