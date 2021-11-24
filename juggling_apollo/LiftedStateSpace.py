@@ -3,20 +3,19 @@ from math import e
 
 class LiftedStateSpace:
   # Constructor
-  def __init__(self, sys, T, N, freq_domain, **kwargs):
+  def __init__(self, sys, T, N, freq_domain):
     self.sys = sys
-    self.N = N  # length of traj
+    self.N = N  # length of traj (Nf if fre_domain)
     self.T = T  # time length of traj
 
     # Time domain
     self.timeDomain = False
     self.x0  = np.array(sys.x0).reshape(-1, 1)
-    self.G   = None       # [ny*N, nx*N]
-    self.GF  = None      # G * F
-    self.GK  = None      # G * k
-    self.Gd0 = None      # G * d0
+    self.GF  = None      # G * F  <- u
+    self.GK  = None      # G * k  <- d
+    self.Gd0 = None      # G * d0 <- x0
 
-    # Freq Domain
+    # Freq Domain(u, d here are fourier coefficients)
     self.freqDomain = freq_domain
     self.updateQuadrProgMatrixes(self.freqDomain)
 
@@ -90,7 +89,7 @@ class LiftedStateSpace:
     #      0  C  0  .  0
     #      .  .  .  .  .
     #      0  0  0  .  C]
-    self.G = np.zeros((ny*N, nx*N), dtype='float')
+    G = np.zeros((ny*N, nx*N), dtype='float')
     # M = [I         0      0 .. 0
     #      A1        I      0 .. 0
     #      A2A1      A1     I .. 0
@@ -105,7 +104,7 @@ class LiftedStateSpace:
 
     A_0 = self.get_Ad(impact_timesteps[0])
     for ll in range(N):
-      self.G[ll*ny:(ll+1)*ny, ll*nx:(ll+1)*nx]  = self.sys.Cd
+      G[ll*ny:(ll+1)*ny, ll*nx:(ll+1)*nx]  = self.sys.Cd
       L[ll*nx:(ll+1)*nx, ll*nx:(ll+1)*nx]       = A_power_holder[ll]*A_0
       for m in range(ll+1):
         M[ll*nx:(ll+1)*nx, m*nx:(m+1)*nx]       = A_power_holder[ll-m]
@@ -117,9 +116,9 @@ class LiftedStateSpace:
     d0    = L.dot(np.tile(self.x0, [N, 1])) + M.dot(c_vec)
 
     # Prepare matrixes needed for the quadratic problem and KF
-    self.GF  = self.G.dot(F)
-    self.GK  = self.G.dot(K)
-    self.Gd0 = self.G.dot(d0)
+    self.GF  = G.dot(F)
+    self.GK  = G.dot(K)
+    self.Gd0 = G.dot(d0)
 
   def get_Ad(self, impact):
     return self.sys.Ad_impact if impact else self.sys.Ad
