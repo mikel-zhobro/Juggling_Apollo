@@ -1,4 +1,5 @@
 import numpy as np
+from scipy import optimize
 import utils
 from LiftedStateSpace import LiftedStateSpace
 from OptimLss import OptimLss
@@ -9,36 +10,49 @@ class ILC:
   def __init__(self, sys, y_des, freq_domain=False, Nf=None, lss_params={}, optim_params={}, kf_dpn_params={}):
     # kwargs can be {impact_timesteps: [True/False]*N} for timedomain
     # and must be {T:Float} for freqdomain
-
+    
+    assert kf_dpn_params['d0'].size == (self if freq_domain else y_des.size), "Size of disturbance ({}) and that of N ({}) don't match.".format(kf_dpn_params['d0'].size, self.N)
     # N: traj length if timedomain, freq traje length otherwise
-    self.freq_domain = freq_domain
+    
+    self.timeDomain = not freq_domain
+    self.firstTime = True
+    
+    # Time domain
+    self.uff_t = None
     self.dt = sys.dt
     self.Nt = y_des.size
     self.T = utils.time_from_step(self.Nt, self.dt)  # periode
-    if not freq_domain:
-      self.y_des = y_des
-      self.N = self.Nt
-    else:
-      assert Nf is not None, "Please choose Nf for the fourier transform. Allowed values are ( Nf <= 0.5*self.T/self.sys.dt )"
-      assert Nf <= 0.5*self.T/self.dt, "Make sure that Nf{} is small enough{} to satisfy the Nyquist criterium.".format(Nf, 0.5*self.T/self.dt)
-      self.N = Nf
-      self.y_des = fourier_series_coeff(y_des, self.N, complex=True)
-      self.uff = None
+    self.y_des_t = y_des.reshape(-1,1)
+    
+    # Freq domain
+    self.uff_f   = None
+    self.Nf      = None
+    self.y_des_f = None
+    
+    if freq_domain:
+      assert Nf is not None and Nf < int(0.5*self.Nt), "Make sure that Nf{} is small enough{} to satisfy the Nyquist criterium.".format(Nf, int(0.5*self.Nt))
+      self.Nf = None
+      self.y_des_f = fourier_series_coeff(y_des, self.N, complex=True).reshape(-1,1)
 
-    assert kf_dpn_params['d0'].size * sys.S.shape[1] == self.N, "Size of disturbance ({}) and that of N ({}) don't match.".format(kf_dpn_params['d0'].size * sys.S.shape[1], self.N)
-
-
-    self.FirstTime = True
     # components of ilc
+    self._u_ff = None
     self.lss              = LiftedStateSpace(sys=sys, T=self.T, N=self.N, freq_domain=freq_domain, **lss_params)
+    self.kf_dpn           = KalmanFilter(lss=self.lss, freqDomain=freq_domain, **kf_dpn_params)  # dpn estimator
     self.quad_input_optim = OptimLss(self.lss, **optim_params)
-    self.kf_dpn           = KalmanFilter(lss=self.lss, **kf_dpn_params)  # dpn estimator
+
     # size of the trajectoty
-    self.N = self.kf_dpn.N
     self.resetILC()
 
   def resetILC(self, d=None, P=None):
     self.kf_dpn.resetKF(d, P) # reset KFs
+
+  @property
+  def y_des(self):
+    return self.y_des_t if self.timeDomain else self.y_des_f
+
+  @property
+  def N(self):
+    return self.Nt if self.timeDomain else self.Nf
 
   @property
   def d(self):
@@ -48,30 +62,58 @@ class ILC:
   def P(self):
     return self.kf_dpn.P
 
+  def update_y_des(self, y_des):
+    assert y_des.size == self.Nt, "Make sure the new y_des has the same size as the input ILC was initialized with."
+    self.y_des_t = y_des.reshape(-1,1)
+    if not self.timeDomain:
+      self.y_des_f = fourier_series_coeff(y_des, self.N, complex=True).reshape(-1,1)
 
-  def ff_from_lin_model(self, y_des):
-    self.FirstTime = False
-    u_ff = self.quad_input_optim.calcDesiredInput(self.kf_dpn.d, self.y_des.reshape(-1, 1))
+  def transf_uff(self, uff):
+    """ Transforms uff to the right format for robot usage.
 
-    self.uff = u_ff
-    if self.freq_domain:
-      u_ff = series_real_coeff(u_ff, t=np.arange(0, self.Nt)*self.dt, T=self.T)
+    Args:
+        uff ([np.array(N{t/f},1)]): feedForward input in timeDomain or freqDomain according to how ILC was initialized
 
-    return u_ff
+    Returns:
+        [np.array(Nt,1)]: copy of feedForward input in timeDomain
+    """
+    return uff.copy() if self.timeDomain else series_real_coeff(uff, t=np.arange(0, self.Nt)*self.dt, T=self.T)
 
-  def learnWhole(self, y_des, u_ff_old, y_meas, verbose=False, lb=None, ub=None):
-    # 1. Throw
-    if self.FirstTime:
-      self.FirstTime = False
-      return self.ff_from_lin_model(self.y_des)
+  def init_uff_from_lin_model(self, verbose=False, lb=None, ub=None):
+    if not self.timeDomain:
+      assert lb is None and ub is None, "No constraint optimization possible in freqDomain."
 
-    disturbance = self.kf_dpn.updateStep(self.uff.reshape(-1, 1), y_meas.reshape(-1, 1))  # estimate dpn disturbance
-    u_ff_new = self.quad_input_optim.calcDesiredInput(disturbance, self.y_des.reshape(-1, 1), verbose, lb, ub)
-    if self.freq_domain:
-      u_ff_new = series_real_coeff(u_ff_new, t=np.arange(0, self.Nt)*self.dt, T=self.T)
+    # update uff
+    self._u_ff = self.quad_input_optim.calcDesiredInput(np.zeros_like(self.kf_dpn.d), self.y_des.reshape(-1, 1), verbose=verbose, lb=lb, ub=ub)
+    return self.transf_uff(self._u_ff)
 
-    self.uff = u_ff_new
-    return u_ff_new
+  def updateStep(self, y_meas, y_des=None, verbose=False, lb=None, ub=None):
+    """ Updates learned feedforward input and disturbance according to (self._u_ff, y_meas) tuple. 
+
+    Args:
+        y_meas ([np.array(Nt, 1)]): measured output for the previously calculated u_ff
+        y_des ([np.array(Nt, 1)], optional): A new desired desired trajectory in time domain. Defaults to None.
+        verbose (bool, optional): whether to print out verbose info
+        lb, ub ([type], optional): Whether to inforce upper and lower bounds onthe input. Only valid for timeDomain usage.
+
+    Returns:
+        [np.array(Nt, 1)]: new feed forward input
+    """
+    if not self.timeDomain:
+      assert lb is None and ub is None, "No constraint optimization possible in freqDomain."
+
+    if y_des is not None:
+      self.update_y_des(y_des)
+
+    if self._u_ff is None:
+      return self.init_uff_from_lin_model(verbose, lb, ub)
+
+    # estimate dpn disturbance
+    disturbance = self.kf_dpn.updateStep(self._u_ff.reshape(-1, 1), y_meas.reshape(-1, 1))
+    # update uff
+    self._u_ff = self.quad_input_optim.calcDesiredInput(disturbance, self.y_des, verbose=verbose, lb=lb, ub=ub)
+
+    return self.transf_uff(self._u_ff)
 
 
 def fourier_series_coeff(f, Nf, complex=False):
@@ -97,14 +139,6 @@ def fourier_series_coeff(f, Nf, complex=False):
     if complex:
         return y[:Nf]
     return y[0].real, y[1:].real[0:Nf], -y[1:].imag[0:Nf]
-
-def series_real_coeff2(a0, a, b, t, T):
-    """calculates the Fourier series with period T at times t,
-    from the real coeff. a0,a,b"""
-    tmp = np.ones_like(t) * a0 / 2.
-    for k, (ak, bk) in enumerate(zip(a, b)):
-        tmp += ak * np.cos(2 * np.pi * (k + 1) * t / T) + bk * np.sin(2 * np.pi * (k + 1) * t / T)
-    return tmp
 
 def series_real_coeff(y, t, T):
     """calculates the Fourier series with period T at times t,
