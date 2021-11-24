@@ -3,6 +3,8 @@ import numpy as np
 
 class KalmanFilter:
   def __init__(self, lss, M, d0, P0, epsilon0, freqDomain=False, epsilon_decrease_rate=0.9):
+    
+    self.timeDomain = not freqDomain
     # size of the state
     self.N = d0.size
 
@@ -53,13 +55,14 @@ class KalmanFilter:
     K = P1_0.dot(self.lss.GK.T).dot(np.linalg.inv(Theta))
 
     # Weight
-    N = y_meas.size
-    # D = np.diag(np.linspace(0,1.0,N))
-    D = np.diag(np.log10(np.linspace(3.0,10.0,N)))
-    # import matplotlib.pyplot as plt
-    # plt.plot(np.log10(np.linspace(1.0,10.0,N)))
-    # plt.show()
-    K = D.dot(K)
+    if self.timeDomain:
+      N = y_meas.size
+      # D = np.diag(np.linspace(0,1.0,N))
+      D = np.diag(np.log10(np.linspace(3.0,10.0,N)))
+      # import matplotlib.pyplot as plt
+      # plt.plot(np.log10(np.linspace(1.0,10.0,N)))
+      # plt.show()
+      K = D.dot(K)
 
 
     self._P = (self.Ident - K.dot(self.lss.GK)).dot(P1_0)

@@ -56,11 +56,12 @@ rArmKinematics_nn = ApolloArmKinematics(r_arm=True)  ## noise noisifies the forw
 
 
 # A. COMPUTE TRAJECTORIES IN CARTESIAN AND JOINT SPACE
-N_1, delta_xyz_traj_des, thetas, mj = configs.get_minjerk_config(dt, end_repeat)
+N, delta_xyz_traj_des, thetas, mj = configs.get_minjerk_config(dt, end_repeat)
 xyz_traj_des = delta_xyz_traj_des + T_home[:3, -1]
+N_1 = N-1
 
-q_traj_des, q_start, psi_params = rArmKinematics.seqIK(delta_xyz_traj_des, thetas, T_home)  # [N_1, 7]
-# q_traj_des_nn, q_start_nn, _    = rArmKinematics_nn.seqIK(delta_xyz_traj_des, thetas, T_home)  # [N_1, 7]
+q_traj_des, q_start, psi_params = rArmKinematics.seqIK(delta_xyz_traj_des, thetas, T_home)  # [N, 7]
+# q_traj_des_nn, q_start_nn, _    = rArmKinematics_nn.seqIK(delta_xyz_traj_des, thetas, T_home)  # [N, 7]
 
 # Set to 0 the non learning joints
 for i in set(range(7)) - set(learnable_joints):
@@ -71,9 +72,9 @@ for i in set(range(7)) - set(learnable_joints):
 if False:
   rArmKinematics.plot(q_traj_des, *psi_params)
 
-Nf = N_1
+Nf = N-1
 if FREQ_DOMAIN:
-  Nf = 60
+  Nf = 15
 # B. Initialize ILC
 def kf_params(n_m=0.02, epsilon=1e-5, n_d=0.06):
   kf_dpn_params = {
@@ -96,9 +97,8 @@ my_ilcs = [
 
 
 
-
 # C. LEARN BY ITERATING
-ILC_it = 2  # number of ILC iteration
+ILC_it = 22  # number of ILC iteration
 # Data collection
 q_traj_des_vec = np.zeros([ILC_it, N_1, N_joints, 1], dtype='float')
 # a. Measurments
@@ -125,26 +125,27 @@ every_N = 2
 
 
 # Use linear model to compute first input
-u_ff   = np.zeros([N_1, N_joints, 1], dtype='float')
+u_ff   = np.zeros([N-1, N_joints, 1], dtype='float')
 for i in learnable_joints:
-  u_ff[:,i] = my_ilcs[i].init_uff_from_lin_model(y_des=delta_q_traj_des_i[:, i])
+  u_ff[:,i] = my_ilcs[i].init_uff_from_lin_model()
 
 for j in range(ILC_it):
   # Limit Input
   # u_ff = np.clip(u_ff,-UB,UB)
 
   # Main Simulation
-  q_traj, q_v_traj, q_a_traj, F_N_vec, _, q0 = rArmInterface.apollo_run_one_iteration2(dt=dt, T=mj.T_FULL, u=u_ff, joint_home_config=q_start_i, repetitions=1, it=j)
-  q_traj = q_traj[0]
-  q_v_traj = q_v_traj[0]
-  q_a_traj = q_a_traj[0]
-  F_N_vec = F_N_vec[0]
-  delta_y_meas = q_traj - q0[0] # calc delta of executed traj
+  q_traj, q_v_traj, q_a_traj, F_N_vec, _, q0 = rArmInterface.apollo_run_one_iteration2(dt=dt, T=mj.T_FULL, u=u_ff, joint_home_config=q_start_i, repetitions=4, it=j)
+  q_traj   = np.average(  q_traj[0:], axis=0, weights=[3,2,1,1])
+  q_v_traj = np.average(q_v_traj[0:], axis=0)
+  q_a_traj = np.average(q_a_traj[0:], axis=0)
+  F_N_vec  = np.average( F_N_vec[0:], axis=0)
+  
+  delta_y_meas = q_traj -  q0[0] #np.average(q0[0:], axis=0, weights=[3,2,1,1]) # calc delta of executed traj
   q_traj = q_start_i + delta_y_meas   # rebase executed traj as if it would start from the exact home position
 
   # Update feed-forward signal
   for i in learnable_joints:
-    u_ff[:,i] = my_ilcs[i].updateStep(y_des=delta_q_traj_des_i[:, i], y_meas=delta_y_meas[:,i],
+    u_ff[:,i] = my_ilcs[i].updateStep2(y_meas=delta_y_meas[:,i],  # y_des=delta_q_traj_des_i[:, i], 
                                       #  lb=-UB,ub=UB
                                       verbose=False)
 
@@ -168,7 +169,7 @@ for j in range(ILC_it):
   # For the next iteration
   # TODO: add orientation error
   if CARTESIAN_ERROR:
-    for i in range(N_1):
+    for i in range(N):
       J_invj          = np.linalg.pinv(rArmKinematics.J(q_traj[i+1])[:3,:])
       q_traj_des_i[i] = q_traj_des_i[i] + mu* J_invj.dot(d_xyz[i].reshape(3, 1))
     # Update desired trajectory
@@ -211,7 +212,7 @@ if True:
             joints_q_vec=joints_q_vec, q_traj_des=q_traj_des_i[1:],
             u_ff_vec=u_ff_vec, q_v_traj=q_v_traj,
             disturbanc_vec=disturbanc_vec, d_xyz=d_xyz, error_norms=error_norms,
-            v=True, p=True, dp=False, e_xyz=True, e=True, N=1)
+            v=True, p=True, dp=False, e_xyz=False, e=True, N=min(4, ILC_it-1))
 
 if SAVING:
   # Saving Results

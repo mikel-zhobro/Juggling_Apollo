@@ -11,7 +11,6 @@ class ILC:
     # kwargs can be {impact_timesteps: [True/False]*N} for timedomain
     # and must be {T:Float} for freqdomain
     
-    assert kf_dpn_params['d0'].size == (self if freq_domain else y_des.size), "Size of disturbance ({}) and that of N ({}) don't match.".format(kf_dpn_params['d0'].size, self.N)
     # N: traj length if timedomain, freq traje length otherwise
     
     self.timeDomain = not freq_domain
@@ -31,8 +30,8 @@ class ILC:
     
     if freq_domain:
       assert Nf is not None and Nf < int(0.5*self.Nt), "Make sure that Nf{} is small enough{} to satisfy the Nyquist criterium.".format(Nf, int(0.5*self.Nt))
-      self.Nf = None
-      self.y_des_f = fourier_series_coeff(y_des, self.N, complex=True).reshape(-1,1)
+      self.Nf = Nf
+      self.y_des_f = fourier_series_coeff(y_des, self.N).reshape(-1,1)
 
     # components of ilc
     self._u_ff = None
@@ -43,6 +42,7 @@ class ILC:
     # size of the trajectoty
     self.resetILC()
 
+    assert kf_dpn_params['d0'].size == self.N, "Size of disturbance ({}) and that of N ({}) don't match.".format(kf_dpn_params['d0'].size, self.N)
   def resetILC(self, d=None, P=None):
     self.kf_dpn.resetKF(d, P) # reset KFs
 
@@ -66,7 +66,7 @@ class ILC:
     assert y_des.size == self.Nt, "Make sure the new y_des has the same size as the input ILC was initialized with."
     self.y_des_t = y_des.reshape(-1,1)
     if not self.timeDomain:
-      self.y_des_f = fourier_series_coeff(y_des, self.N, complex=True).reshape(-1,1)
+      self.y_des_f = fourier_series_coeff(y_des, self.N).reshape(-1,1)
 
   def transf_uff(self, uff):
     """ Transforms uff to the right format for robot usage.
@@ -77,14 +77,25 @@ class ILC:
     Returns:
         [np.array(Nt,1)]: copy of feedForward input in timeDomain
     """
-    return uff.copy() if self.timeDomain else series_real_coeff(uff, t=np.arange(0, self.Nt)*self.dt, T=self.T)
+    return uff.copy() if self.timeDomain else series_real_coeff(uff, t=np.arange(0, self.Nt)*self.dt, T=self.T).reshape(-1,1)
+
+  def transf_y_meas(self, y_meas):
+    """ Transforms uff to the right format for robot usage.
+
+    Args:
+        uff ([np.array(N{t/f},1)]): feedForward input in timeDomain or freqDomain according to how ILC was initialized
+
+    Returns:
+        [np.array(Nt,1)]: copy of feedForward input in timeDomain
+    """
+    return y_meas.copy() if self.timeDomain else fourier_series_coeff(y_meas, self.N).reshape(-1,1)
 
   def init_uff_from_lin_model(self, verbose=False, lb=None, ub=None):
     if not self.timeDomain:
       assert lb is None and ub is None, "No constraint optimization possible in freqDomain."
 
     # update uff
-    self._u_ff = self.quad_input_optim.calcDesiredInput(np.zeros_like(self.kf_dpn.d), self.y_des.reshape(-1, 1), verbose=verbose, lb=lb, ub=ub)
+    self._u_ff = self.quad_input_optim.calcDesiredInput(np.zeros_like(self.kf_dpn.d), self.y_des.reshape(-1, 1), print_norm=verbose, lb=lb, ub=ub)
     return self.transf_uff(self._u_ff)
 
   def updateStep(self, y_meas, y_des=None, verbose=False, lb=None, ub=None):
@@ -99,6 +110,7 @@ class ILC:
     Returns:
         [np.array(Nt, 1)]: new feed forward input
     """
+    print(np.linalg.norm(self.y_des-self.transf_y_meas(y_meas)))
     if not self.timeDomain:
       assert lb is None and ub is None, "No constraint optimization possible in freqDomain."
 
@@ -109,14 +121,58 @@ class ILC:
       return self.init_uff_from_lin_model(verbose, lb, ub)
 
     # estimate dpn disturbance
-    disturbance = self.kf_dpn.updateStep(self._u_ff.reshape(-1, 1), y_meas.reshape(-1, 1))
+    disturbance = self.kf_dpn.updateStep(self._u_ff, self.transf_y_meas(y_meas))
     # update uff
-    self._u_ff = self.quad_input_optim.calcDesiredInput(disturbance, self.y_des, verbose=verbose, lb=lb, ub=ub)
+    self._u_ff = self.quad_input_optim.calcDesiredInput(disturbance, self.y_des, print_norm=verbose, lb=lb, ub=ub)
 
     return self.transf_uff(self._u_ff)
 
 
+  def updateStep2(self, y_meas, y_des=None, verbose=False, lb=None, ub=None):
+      """ Updates learned feedforward input and disturbance according to (self._u_ff, y_meas) tuple. 
+
+      Args:
+          y_meas ([np.array(Nt, 1)]): measured output for the previously calculated u_ff
+          y_des ([np.array(Nt, 1)], optional): A new desired desired trajectory in time domain. Defaults to None.
+          verbose (bool, optional): whether to print out verbose info
+          lb, ub ([type], optional): Whether to inforce upper and lower bounds onthe input. Only valid for timeDomain usage.
+
+      Returns:
+          [np.array(Nt, 1)]: new feed forward input
+      """
+      print(np.linalg.norm(self.y_des-self.transf_y_meas(y_meas)))
+      if not self.timeDomain:
+        assert lb is None and ub is None, "No constraint optimization possible in freqDomain."
+
+      if y_des is not None:
+        self.update_y_des(y_des)
+
+      if self._u_ff is None:
+        return self.init_uff_from_lin_model(verbose, lb, ub)
+
+
+      # update uff
+      # self._u_ff -= 0.163 * (np.linalg.pinv(self.lss.GF).dot(self.transf_y_meas(y_meas)) - self._u_ff)
+      self._u_ff += 0.363 * (np.linalg.pinv(self.lss.GF).dot(self.y_des-self.transf_y_meas(y_meas)))
+
+      return self.transf_uff(self._u_ff)
+
+
 def fourier_series_coeff(f, Nf, complex=False):
+  return fourier_series_coeff2(f, Nf+1, True)[1:]
+
+
+def series_real_coeff(y, t, T):
+    """calculates the Fourier series with period T at times t,
+    from the real coeff. a0,a,b"""
+    tmp = np.zeros_like(t)
+    for k, (ak, bk) in enumerate(zip(y.real, -y.imag)):
+        tmp += ak * np.cos(2 * np.pi * (k + 1) * t / T) + bk * np.sin(2 * np.pi * (k + 1) * t / T)
+    return tmp
+
+
+# Unchanged implementation that do and undo eachother
+def fourier_series_coeff2(f, Nf, complex=False):
     """Calculates the first 2*N+1 Fourier series coeff. of a periodic function.
 
     Given a periodic, function f(t) with period T, this function returns the
@@ -140,7 +196,7 @@ def fourier_series_coeff(f, Nf, complex=False):
         return y[:Nf]
     return y[0].real, y[1:].real[0:Nf], -y[1:].imag[0:Nf]
 
-def series_real_coeff(y, t, T):
+def series_real_coeff2(y, t, T):
     """calculates the Fourier series with period T at times t,
     from the real coeff. a0,a,b"""
     tmp = np.ones_like(t) * y[0].real / 2.

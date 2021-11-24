@@ -3,7 +3,7 @@ from math import e
 
 class LiftedStateSpace:
   # Constructor
-  def __init__(self, sys, T, N, freq_domain):
+  def __init__(self, sys, T, N, freq_domain, **kwargs):
     self.sys = sys
     self.N = N  # length of traj (Nf if fre_domain)
     self.T = T  # time length of traj
@@ -36,8 +36,8 @@ class LiftedStateSpace:
     assert self.N <= 0.5*self.T/self.sys.dt, "Make sure that Nf{} is small enough{} to satisfy the Nyquist criterium.".format(self.N, 0.5*self.T/self.sys.dt)
     w0 = 2*np.pi/self.T
     self.Gd0 = 0.0
-    self.GF = np.diag([self.sys.Hu(complex(0.0,-k*w0)).squeeze() for k in range(0, self.N)])  # SISO only
-    self.GK = np.diag([self.sys.Hd(complex(0.0,-k*w0)).squeeze() for k in range(0, self.N)])
+    self.GF = np.diag([self.sys.Hu(complex(0.0,k*w0)) for k in range(1, self.N+1)])  # SISO only
+    self.GK = np.diag([self.sys.Hd(complex(0.0,k*w0)) for k in range(1, self.N+1)])
 
   def updateQuadrProgMatrixesTimeDomain(self, impact_timesteps=None, **kwargs):
     """ Updates the lifted state space matrixes G, GF, GK, Gd0
