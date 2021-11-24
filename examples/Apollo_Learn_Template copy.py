@@ -76,8 +76,8 @@ if False:
 # B. Initialize ILC
 def kf_params(n_m=0.02, epsilon=1e-5, n_d=0.06):
   kf_dpn_params = {
-    'M': n_m*np.eye(ND+end_repeat, dtype='float'),       # covariance of noise on the measurment
-    'P0': n_d*np.eye(ND+end_repeat, dtype='float'),      # initial disturbance covariance
+    'M': n_m*np.ones(ND+end_repeat, dtype='float'),       # covariance of noise on the measurment
+    'P0': n_d*np.ones(ND+end_repeat, dtype='float'),      # initial disturbance covariance
     'd0': np.zeros((ND+end_repeat, 1), dtype='float'),   # initial disturbance value
     'epsilon0': epsilon,                                  # initial variance of noise on the disturbance
     'epsilon_decrease_rate': 0.9                          # the decreasing factor of noise on the disturbance
@@ -125,7 +125,7 @@ delta_q_traj_des_i = q_traj_des_i[1:] - q_start_i
 # Use linear model to compute first input
 u_ff   = np.zeros([N_1+end_repeat, N_joints, 1], dtype='float')
 for i in learnable_joints:
-  u_ff[:,i] = my_ilcs[i].ff_from_lin_model(y_des=delta_q_traj_des_i[:, i])
+  u_ff[:,i] = my_ilcs[i].init_uff_from_lin_model(y_des=delta_q_traj_des_i[:, i])
 
 for j in range(ILC_it):  
   # Limit Input
@@ -142,7 +142,7 @@ for j in range(ILC_it):
 
   # Update feed-forward signal
   for i in learnable_joints:
-    u_ff[:,i] = my_ilcs[i].learnWhole(u_ff_old=u_ff[:, i], y_des=delta_q_traj_des_i[:, i], y_meas=delta_y_meas[:,i],
+    u_ff[:,i] = my_ilcs[i].updateStep(y_des=delta_q_traj_des_i[:, i], y_meas=delta_y_meas[:,i],
                                       #  lb=-UB,ub=UB
                                       verbose=False)
 

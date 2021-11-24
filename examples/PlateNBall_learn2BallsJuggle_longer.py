@@ -56,8 +56,8 @@ ILC_it = 21  # number of ILC iteration
 input_is_velocity = True
 sys = DynamicSystem(dt, input_is_velocity=input_is_velocity)
 kf_dpn_params = {
-  'M': 0.031*np.eye(N_1, dtype='float'),      # covariance of noise on the measurment
-  'P0': 0.1*np.eye(N_1, dtype='float'),     # initial disturbance covariance
+  'M': 0.031*np.ones(N_1, dtype='float'),      # covariance of noise on the measurment
+  'P0': 0.1*np.ones(N_1, dtype='float'),     # initial disturbance covariance
   'd0': np.zeros((N_1, 1), dtype='float'),  # initial disturbance value
   'epsilon0': 0.3,                          # initial variance of noise on the disturbance
   'epsilon_decrease_rate': 1              # the decreasing factor of noise on the disturbance
@@ -117,7 +117,7 @@ for j in range(ILC_it):
   uu[5] = ub_throw3  # update
   y_des, velo, accel, jerk = get_minjerk_trajectory(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=xx, uu=uu)
   y_des = y_des[:N_1+1]
-  u_ff = my_ilc.learnWhole(u_ff_old=u_ff, y_des=y_des[1:], y_meas=y_meas)
+  u_ff = my_ilc.updateStep(y_des=y_des[1:], y_meas=y_meas)
 
   # Main Simulation
   x000[0][1] = H  # update
