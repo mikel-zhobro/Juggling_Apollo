@@ -200,8 +200,8 @@ class ApolloDynSys2(DynamicSystem):
     C = np.array([1.0, 0.0], dtype='float').reshape(1,2)
     self.S = np.array([0.0, 1.0], dtype='float').reshape(2,1)
 
-    # self.Hu = lambda s: C.dot(np.linalg.pinv(s*np.eye(2) - A )).dot(B)
-    # self.Hd = lambda s: C.dot(np.linalg.pinv(s*np.eye(2) - A )).dot(self.S)
+    # self.Hu = lambda s: C.dot(np.linalg.pinv(s*np.eye(2) - A )).dot(B).squeeze()
+    # self.Hd = lambda s: C.dot(np.linalg.pinv(s*np.eye(2) - A )).dot(self.S).squeeze()
 
     self.Hu = lambda s: self.alpha /(s*(s+self.alpha))
     self.Hd = lambda s: 1.0 /(s*(s+self.alpha))
