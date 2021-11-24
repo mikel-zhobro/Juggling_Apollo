@@ -2,25 +2,26 @@ import numpy as np
 
 
 class KalmanFilter:
-  def __init__(self, lss, M, d0, P0, epsilon0, epsilon_decrease_rate=0.9):
+  def __init__(self, lss, M, d0, P0, epsilon0, freqDomain=False, epsilon_decrease_rate=0.9):
     # size of the state
     self.N = d0.size
 
     # pointer to the lifted space (can be changed from outside)
     self.lss = lss
     self.epsilon_decrease_rate = epsilon_decrease_rate
-
+    
+    imag = 1j if freqDomain else 0.0
     # initial values
-    self.M = M            # covariance of noise on the measurment
-    self.d0 = d0          # initial disturbance value
-    self.P0 = P0          # initial disturbance covariance
+    self.M = np.diag((1+imag)*M)            # covariance of noise on the measurment
+    self.d0 = d0+0*imag          # initial disturbance value
+    self.P0 = np.diag((1+imag)*P0)          # initial disturbance covariance
     self.epsilon0 = epsilon0
 
     # current values
     self._d = None
     self._P = None
     self.epsilon = None  # di= di_0 + ni with ni~N(0,Omega) <- Omega = epsilon*eye(N)
-    self.Ident = np.eye(self.d0.size)
+    self.Ident = (1+imag)*np.eye(self.d0.size)
 
   @property
   def d(self):
