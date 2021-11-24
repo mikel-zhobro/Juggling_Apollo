@@ -178,7 +178,7 @@ class ApolloInterface:
         # Vectors to collect the history of the system states
         N = N0 * repetitions + 1
         n_joints = 7
-        thetas_s = np.zeros((N, n_joints, 1));  thetas_s[0] = real_home[:,0]
+        thetas_s = np.zeros((N, n_joints, 1));  thetas_s[0] = real_home[:,0:1]
         vel_s    = np.zeros((N, n_joints, 1))
         acc_s    = np.zeros((N, n_joints, 1))
         dP_N_vec = np.zeros((N, n_joints, 1))
@@ -221,9 +221,9 @@ class ApolloInterface:
 
         N0 = len(u)
 
-        real_home = np.zeros((7,2))
+        real_homes = np.zeros((repetitions, 7,1))
         if joint_home_config is not None:
-            real_home = self.go_to_home_position(joint_home_config)
+            real_homes[0] = self.go_to_home_position(joint_home_config)[:,0:1]
 
         # Vectors to collect the history of the system states
         N = N0 * repetitions + 1
@@ -248,8 +248,10 @@ class ApolloInterface:
                 acc_s[r,i] = obs_np[:,2].reshape(7, 1)
                 # collect helpers
                 dP_N_vec[r,i] = obs_np[:,3].reshape(7, 1)
-
-        return thetas_s, vel_s, acc_s, dP_N_vec, u, real_home.T[:,:,np.newaxis]
+            if r == repetitions-1:
+                break
+            real_homes[r] = thetas_s[r,-1]
+        return thetas_s, vel_s, acc_s, dP_N_vec, u, real_homes
 
 
 
@@ -282,7 +284,7 @@ class ApolloInterface:
         return obs_np
 
     def go_to_home_position(self, home_pose=None, it_time=4000):
-        eps = 3e-3 # 2e-3  # <2mm
+        eps = 3e-4 # 2e-3  # <2mm
         # eps = 2e-3
         if home_pose is None:
             home_pose = np.zeros((7,1))
@@ -295,17 +297,24 @@ class ApolloInterface:
                 if np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze()) <= eps:
                     break
         else:
+            print("Not using IK_dynamics")
+            
             dt = 0.002
             P = 1.6
             I = 0.04
             D = 0.2
-            print("Not using IK_dynamics")
-            obs = self.go_to_posture_array(home_pose, it_time, globs.bursting)
-
             error_P = np.zeros(7)
             error_I = np.zeros(7)
             error_D = np.zeros(7)
-            while True:
+            
+            obs = self.read()
+            error = np.array(home_pose).squeeze()-obs[:,0].squeeze()
+            
+            for i in range(int(5./dt)): # try for 5 sec
+                if all(np.abs(error) <= eps):
+                    break
+                if i==0:
+                    obs = self.go_to_posture_array(home_pose, it_time, globs.bursting)
                 error = np.array(home_pose).squeeze()-obs[:,0].squeeze()
                 error_D = (error - error_P)/dt
                 error_P = error
@@ -319,11 +328,9 @@ class ApolloInterface:
                 # print(error_I*I)
                 # print(error_D*D)
                 # print(error_D)
-                if np.linalg.norm(error_P) <= eps:
-                    break
 
         obs = self.go_to_speed_array(np.zeros_like(home_pose), it_time/4, globs.bursting)
-        print("HOME with error: {} mm".format(1000.0*np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze())))
+        print("{}. HOME with error: {} mm".format(i, 1000.0*np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze())))
         print(np.array(home_pose).squeeze()- obs[:,0].squeeze())
         return obs[:,0:2].reshape(7, 2)
 
