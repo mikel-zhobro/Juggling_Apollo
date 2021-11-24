@@ -17,7 +17,7 @@ from utils import plot_A, save, colors, line_types, print_info, plot_info
 np.set_printoptions(precision=4, suppress=True)
 
 FREQ_DOMAIN=True
-end_repeat = 200   # repeat the last position value this many time
+end_repeat = 0   # repeat the last position value this many time
 SAVING = True
 UB = 0.87
 

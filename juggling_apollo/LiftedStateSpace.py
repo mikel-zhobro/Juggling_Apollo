@@ -18,10 +18,11 @@ class LiftedStateSpace:
 
     # Freq Domain
     self.freqDomain = freq_domain
-    self.updateQuadrProgMatrixes()
+    self.updateQuadrProgMatrixes(self.freqDomain)
 
-  def updateQuadrProgMatrixes(self, **kwargs):
-    if self.freqDomain:
+  def updateQuadrProgMatrixes(self, freqDomain, **kwargs):
+    self.freqDomain = freqDomain
+    if freqDomain:
       self.updateQuadrProgMatrixesFreqDomain(**kwargs)
     else:
       self.updateQuadrProgMatrixesTimeDomain(**kwargs)
@@ -36,8 +37,8 @@ class LiftedStateSpace:
     assert self.N <= 0.5*self.T/self.sys.dt, "Make sure that Nf{} is small enough{} to satisfy the Nyquist criterium.".format(self.N, 0.5*self.T/self.sys.dt)
     w0 = 2*np.pi/self.T
     self.Gd0 = 0.0
-    self.GF = np.diag([self.sys.Hu(e**(complex(0.0,-k*w0))).squeeze() for k in range(self.N)])  # SISO only
-    self.GK = np.diag([self.sys.Hd(e**(complex(0.0,-k*w0))).squeeze() for k in range(self.N)])
+    self.GF = np.diag([self.sys.Hu(complex(0.0,-k*w0)).squeeze() for k in range(0, self.N)])  # SISO only
+    self.GK = np.diag([self.sys.Hd(complex(0.0,-k*w0)).squeeze() for k in range(0, self.N)])
 
   def updateQuadrProgMatrixesTimeDomain(self, impact_timesteps=None, **kwargs):
     """ Updates the lifted state space matrixes G, GF, GK, Gd0

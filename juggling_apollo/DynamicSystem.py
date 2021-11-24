@@ -24,10 +24,14 @@ class DynamicSystem:
     self.Hu = None  # C(sI - A)^-1 B
     self.Hd = None  # C(sI - A)^-1 Bd
 
-    if freq_domain:
+    try:
       self.initTransferFunction(**kwargs)
-    else:
+    except:
+      pass
+    try:
       self.initDynSys(dt, **kwargs)
+    except:
+      pass
 
   @abstractmethod
   def initDynSys(self, dt, **kwargs):
@@ -196,9 +200,5 @@ class ApolloDynSys2(DynamicSystem):
     C = np.array([1.0, 0.0], dtype='float').reshape(1,2)
     self.S = np.array([0.0, 1.0], dtype='float').reshape(2,1)
 
-    a = A[0,0]; b = A[0,1]
-    c = A[1,0]; d = A[1,1]
-    sI_A_1 = lambda s: 1/((s-a)*(s-d) - b*c) *  np.array([s-d,  -b,
-                                                          -c,  s-a], dtype=np.complex_).reshape(2,2)
-    self.Hu = lambda s: C.dot(sI_A_1(s)).dot(B)
-    self.Hd = lambda s: C.dot(sI_A_1(s)).dot(self.S)
+    self.Hu = lambda s: C.dot(np.linalg.pinv(s*np.eye(2) - A )).dot(B)
+    self.Hd = lambda s: C.dot(np.linalg.pinv(s*np.eye(2) - A )).dot(self.S)
