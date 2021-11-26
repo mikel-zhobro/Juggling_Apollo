@@ -42,7 +42,9 @@ class KalmanFilter:
   def resetKF(self, d=None, P=None):
       self._d = self.d0 if d is None else d
       # self._P = self.P0
-      self._P = self.lss.GK.dot(self.P0 if P is None else P).dot(self.lss.GK.T)
+      if P is None:
+        P = self.P0
+      self._P = self.lss.GK.dot(P).dot(self.lss.GK.T.conj()) if self.timeDomain else P
       self.epsilon = self.epsilon0
 
   def updateStep(self, u, y_meas):
@@ -51,8 +53,8 @@ class KalmanFilter:
     # d = d + n_d                        with n_d ~ N(eps*I)
     # y = Fu + Gd0  + ((( GKd ))) + n_y  with n_y ~ N(0, M)
     P1_0 = self._P + self.Ident * self.epsilon
-    Theta = self.lss.GK.dot(P1_0).dot(self.lss.GK.T) + self.M
-    K = P1_0.dot(self.lss.GK.T).dot(np.linalg.inv(Theta))
+    Theta = self.lss.GK.dot(P1_0).dot(self.lss.GK.T.conj()) + self.M
+    K = P1_0.dot(self.lss.GK.T.conj()).dot(np.linalg.inv(Theta))
 
     # Weight
     if self.timeDomain:

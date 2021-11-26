@@ -18,16 +18,20 @@ np.set_printoptions(precision=4, suppress=True)
 
 FREQ_DOMAIN=True
 end_repeat = 0   # repeat the last position value this many time
-SAVING = True
+SAVING = False
 UB = 0.87
 
 # Learnable Joints
 learnable_joints = [0,1,2,3,4,5,6]
 
+
+
+
 # ILC Params
-n_ms  = [3e-5]*7
-n_ds  = [6e-3]*7
-ep_s  = [1e-4]*7
+n_ms  = [3e-5]*7    # covariance of noise on the measurment
+n_ds  = [6e-3]*7    # initial disturbance covariance
+ep_s  = [1e-4]*7    # covariance of noise on the disturbance
+n_ds  = [6e-2]*7
 alpha = [16.0]*7
 syss  = [ApolloDynSys2(dt, x0=np.zeros((2,1)), alpha_=a, freq_domain=FREQ_DOMAIN) for a in alpha]
 
@@ -80,9 +84,9 @@ def kf_params(n_m=0.02, epsilon=1e-5, n_d=0.06):
   kf_dpn_params = {
     'M': n_m*np.ones(Nf, dtype='float'),       # covariance of noise on the measurment
     'P0': n_d*np.ones(Nf, dtype='float'),      # initial disturbance covariance
-    'd0': np.zeros((Nf, 1), dtype='float'),   # initial disturbance value
-    'epsilon0': epsilon,                                  # initial variance of noise on the disturbance
-    'epsilon_decrease_rate': 0.9                          # the decreasing factor of noise on the disturbance
+    'd0': np.zeros((Nf, 1), dtype='float'),    # initial disturbance value
+    'epsilon0': epsilon,                       # covariance of noise on the disturbance
+    'epsilon_decrease_rate': 0.9               # the decreasing factor of noise on the disturbance
   }
   return kf_dpn_params
 # ILC Works on differences(ie delta)
@@ -134,8 +138,8 @@ for j in range(ILC_it):
   # u_ff = np.clip(u_ff,-UB,UB)
 
   # Main Simulation
-  q_traj, q_v_traj, q_a_traj, F_N_vec, _, q0 = rArmInterface.apollo_run_one_iteration2(dt=dt, T=mj.T_FULL, u=u_ff, joint_home_config=q_start_i, repetitions=4, it=j)
-  q_traj   = np.average(  q_traj[0:], axis=0, weights=[3,2,1,1])
+  q_traj, q_v_traj, q_a_traj, F_N_vec, _, q0 = rArmInterface.apollo_run_one_iteration2(dt=dt, T=mj.T_FULL, u=u_ff, joint_home_config=q_start_i, repetitions=1, it=j)
+  q_traj   = np.average(  q_traj[0:], axis=0)
   q_v_traj = np.average(q_v_traj[0:], axis=0)
   q_a_traj = np.average(q_a_traj[0:], axis=0)
   F_N_vec  = np.average( F_N_vec[0:], axis=0)
@@ -145,7 +149,7 @@ for j in range(ILC_it):
 
   # Update feed-forward signal
   for i in learnable_joints:
-    u_ff[:,i] = my_ilcs[i].updateStep2(y_meas=delta_y_meas[:,i],  # y_des=delta_q_traj_des_i[:, i], 
+    u_ff[:,i] = my_ilcs[i].updateStep(y_meas=delta_y_meas[:,i],  # y_des=delta_q_traj_des_i[:, i], 
                                       #  lb=-UB,ub=UB
                                       verbose=False)
 
