@@ -118,7 +118,7 @@ class JugglingPlanner():
 
         h----> tf3 --r_dwell --> tB, t_handperiode
     """
-    assert 0 < nh <= 2, 'For the moment we accept only 2 hands or less.'
+    # assert 0 < nh <= 2, 'For the moment we accept only 2 hands or less.'
 
     self.hands = None  # this variable keeps the juggling trajectories for each hand
     self.nh = nh
@@ -209,13 +209,16 @@ class JugglingPlanner():
     N = ct_period_per_hand.shape[0]
     N_plot = N * repetition
     N_beats = N*self.nh
+    heights = np.arange(self.nh) * 5 + 5
 
-    def getConnection(ct, actual_beat_, y0_, y1_):
-      n_t = ct[1]
-      n_c = ct[0]
+    def getConnection(ct, actual_beat_, h):
+      n_t = ct[1]  # length of throw in nr of beats
+      n_c = ct[0]  # length of throw we are catching in nr of beats
 
-      same_hand_t = (n_t % self.nh) == 0
-      same_hand_c = (n_c % self.nh) == 0
+      # the rule is to always throw to higher hands(modulo)
+      # and to be thrown to from lower hands(modulo)
+      throw_to = (h+n_t) % self.nh
+      catch_from = (h-n_c) % self.nh
 
 
       def func(actual_beat, catch_beat, same_hand, y0, y1, throw):
@@ -235,83 +238,40 @@ class JugglingPlanner():
           y = a*x + b # straight line starting at actual_beat and ending at actual_beat+nt with y=1
         return x, y
 
-      x_throw, y_throw = func(actual_beat_, actual_beat_+n_t, same_hand_t, y0_, y1_, True)
-      x_catch, y_catch = func(actual_beat_-n_c, actual_beat_, same_hand_c, y0_, y1_, False)
+      x_throw, y_throw = func(actual_beat_, actual_beat_+n_t, throw_to==h, heights[h], heights[throw_to], True)
+      x_catch, y_catch = func(actual_beat_-n_c, actual_beat_, catch_from==h, heights[h], heights[catch_from], False)
       return x_throw, y_throw, x_catch, y_catch
 
 
     fig, ax = plt.subplots(1, 1)
-    # start with Right hand
-    r_height = 5
-    r_x = self.nh * np.arange(0, N_plot+1)
-    r_y = r_height * np.ones_like(r_x)
-    r_ct =[str(tuple(ct_period_per_hand[n%N,0])) for n in range(N_plot+1)]
-    ax.axhline(y=r_height, color='k', linestyle='-')
-    ax.scatter(r_x, r_y)
-    for i, txt in enumerate(r_ct):
-      ax.annotate(txt, (r_x[i], r_y[i]), (r_x[i]-0.2, r_y[i]-0.5))
-
-    for n in range(N+1):
-      ct = ct_period_per_hand[n%N,0]
-      actual_beat = n*2
-      x1,y1, x2, y2 = getConnection(ct, actual_beat,5, 10)
-      plt.plot(x1, y1, x2, y2, color='k')
-
-
-    # Left hand
-    if self.nh > 1:
-      l_height = 10
-      l_x = self.nh * np.arange(1, N_plot+1) - 1
-      l_y = l_height * np.ones_like(l_x)
-      l_ct =[str(tuple(ct_period_per_hand[n%N,1])) for n in range(N_plot)]
-      ax.axhline(y=l_height, color='k', linestyle='-')
-      ax.scatter(l_x, l_y)
-      for i, txt in enumerate(l_ct):
-        ax.annotate(txt, (l_x[i], l_y[i]), (l_x[i]-0.2, l_y[i]+0.2))
-
+    for h in range(self.nh):
+      # Plot hand horizontal lines
+      ax.axhline(y=heights[h])
+      # Plot catch-throw points
+      x = self.nh * np.arange(0, N_plot+self.nh*2) + h
+      y = heights[h] * np.ones_like(x)
+      ax.scatter(x, y)
+      # Plot catch-throw labels
+      ct =[str(tuple(ct_period_per_hand[n%N,h])) for n in range(N_plot+2)]
+      for i, txt in enumerate(ct):
+        ax.annotate(txt, (x[i], y[i]), (x[i]-0.2, y[i]-0.5))
+      # Plot catche-throw trajectories
       for n in range(N+1):
-          ct = ct_period_per_hand[n%N,1]
-          actual_beat = n*2 +1
-          x1,y1, x2, y2 = getConnection(ct, actual_beat, 10, 5)
-          plt.plot(x1, y1, x2, y2, color='k')
-
+        ct = ct_period_per_hand[n%N,h]
+        actual_beat = n*self.nh+ h
+        x1,y1, x2, y2 = getConnection(ct, actual_beat, h)
+        plt.plot(x1, y1, x2, y2, color='k')
 
     ax.grid(axis='x')
     ax.set_xticks(np.arange(0, N_beats+1, 1))
-    # ax.set_xticklabels(["{:d}".format(int(v)) for v in x_axis])
-    ax.set_xlim((-0.2, N_beats+0.2))   # set the xlim to left, right
-    ax.set_ylim((3, 12))   # set the xlim to left, right
+    ax.set_yticks(heights)
+    ax.set_yticklabels([r"H$_{}$".format(n) for n in range(self.nh)])
+    ax.set_xlim((-0.2, N_beats+0.2))
+    ax.set_ylim((2.8, heights[-1]+2.2))
     plt.show()
 
 if __name__ == "__main__":
-  jp = JugglingPlanner(nh=2)
-  jp.plan((3,3,3))
+  jp = JugglingPlanner(nh=1)
+  jp.plan((3,3,3,3))
   jp.plan((4,4,4,4))
   jp.plan((3, 3, 4, 2, 3, 3, 4, 2))
-
-  # import numpy as np
-  # import matplotlib.pyplot as plt
-
-  # # the data:
-  # x_axis = np.array(
-  #     [ 30.,  40.,  50.,  60.,  50.,  40.,  30.,  20.,  10.,   0.,  10.,
-  #       20.,  30.,  50.,  60.,  50.,  40.,  30.,  20.,  10.,   0.,  20.,
-  #       30.,  40.,  50.,  60.,  50.,  40.,  30.])
-  # y_axis = np.array(
-  #     [ 0.65029748,  0.65766552,  0.66916997,  0.69591696,  0.68025489,
-  #     0.66391214,  0.65369247,  0.64442389,  0.63778457,  0.62621366,
-  #     0.63776906,  0.64300699,  0.64674221,  0.66853973,  0.69495993,
-  #     0.67951167,  0.6633013 ,  0.65302631,  0.64497037,  0.63772925,
-  #     0.62649416,  0.64300646,  0.64669281,  0.65656247,  0.66868399,
-  #     0.69528981,  0.68042033,  0.66314567,  0.65407716])
-
-  # x=range(len(x_axis))
-
-  # fig, ax = plt.subplots(1, 1)
-  # ax.set_xticks(x) # set tick positions
-  # # Labels are formated as integers:
-  # ax.set_xticklabels(["{:d}".format(int(v)) for v in x_axis])
-  # ax.plot(x, y_axis)
-
-  # fig.canvas.draw() # actually draw figure
-  # plt.show() # enter GUI loop (for non-interactive interpreters)
