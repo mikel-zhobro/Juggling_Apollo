@@ -86,7 +86,7 @@ class ApolloArmKinematics():
         Returns:
             [np.array((N, 7))]: Joint trajectories
         """
-        assert np.all(position_traj[0] == 0.0) and thetas_traj[0]==0.0, " make sure both position_traj&thetas_traj start with 0s."
+        assert np.all(position_traj[0] == 0.0) and thetas_traj[0]==0.0, "Make sure both position_traj&thetas_traj start with 0s."
         mu = 0.02
         # Find the solution branch we shall follow in this sequence and starting psi
         R_start = T_start[:3, :3]
@@ -125,7 +125,7 @@ class ApolloArmKinematics():
 
         if verbose:
             self.plot(joint_trajs, psis, psi_mins, psi_maxs)
-                
+
         return joint_trajs, q_joint_state_start, (psis, psi_mins, psi_maxs)
 
     @property
