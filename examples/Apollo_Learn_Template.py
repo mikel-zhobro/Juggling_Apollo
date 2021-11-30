@@ -1,4 +1,3 @@
-from operator import index
 import numpy as np
 import time
 
@@ -16,7 +15,7 @@ from utils import plot_A, save, colors, line_types, print_info, plot_info
 
 np.set_printoptions(precision=4, suppress=True)
 
-FREQ_DOMAIN=True
+FREQ_DOMAIN=False
 end_repeat = 0   # repeat the last position value this many time
 SAVING = False
 UB = 0.87
@@ -117,8 +116,6 @@ disturbanc_vec = np.zeros([ILC_it, Nf, N_joints], dtype='float')
 error_norms    = np.zeros([ILC_it, N_joints, 1], dtype='float')
 joints_d_vec   = np.zeros([ILC_it, N_1, N_joints, 1], dtype='float')
 d_xyz_vec      = np.zeros([ILC_it, N_1, 3], dtype='float')
-
-
 
 
 

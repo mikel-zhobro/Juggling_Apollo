@@ -1,4 +1,3 @@
-from operator import index
 import numpy as np
 import time
 
