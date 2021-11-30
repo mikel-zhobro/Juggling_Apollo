@@ -4,6 +4,7 @@ sys.path.append(PROJECT_ROOT)
 
 from apollo_interface.Apollo_It import JOINTS_LIMITS, R_joints, L_joints
 import numpy as np
+from scipy.linalg import logm
 import math
 try:
     import pinocchio as pin
@@ -11,6 +12,46 @@ except:
     pass
 
 VERBOSE = False
+
+def SO3_2_so3(R):
+    theta = math.acos(clip_c((np.trace(R)-1.0)/2.0))
+    if np.abs(theta) < 1e-6: return np.array([0.0, 0.0, 0.0], dtype='float').reshape(3,1), theta
+
+    w = 0.5 * np.array([R[2,1] - R[1,2],
+                        R[0,2] - R[2,0],
+                        R[1,0] - R[0,1]], dtype='float').reshape(3,1)
+    return w, theta
+
+def orientation_error2(R_i, R_goal):
+    R_e = R_i.T.dot(R_goal)  # error rotation
+    n_e, theta_e = SO3_2_so3(R_e)
+    return n_e
+
+def orientation_error(R_i, R_goal):
+    R_e = R_i.T.dot(R_goal)  # error rotation
+    w_e = logm(R_e)
+    wx = w_e[-1, 1]
+    wy = w_e[0, -1]
+    wz = w_e[1, 0]
+    n_e = np.array([wx, wy, wz]).reshape(3,1)
+    return n_e
+
+def errorForJacobianInverse(T_i, T_goal):
+    p_j = T_i[:3, 3:]
+    R_j = T_i[:3, :3]
+
+    p_goal = T_goal[:3, 3:]
+    R_goal = T_goal[:3, :3]
+
+    # delta_x, delta_y, delta_z between start and desired position of the end effector
+    delta_p = p_goal - p_j
+    # delta_nx, delta_ny, delta_nz between start and desired orientation of the  end effector
+    # delta_n1 = orientation_error(R_j, R_goal) # weird, returns complex delta for certain scenarious
+    # print(delta_n1)
+    delta_n = orientation_error2(R_j, R_goal)
+    # print(delta_n)
+
+    return np.vstack([delta_p, delta_n])
 
 def reduce_model(FILENAME, jointsToUse):
     model = pin.buildModelFromUrdf(FILENAME)
@@ -91,3 +132,16 @@ def invT(T):
     T[:3,:3] = T[:3,:3].T
     T[:3,3:4] = -T[:3,:3].dot(T[:3,3:4])
     return T
+
+
+
+# T_i = np.array([[0.0, -1.0, 0.0,  0.32],  # uppword orientation(cup is up)
+#                 [0.0,  0.0, 1.0,  0.81],
+#                 [-1.0, 0.0, 0.0, -0.49],
+#                 [0.0,  0.0, 0.0,  0.0 ]], dtype='float')
+
+# T_goal = np.array([[1.0, 0.0, 0.0, 0.32],  # uppword orientation(cup is up)
+#                    [0.0, -1.0, 0.0, 0.81],
+#                    [0.0, 0.0, 1.0, 0.49],
+#                    [0.0, 0.0, 0.0, 0.0 ]], dtype='float')
+# errorForJacobianInverse(T_i, T_goal)
