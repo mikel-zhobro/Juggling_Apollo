@@ -91,18 +91,105 @@ class Interval():
       self.va = 0.0
       self.vb = 0.0
 
+def plotConnection(ax, actual_beat, catch_beat, y0, y1, same_hand):
+  y0, y1 = float(y0), float(y1)
+  actual_beat, catch_beat = float(actual_beat), float(catch_beat)
+  x = np.linspace(actual_beat, catch_beat)  # make sure it is cuted properly
+  if same_hand:  # parable that starts at 0 and ets at 0 with height 1.0
+    middle_beat = (actual_beat + catch_beat)/2
+    n_t_2 = (catch_beat - actual_beat)/2
+    y = 0.4*(1.0 - ((x-middle_beat)/n_t_2)**2)
+    y = y0 - math.copysign(1, y1-y0)*y
+  else:
+    a = (y1-y0)/(catch_beat - actual_beat)
+    b = y0 - a*actual_beat
+    y = a*x + b # straight line starting at actual_beat and ending at actual_beat+nt with y=1
+  ax.plot(x, y, color='k')
+
+class CatchThrow():
+  def __init__(self, T, h, beat_nr, n_c, n_t, h_c, h_t):
+    self.T = T
+    self.h = h
+    self.beat_nr = beat_nr
+    self.n_c = n_c
+    self.n_t = n_t
+    self.h_c = h_c
+    self.h_t = h_t
 
 
-class JugglingPeriod():
-  def __init__(self, ):
-    pass
+  def plotTimeDiagram(self, ax, period=0):
+    actual_beat = self.beat_nr + period*self.T
+    x , y = actual_beat, self.h
+    # Plot point and annonate
+    ax.scatter(x, y)
+    ax.annotate(str((self.n_c, self.n_t)), (x, y), (x-0.2, y-0.5))
+    # Plot catch and throw at this catch-throw point
+    plotConnection(ax, actual_beat-self.n_c, actual_beat, self.h_c, self.h, self.h_c==self.h)
+    plotConnection(ax, actual_beat, actual_beat+self.n_t, self.h, self.h_t, self.h==self.h_t)
 
-class Jugglinghand():
-  def __init__(self, N):
-    pass
+
+class JugglingHand():
+  def __init__(self, h, ct_period, hand_positions, Th):
+    """Represent one juggling hand. Holds trajectory information about how tha hand should move.
+
+    Args:
+        ct_period ([np.array(T, 6)]): where T is nr of beats in one period and 6 are the ct elements that describe a catch-throw
+                                        (h, beat_nr, n_c, n_t, h_c, h_t)
+        hand_positions  ([np.array(nh, 3)]): the x,y,z positions for each hand
+    """
+    self.h = h
+    self.Th = Th  # == nr of hands, == nr of beats from catch to catch
+    self.T = len(ct_period)
+
+    self.ct_period = ct_period
+    self.hand_positions = hand_positions
+
+  def plot(self, ax):
+    # Plot hand horizontal lines
+    ax.axhline(y=self.h)
+    # Plot catche-throw point&trajectories
+    self.ct_period[0].plotTimeDiagram(ax, 1) # 1 more than the period(first ct is included twice) for visual effects
+    for ct in self.ct_period:
+      ct.plotTimeDiagram(ax)
+
+
+class JugglingPlan():
+  def __init__(self, hands, hand_positions, tB, r_dwell):
+    self.Nh = len(hands)
+    self.T = hands[0].T
+    self.hands = hands
+    self.handPositions = hand_positions
+
+    # Calculate hand-time (the time between two catches of the same hand)
+    self.tH = self.Nh * tB
+    # Compute dwell-time: time in one hand-time where the ball is on the hand.
+    self.tDwell = r_dwell * self.tH
+
+  def plotHandTrajectories(self):
+    # Plot hands
+    fig, ax = plt.subplots(1, 1)
+    ax.scatter(self.handPositions[:,0], self.handPositions[:,1])
+    # [h.plot(ax) for h in self.hands]
+    plt.show()
+
+  def plotTimeDiagram(self):
+    fig, ax = plt.subplots(1, 1)
+    N_beats = self.T * self.Nh
+    heights = np.arange(self.Nh)
+
+    [h.plot(ax) for h in self.hands]
+
+    ax.grid(axis='x')
+    ax.set_xticks(np.arange(0, N_beats+1, 1))
+    ax.set_yticks(heights)
+    ax.set_yticklabels([r"H$_{}$".format(n) for n in range(self.Nh)])
+    ax.set_xlim((-0.2, N_beats+0.2))
+    ax.set_ylim((heights[0]-0.5, heights[-1]+0.5))
+    plt.show()
+
 
 class JugglingPlanner():
-  def __init__(self, nh=2, h=0.3, w=0.4, r_dwell=0.5):
+  def __init__(self, h=0.3, w=0.4, r_dwell=0.5):
     """[summary]
 
     Args:
@@ -117,23 +204,27 @@ class JugglingPlanner():
         tH = 2*tB
 
         h----> tf3 --r_dwell --> tB, t_handperiode
+
+        The goal of this class is to only make sure that the siteswap pattern is correct, parse it into per-hand information
+        and initialize the jugglingPlan with it.
+
+        The jugglingPlan can be then further used to compute the hand trajectories for realizing the desired pattern.
     """
     # assert 0 < nh <= 2, 'For the moment we accept only 2 hands or less.'
 
     self.hands = None  # this variable keeps the juggling trajectories for each hand
-    self.nh = nh
     self.h = h
     self.w = w
-    self.r_dwell = r_dwell
 
-    tf3 = math.sqrt(2.0*h/g)  # time of flight for a 3-throw
-
+    # We calculate the beat time from the fly time of a 3 ball using 2 hands and r_dwell.
+    # It is just a definition, in general the nr of hands can be different.
     # tf3 = (3*tB - 2*r_dwell*tH) = (3*tB - 4*r_dwell*tB) = tB(3 - 4*r_dwell)
     # where 2*r_dwell*tH is the dwell time for the two hands for one ball throw
+    self.r_dwell = r_dwell
+    tf3 = math.sqrt(2.0*h/g)  # time of flight for a 3-throw
     self.tB = tf3 / (3.0 - 4*self.r_dwell)
-    self.tH = 2.0 * self.tB
 
-  def plan(self, pattern=(3,)):
+  def plan(self, nh, pattern=(3,), rep=1):
     """Plan the juggling trajectories for the hand
 
     Args:
@@ -145,12 +236,21 @@ class JugglingPlanner():
     assert self.isJugglable(pattern), 'The given pattern {} is not jugglable'.format(pattern)
 
     # Get catch-throw time diagram
-    ct_time_diagram = self.getCatchThrowTimeDiagram(pattern)
+    ct_time_diagram = self.getCatchThrowTimeDiagram(nh, pattern) * rep
 
-    # Create time diagram (M x nr hands x(c_i, t_i))
-    # column i gives the c-t period for hand i
-    ct_period_per_hand = self.getCatchThrowTimeHandDiagram(ct_time_diagram)
-    self.plot(ct_period_per_hand)
+    # Create time diagram (T x nr hands x 6) where T is the periode and each element(6,) gives: (h, beat_nr, n_c, n_t, h_c, h_t))
+    ct_period_per_hand = self.getCatchThrowTimeHandDiagram(nh, ct_time_diagram)
+
+    # Caresian positions of the hands. Are assumed to lie on the edges of a nh-polygon with side-length = w
+    hand_positions = self.getHandPositions(nh)
+
+    # List of JugglingHand objects, one for each hand.
+    hands = self.initHands(nh, ct_period_per_hand, hand_positions)
+
+    # The juggling plan which is intended for further usage(check its API)
+    juggPlan = JugglingPlan(hands, hand_positions, self.tB, self.r_dwell)
+
+    return juggPlan
 
   def isJugglable(self, pattern):
     jugglable = True
@@ -169,109 +269,70 @@ class JugglingPlanner():
       tmp[imodn] = True
     return jugglable
 
-  def getCatchThrowTimeDiagram(self, pattern):
+  def getCatchThrowTimeDiagram(self, nh, pattern):
     # t1  t2  t3  t4
     #+ 0   1   2   3  modn
     # c1  c2  c3  c4
-
+    # for each step 1..N: save (n_c, n_t):
+    # (length of throw we are catching in nr of beats, length of throw in nr of beats)
     N = len(pattern)
     ct_time_diag = [None]*N
-    for i,t in enumerate(pattern):
-      catch_index = (t+i)%N  # at what index t is catched
-      ct_time_diag[catch_index] = (t, pattern[catch_index])   # pattern[catch_index]: what is thrown at the index t is catched
+    for i, n_t in enumerate(pattern):
+      # at what index throw t is catched
+      catch_index = (n_t+i)%N
+      # pattern[catch_index]: what is thrown at the timebeat where t is catched
+      ct_time_diag[catch_index] = (n_t, pattern[catch_index])
     return ct_time_diag
 
-  def getCatchThrowTimeHandDiagram(self, ct_time_diag):
+  def getCatchThrowTimeHandDiagram(self, nh, ct_time_diag):
     """Computs the smallest required period of catch-throws for the nr of hands.
 
     Args:
         ct_time_diag ([type]): catch-throw time(only) diagram, where the nr of hands are not considered.
 
     Returns:
-        [np.array((M_h, self.nh))]: catch-throw time-hand diagram, considering the nr of hands
+        [np.array((M_h, nh, 3))]: holds (hand_nr, beat_nr, n_c, n_t, h_c, h_t)
     """
-    N = len(ct_time_diag)
+    N = len(ct_time_diag) # Period
     # Calculate nr of beats required for each hand to perform perform all c-t it will ever face at least once(least common multiple)
-    M = lcm(N, self.nh)
-    # nr of c-t a hand performs in one period
-    M_h = M//self.nh
-    # fill a M_h x nh matrix with (c,t) pairs
-    ct_period_per_hand = np.zeros((M_h, self.nh, 2), dtype=np.int)
+    M = lcm(N, nh)
+    # Nr of c-t a hand performs in one period
+    M_h = M//nh
+    # Fill a M_h x nh matrix with (c,t) pairs
+    ct_period_per_hand = np.zeros((M_h, nh, 6), dtype=np.int)
     for i in range(M_h):
-      for j in range(self.nh):
-        k = (j + i*self.nh) % N  # index for ct_time_diag
-        ct_period_per_hand[i,j] = ct_time_diag[k]
-
+      for j in range(nh):
+        time_beat = j + i*nh
+        k = time_beat % N  # index for ct_time_diag
+        # the rule is to always throw to higher hands(modulo)
+        # and to be thrown to from lower hands(modulo)
+        catch_from = (j-ct_time_diag[k][0]) % nh
+        throw_to = (j+ct_time_diag[k][1]) % nh
+        ct_period_per_hand[i,j] = (j, time_beat,) + ct_time_diag[k] + (catch_from, throw_to)
     return ct_period_per_hand
 
+  def initHands(self, nh, ct_period_per_hand, hand_positions):
+    hands = [None] * nh
+    T = ct_period_per_hand.shape[0]
+    for h in range(nh):
+      hands[h] = JugglingHand(h, [CatchThrow(T*nh, *ct) for ct in ct_period_per_hand[:, h]], hand_positions=hand_positions, Th=nh)
+    return hands
 
-  def plot(self, ct_period_per_hand, repetition=1):
-    N = ct_period_per_hand.shape[0]
-    N_plot = N * repetition
-    N_beats = N*self.nh
-    heights = np.arange(self.nh) * 5 + 5
+  def getHandPositions(self, nh):
+    hand_positions = np.zeros((nh, 3))
+    angle_step = np.pi*(float(nh) - 2.0)/float(nh) - np.pi
+    angles  = np.arange(nh)*angle_step + np.pi
+    x,y,z = 0.0, 0.0, 0.0
+    for h in range(nh):
+      hand_positions[h] = (x,y,z)
+      # update x,y for next hand, assume hands are on the same height
+      x = x + self.w * math.cos(angles[h])
+      y = y + self.w * math.sin(angles[h])
+    return hand_positions
 
-    def getConnection(ct, actual_beat_, h):
-      n_t = ct[1]  # length of throw in nr of beats
-      n_c = ct[0]  # length of throw we are catching in nr of beats
-
-      # the rule is to always throw to higher hands(modulo)
-      # and to be thrown to from lower hands(modulo)
-      throw_to = (h+n_t) % self.nh
-      catch_from = (h-n_c) % self.nh
-
-
-      def func(actual_beat, catch_beat, same_hand, y0, y1, throw):
-        actual_beat, catch_beat, same_hand = float(actual_beat), float(catch_beat), float(same_hand)
-        start_beat = max(min(actual_beat, N_beats), 0)
-        end_beat = max(min(catch_beat, N_beats), 0)
-        x = np.linspace(actual_beat, catch_beat)  # make sure it is cuted properly
-        if same_hand:  # parable that starts at 0 and ets at 0 with height 1.0
-          middle_beat = (actual_beat + catch_beat)/2
-          n_t_2 = (catch_beat - actual_beat)/2
-          y = (1.0 - ((x-middle_beat)/n_t_2)**2)
-          y = y0 - math.copysign(1, y1-y0)*y
-        else:
-          y0, y1 = (y1, y0) if not throw else (y0, y1)
-          a = (y1-y0)/(catch_beat - actual_beat)
-          b = y0 - a*actual_beat
-          y = a*x + b # straight line starting at actual_beat and ending at actual_beat+nt with y=1
-        return x, y
-
-      x_throw, y_throw = func(actual_beat_, actual_beat_+n_t, throw_to==h, heights[h], heights[throw_to], True)
-      x_catch, y_catch = func(actual_beat_-n_c, actual_beat_, catch_from==h, heights[h], heights[catch_from], False)
-      return x_throw, y_throw, x_catch, y_catch
-
-
-    fig, ax = plt.subplots(1, 1)
-    for h in range(self.nh):
-      # Plot hand horizontal lines
-      ax.axhline(y=heights[h])
-      # Plot catch-throw points
-      x = self.nh * np.arange(0, N_plot+self.nh*2) + h
-      y = heights[h] * np.ones_like(x)
-      ax.scatter(x, y)
-      # Plot catch-throw labels
-      ct =[str(tuple(ct_period_per_hand[n%N,h])) for n in range(N_plot+2)]
-      for i, txt in enumerate(ct):
-        ax.annotate(txt, (x[i], y[i]), (x[i]-0.2, y[i]-0.5))
-      # Plot catche-throw trajectories
-      for n in range(N+1):
-        ct = ct_period_per_hand[n%N,h]
-        actual_beat = n*self.nh+ h
-        x1,y1, x2, y2 = getConnection(ct, actual_beat, h)
-        plt.plot(x1, y1, x2, y2, color='k')
-
-    ax.grid(axis='x')
-    ax.set_xticks(np.arange(0, N_beats+1, 1))
-    ax.set_yticks(heights)
-    ax.set_yticklabels([r"H$_{}$".format(n) for n in range(self.nh)])
-    ax.set_xlim((-0.2, N_beats+0.2))
-    ax.set_ylim((2.8, heights[-1]+2.2))
-    plt.show()
 
 if __name__ == "__main__":
-  jp = JugglingPlanner(nh=1)
-  jp.plan((3,3,3,3))
-  jp.plan((4,4,4,4))
-  jp.plan((3, 3, 4, 2, 3, 3, 4, 2))
+  jp = JugglingPlanner()
+  # jp.plan(1, pattern=(1,), rep=2).plotTimeDiagram()
+  jp.plan(3, pattern=(4,4,4,4)).plotTimeDiagram()
+  jp.plan(2, pattern=(3, 3, 4, 2, 3, 3, 4, 2)).plotTimeDiagram()
