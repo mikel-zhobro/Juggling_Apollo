@@ -13,17 +13,18 @@ class KalmanFilter:
     self.epsilon_decrease_rate = epsilon_decrease_rate
     
     imag = 1j if freqDomain else 0.0
+    self.Ident = (1+imag)*np.eye(self.N)
     # initial values
+    # di = di_0 + ni with ni~N(0,Omega) <- Omega = epsilon*eye(N)
     self.M = np.diag((1+imag)*M)            # covariance of noise on the measurment
-    self.d0 = d0+0*imag          # initial disturbance value
+    self.d0 = d0+0*imag                     # initial disturbance value
     self.P0 = np.diag((1+imag)*P0)          # initial disturbance covariance
-    self.epsilon0 = epsilon0
+    self.D0 = epsilon0*self.Ident           # covariance of noise on the disturbance 
 
     # current values
     self._d = None
     self._P = None
-    self.epsilon = None  # di= di_0 + ni with ni~N(0,Omega) <- Omega = epsilon*eye(N)
-    self.Ident = (1+imag)*np.eye(self.d0.size)
+    self._D = None
 
   @property
   def d(self):
@@ -44,20 +45,20 @@ class KalmanFilter:
       # self._P = self.P0
       if P is None:
         P = self.P0
-      self._P = self.lss.GK.dot(P).dot(self.lss.GK.T.conj()) if self.timeDomain else P
-      self.epsilon = self.epsilon0
+      self._P = self.lss.GK.dot(P).dot(self.lss.GK.T.conj()) if self.timeDomain else P               # TODO: Is this needed?
+      self._D = self.lss.GK.dot(self.D0).dot(self.lss.GK.T.conj()) if self.timeDomain else self.D0   # TODO: Is this needed?
 
   def updateStep(self, u, y_meas):
     # In this case
     # d0 ~ N(P0)
     # d = d + n_d                        with n_d ~ N(eps*I)
     # y = Fu + Gd0  + ((( GKd ))) + n_y  with n_y ~ N(0, M)
-    P1_0 = self._P + self.Ident * self.epsilon
+    P1_0 = self._P + self._D
     Theta = self.lss.GK.dot(P1_0).dot(self.lss.GK.T.conj()) + self.M
     K = P1_0.dot(self.lss.GK.T.conj()).dot(np.linalg.inv(Theta))
 
     # Weight
-    if self.timeDomain:
+    if False and self.timeDomain:
       N = y_meas.size
       # D = np.diag(np.linspace(0,1.0,N))
       D = np.diag(np.log10(np.linspace(3.0,10.0,N)))
@@ -71,5 +72,5 @@ class KalmanFilter:
     self._d = self._d + K.dot(y_meas - self.lss.Gd0 - self.lss.GK.dot(self._d) - self.lss.GF.dot(u))
 
     # update epsilon
-    self.epsilon *= self.epsilon_decrease_rate
+    self._D *= self.epsilon_decrease_rate
     return self._d
