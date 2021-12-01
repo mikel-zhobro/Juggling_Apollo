@@ -59,8 +59,8 @@ ND = 100
 N_1, delta_xyz_traj_des, thetas, mj = configs.get_minjerk_config(dt, end_repeat)
 xyz_traj_des = delta_xyz_traj_des + T_home[:3, -1]
 
-q_traj_des, q_start, psi_params = rArmKinematics.seqIK(delta_xyz_traj_des, thetas, T_home)  # [N_1, 7]
-q_traj_des_nn, q_start_nn, _    = rArmKinematics_nn.seqIK(delta_xyz_traj_des, thetas, T_home)  # [N_1, 7]
+cartesian_traj_des, q_traj_des, q_start, psi_params = rArmKinematics.seqIK(delta_xyz_traj_des, thetas, T_home)  # [N_1, 7]
+cartesian_traj_des, q_traj_des_nn, q_start_nn, _    = rArmKinematics_nn.seqIK(delta_xyz_traj_des, thetas, T_home)  # [N_1, 7]
 
 # Set to 0 the non learning joints
 for i in set(range(7)) - set(learnable_joints):

@@ -100,8 +100,8 @@ if False:
 ####################################################################################################################################
 ####################################################################################################################################
 
-q_traj_des, q_start, psi_params   = rArmKinematics.seqIK(xyz_traj_des, thetas, T_home)  # [N_1, 7]
-q_traj_des_nn, q_start_nn, _      = rArmKinematics_nn.seqIK(xyz_traj_des, thetas, T_home)  # [N_1, 7]
+cartesian_traj_des, q_traj_des, q_start, psi_params   = rArmKinematics.seqIK(xyz_traj_des, thetas, T_home)  # [N_1, 7]
+cartesian_traj_des, q_traj_des_nn, q_start_nn, _      = rArmKinematics_nn.seqIK(xyz_traj_des, thetas, T_home)  # [N_1, 7]
 assert np.allclose(q_start , q_traj_des[0])
 assert np.allclose(q_start_nn , q_traj_des_nn[0])
 
