@@ -11,13 +11,15 @@ from juggling_apollo.MinJerk import plotMJ, get_minjerk_trajectory
 from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal, ApolloDynSys2
 from apollo_interface.Apollo_It import ApolloInterface, plot_simulation
 from kinematics.ApolloKinematics import ApolloArmKinematics
+from kinematics import utilities
+
 from utils import plot_A, save, colors, line_types, print_info, plot_info
 
 np.set_printoptions(precision=4, suppress=True)
 
 FREQ_DOMAIN=False
 end_repeat = 0   # repeat the last position value this many time
-SAVING = False
+SAVING = True
 UB = 0.87
 
 # Learnable Joints
@@ -38,8 +40,8 @@ syss  = [ApolloDynSys2(dt, x0=np.zeros((2,1)), alpha_=a, freq_domain=FREQ_DOMAIN
 # rArmKinematics_nn:  kinematics without noise  (used to calculate measurments, plays the wrole of a localization system)
 # rArmKinematics:     kinematics with noise (used for its (wrong)IK calculations)
 damp            = 1e-12
-mu              = 5e-2
-CARTESIAN_ERROR = False
+mu              = 0.2
+CARTESIAN_ERROR = True
 
 print("juggling_apollo")
 T_home = np.array([[0.0, -1.0, 0.0,  0.32],  # uppword orientation(cup is up)
@@ -54,7 +56,7 @@ N_joints = 7
 rArmInterface = ApolloInterface(r_arm=True)
 
 # B) KINEMATICS: create rArmInterface and go to home position
-rArmKinematics    = ApolloArmKinematics(r_arm=True, noise=0.0)  ## noise noisifies the forward dynamics only
+rArmKinematics    = ApolloArmKinematics(r_arm=True, noise=0.1)  ## noise noisifies the forward dynamics only
 rArmKinematics_nn = ApolloArmKinematics(r_arm=True)  ## noise noisifies the forward dynamics only
 
 
@@ -63,8 +65,8 @@ N, delta_xyz_traj_des, thetas, mj = configs.get_minjerk_config(dt, end_repeat)
 xyz_traj_des = delta_xyz_traj_des + T_home[:3, -1]
 N_1 = N-1
 
-q_traj_des, q_start, psi_params = rArmKinematics.seqIK(delta_xyz_traj_des, thetas, T_home)  # [N, 7]
-# q_traj_des_nn, q_start_nn, _    = rArmKinematics_nn.seqIK(delta_xyz_traj_des, thetas, T_home)  # [N, 7]
+cartesian_traj_des, q_traj_des, q_start, psi_params = rArmKinematics.seqIK(delta_xyz_traj_des, thetas, T_home)  # [N, 7]
+# cartesian_traj_des, q_traj_des_nn, q_start_nn, _    = rArmKinematics_nn.seqIK(delta_xyz_traj_des, thetas, T_home)  # [N, 7]
 
 # Set to 0 the non learning joints
 for i in set(range(7)) - set(learnable_joints):
@@ -88,6 +90,8 @@ def kf_params(n_m=0.02, epsilon=1e-5, n_d=0.06):
     'epsilon_decrease_rate': 0.9               # the decreasing factor of noise on the disturbance
   }
   return kf_dpn_params
+
+
 # ILC Works on differences(ie delta)
 # Changing (possibly wrong/noisy) desired trajectory to make up for kinematics errors
 q_traj_des_i       = q_traj_des.copy()
@@ -122,7 +126,7 @@ d_xyz_vec      = np.zeros([ILC_it, N_1, 3], dtype='float')
 
 
 # D. Main Loop
-every_N = 2
+every_N = 5
 
 
 # Use linear model to compute first input
@@ -146,12 +150,15 @@ for j in range(ILC_it):
 
   # Update feed-forward signal
   for i in learnable_joints:
-    u_ff[:,i] = my_ilcs[i].updateStep(y_meas=delta_y_meas[:,i],  # y_des=delta_q_traj_des_i[:, i], 
+    u_ff[:,i] = my_ilcs[i].updateStep(y_meas=delta_y_meas[:,i],  y_des=delta_q_traj_des_i[:, i], 
                                       #  lb=-UB,ub=UB
                                       verbose=False)
 
   # Collect Data
-  d_xyz = xyz_traj_des[1:] - rArmKinematics_nn.seqFK(q_traj)[:, :3, -1]  # measured cartesian error: calculated using the noise-less FK
+  cartesian_traj_i = rArmKinematics_nn.seqFK(q_traj)
+  delta = np.array([utilities.errorForJacobianInverse(T_i=cartesian_traj_i[i], T_goal=cartesian_traj_des[i+1]) for i in range(N_1)]).reshape(-1, 6)
+  d_xyz = delta[:, :3]  # measured cartesian error: calculated using the noise-less FK
+  # d_xyz = xyz_traj_des[1:] - rArmKinematics_nn.seqFK(q_traj)[:, :3, -1]  # measured cartesian error: calculated using the noise-less FK
   # a. Meas
   joints_q_vec[j]       = q_traj
   joints_vq_vec[j]      = q_v_traj
@@ -170,12 +177,21 @@ for j in range(ILC_it):
   # For the next iteration
   # TODO: add orientation error
   if CARTESIAN_ERROR:
-    for i in range(N):
-      J_invj          = np.linalg.pinv(rArmKinematics.J(q_traj[i+1])[:3,:])
-      q_traj_des_i[i] = q_traj_des_i[i] + mu* J_invj.dot(d_xyz[i].reshape(3, 1))
+    for i in range(0, N):
+      if i ==0:
+        qi = q0
+        # di = (xyz_traj_des[0] - rArmKinematics_nn.FK(q0)[:3, -1]).reshape(3,1)
+        di = utilities.errorForJacobianInverse(T_i=rArmKinematics_nn.FK(q0), T_goal=cartesian_traj_des[0]).reshape(6,1)
+        print("home error", di.T, di.shape)
+      else:
+        qi = q_traj[i-1]
+        di = delta[i-1].reshape(6,1)
+      
+      J_invj          = np.linalg.pinv(rArmKinematics.J(qi)[:,:])
+      q_traj_des_i[i] = q_traj_des_i[i] + mu* J_invj.dot(di[:])
     # Update desired trajectory
     q_start_i = q_traj_des_i[0]
-    delta_q_traj_des_i = q_traj_des_i - q_start_i
+    delta_q_traj_des_i = q_traj_des_i[1:] - q_start_i
 
 
 
@@ -186,7 +202,7 @@ for j in range(ILC_it):
                                        u_ff_vec, q_v_traj[1:],
                                        joint_torque_vec,
                                        disturbanc_vec, d_xyz, error_norms,
-                                       v=True, p=True, dp=True, e_xyz=False, e=False, torque=False)
+                                       v=False, p=True, dp=False, e_xyz=True, e=False, torque=False)
 
   if False and j%every_N==0:  # How desired  trajectory changes
     plot_A([q_traj_des_nn, q_traj_des_vec[j], q_traj_des_vec[j-1], q_traj_des_vec[0]], learnable_joints, ["des", "it="+str(j), "it="+str(j-1), "it=0"], dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
@@ -208,7 +224,7 @@ for j in range(ILC_it):
 
 
 # After Main Loop has finished
-if True:
+if False:
   plot_info(dt, j, learnable_joints,
             joints_q_vec=joints_q_vec, q_traj_des=q_traj_des_i[1:],
             u_ff_vec=u_ff_vec, q_v_traj=q_v_traj,
@@ -217,17 +233,20 @@ if True:
 
 if SAVING:
   # Saving Results
-  filename = "examples/data/AllJoints3/joint_{}_alpha_{}_eps_{}_no_knowledge".format(learnable_joints, alpha, ep_s[0]) + time.strftime("%Y_%m_%d-%H_%M_%S")
+  freq = 'freq_domain' if FREQ_DOMAIN else "time_domain"
+  cartesian_err = 'cart_err_on' if CARTESIAN_ERROR else "cart_err_off"
+  filename = "examples/data/AllJoints3/" + time.strftime("%Y_%m_%d-%H_%M_%S") + "joint_{}_alpha_{}_eps_{}_{}_{}".format(learnable_joints, alpha, ep_s[0], freq, cartesian_err)
   save(filename,
-        q_start=q_start_i, T_home=T_home,                                                 # Home
-        xyz_traj_des=xyz_traj_des, q_traj_des=q_traj_des_i,                               # Desired Trajectories
-        joints_q_vec=joints_q_vec, joints_vq_vec=joints_vq_vec,                           # Joint Informations
-        joints_aq_vec=joints_aq_vec, joint_torque_vec=joint_torque_vec,                   #        =|=
-        disturbanc_vec=disturbanc_vec, u_ff_vec=u_ff_vec,                                 # Learned Trajectories (uff and disturbance)
-        d_xyz_vec=d_xyz_vec, joints_d_vec=joints_d_vec, error_norms=error_norms,          # Progress Measurments
-        mj=mj,                                                                            # Minjerk Params
-        ilc_learned_params = [(ilc.d, ilc.P) for ilc in my_ilcs],
-        learnable_joints=learnable_joints, alpha=alpha, n_ms=n_ms, n_ds=n_ds, ep_s=ep_s)  # ILC parameters
+       dt=dt,
+       q_start=q_start_i, T_home=T_home,                                                 # Home
+       xyz_traj_des=xyz_traj_des, q_traj_des=q_traj_des_i,                               # Desired Trajectories
+       joints_q_vec=joints_q_vec, joints_vq_vec=joints_vq_vec,                           # Joint Informations
+       joints_aq_vec=joints_aq_vec, joint_torque_vec=joint_torque_vec,                   #        =|=
+       disturbanc_vec=disturbanc_vec, u_ff_vec=u_ff_vec,                                 # Learned Trajectories (uff and disturbance)
+       d_xyz_vec=d_xyz_vec, joints_d_vec=joints_d_vec, error_norms=error_norms,          # Progress Measurments
+       mj=mj,                                                                            # Minjerk Params
+       ilc_learned_params = [(ilc.d, ilc.P) for ilc in my_ilcs],
+       learnable_joints=learnable_joints, alpha=alpha, n_ms=n_ms, n_ds=n_ds, ep_s=ep_s)  # ILC parameters
 
   with open('examples/data/AllJoints3/list_files_all.txt', 'a') as f:
       f.write(filename + "\n")
@@ -235,5 +254,5 @@ if SAVING:
 
 
 # Run Simulation with several repetition
-rArmInterface.apollo_run_one_iteration2(dt=dt, T=end_repeat*dt, u=u_ff[:end_repeat], joint_home_config=q_start_i, repetitions=1, it=j)
-rArmInterface.apollo_run_one_iteration2(dt=dt, T=mj.T_FULL-end_repeat*dt, u=u_ff[end_repeat:], repetitions=15, it=j)
+# rArmInterface.apollo_run_one_iteration2(dt=dt, T=end_repeat*dt, u=u_ff[:end_repeat], joint_home_config=q_start_i, repetitions=1, it=j)
+# rArmInterface.apollo_run_one_iteration2(dt=dt, T=mj.T_FULL-end_repeat*dt, u=u_ff[end_repeat:], repetitions=15, it=j)
