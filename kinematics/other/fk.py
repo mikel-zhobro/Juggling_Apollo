@@ -284,7 +284,7 @@ def so3_2_SO3(theta, w):
     return R
 
 def SO3_2_so3(R):
-    theta = acos((np.trace(R)-1.0)/2.0)
+    theta = acos(np.clip((np.trace(R)-1.0)/2.0, -1, 1))
     if np.abs(theta) < 1e-6: return np.array([0.0, 0.0, 0.0], dtype='float').reshape(3,1), theta
 
     w = 0.5 * np.array([R[2,1] - R[1,2],
@@ -296,7 +296,7 @@ def orientation_error2(R_i, R_goal):
     R_e = R_i.T.dot(R_goal)  # error rotation
 
     n_e, theta_e = SO3_2_so3(R_e)
-    return n_e
+    return n_e*theta_e
 
 def orientation_error(R_i, R_goal):
     R_e = R_i.T.dot(R_goal)  # error rotation
@@ -359,7 +359,7 @@ def IK(pos_goal, R_goal, q_joints_state, max_steps=1000, verbose=False):
         # J_invj  = J_j[:3,:].T.dot( np.linalg.inv(J_j[:3,:].dot(J_j[:3,:].T)) )
 
         # Multiply the two matrices together
-        v_Q = np.matmul(J_invj, np.vstack([v_p, v_n]))
+        v_Q = np.matmul(J_invj, np.vstack([0.0*v_p, v_n]))
         # v_Q = np.matmul(J_invj, v_p)
         # v_Q = np.matmul(J_invj, v_n)
 
@@ -369,7 +369,7 @@ def IK(pos_goal, R_goal, q_joints_state, max_steps=1000, verbose=False):
         # the full motion of the end effector is nonlinear, and we're approximating the
         # big nonlinear motion of the end effector as a bunch of tiny linear motions.
         # Q_j = Q_j + np.clip(v_Q, -1*theta_max_step, theta_max_step)  # [:self.N_joints]
-        Q_j = Q_j + v_Q * 0.01  # [:self.N_joints]
+        Q_j = Q_j + v_Q * 0.006  # [:self.N_joints]
 
         # Get the current position of the end-effector in the global frame
         T_j = FK(*Q_j.copy())
@@ -470,4 +470,4 @@ if __name__ == '__main__':
     R_goal = np.array([ [0.0,  0.0,  1.0],
                         [0.0,  1.0,  0.0],
                         [-1.0, 0.0,  0.0]], dtype='float')
-    print(IK(pos_goal, R, home_new, max_steps=10000, verbose=False))
+    print(IK(pos_goal, R, home_new, max_steps=10000, verbose=True))

@@ -25,7 +25,7 @@ def SO3_2_so3(R):
 def orientation_error2(R_i, R_goal):
     R_e = R_i.T.dot(R_goal)  # error rotation
     n_e, theta_e = SO3_2_so3(R_e)
-    return n_e
+    return n_e*theta_e
 
 def orientation_error(R_i, R_goal):
     R_e = R_i.T.dot(R_goal)  # error rotation
