@@ -1,6 +1,8 @@
+from numpy.lib import ufunclike
 from utils import flyTime2HeightAndVelocity, plt
-from MinJerk import get_min_jerk_trajectory, plotMinJerkTraj, get_minjerk_trajectory
-from settings import g
+from MinJerk import get_min_jerk_trajectory, plotMinJerkTraj, get_minjerk_trajectory, get_minjerk_xyz
+from utils import plot_intervals, plt, steps_from_time
+from settings import g, dt
 import math
 import numpy as np
 
@@ -106,27 +108,135 @@ def plotConnection(ax, actual_beat, catch_beat, y0, y1, same_hand):
     y = a*x + b # straight line starting at actual_beat and ending at actual_beat+nt with y=1
   ax.plot(x, y, color='k')
 
+# Functions from @Mateen Ulhaq and @karlo
+def set_axes_equal(ax):
+    """Set 3D plot axes to equal scale.
+
+    Make axes of 3D plot have equal scale so that spheres appear as
+    spheres and cubes as cubes.  Required since `ax.axis('equal')`
+    and `ax.set_aspect('equal')` don't work on 3D.
+    """
+    limits = np.array([
+        ax.get_xlim3d(),
+        ax.get_ylim3d(),
+        ax.get_zlim3d(),
+    ])
+    origin = np.mean(limits, axis=1)
+    radius = 0.5 * np.max(np.abs(limits[:, 1] - limits[:, 0]))
+    _set_axes_radius(ax, origin, radius)
+
+def _set_axes_radius(ax, origin, radius):
+    x, y, z = origin
+    ax.set_xlim3d([x - radius, x + radius])
+    ax.set_ylim3d([y - radius, y + radius])
+    ax.set_zlim3d([z - radius, z + radius])
+
+class MinJerkTraj():
+  def __init__(self, dt, tt, xx, vv):
+    self.dt = dt
+    self.tt = tt
+    self.xx = xx
+    self.vv = vv
+    self.N_Whole = steps_from_time(tt[-1] - tt[0], dt)
+    self.ttt = np.arange(0, self.N_Whole) * self.dt
+    self.ttt = np.linspace(0, self.N_Whole, self.N_Whole) * self.dt
+    xxx, vvv, aaa, jjj = get_minjerk_xyz(dt, tt, xx, vv, i_a_end=0, only_pos=False)
+    self.xxx = np.array(xxx).T
+    self.vvv = np.array(vvv).T
+    self.aaa = np.array(aaa).T
+    self.jjj = np.array(jjj).T
+
+
+  def plot(self, ax):
+    # Plot path
+    a = ax.plot3D(self.xxx[:,0], self.xxx[:,1], self.xxx[:,2])
+
+    # Plot arrows
+    # ts = [self.N_Whole//4, 3*self.N_Whole//4]
+    ts = [0, self.N_Whole//2]
+    ax.quiver(self.xxx[ts,0], self.xxx[ts,1], self.xxx[ts,2],
+              self.vvv[ts,0], self.vvv[ts,1], self.vvv[ts,2],
+              length=0.07, normalize=True, color=a[0].get_color())
+    return a[0].get_color()
+
+
+class BallTraj():
+  def __init__(self, t_t, p_t, v_t):
+    self.t_t, self.p_t, self.v_t = t_t, p_t, v_t
+    self.tt = np.linspace(0, self.t_t, 50)
+    self.xxxBall = np.zeros((50, 3))
+    self.xxxBall[:] = p_t
+    self.xxxBall[:,0] += self.tt * self.v_t[0]
+    self.xxxBall[:,1] += self.tt * self.v_t[1]
+    self.xxxBall[:,2] += self.tt * self.v_t[2] - g*self.tt**2*0.5
+
+  def plot(self, ax, col):
+    # plot path
+    ax.plot3D(self.xxxBall[:,0], self.xxxBall[:,1], self.xxxBall[:,2], color=col, linestyle='--')
+
+    # plot arrows
+    # ts = [0, 25, -1]
+    ts = [25]
+    ax.quiver(self.xxxBall[ts,0], self.xxxBall[ts,1], self.xxxBall[ts,2],
+              self.v_t[0]+self.tt[ts]*0, self.v_t[1]+self.tt[ts]*0,  self.v_t[2] - self.tt[ts]*g,   # direction
+              length=0.08, normalize=True, color=col)
+
 
 class CatchThrow():
-  def __init__(self, T, h, beat_nr, n_c, n_t, h_c, h_t):
+  def __init__(self, h, beat_nr, n_c, n_t):
+    # We throw from self.h.position.
+    # We catch 'swingSize' behind the self.h.position in the direction of the ct that throws to us.
+
     self.h = h                  # hand this ct belongs to
-    self.T = T                  # nr of beats until we repeat this ct again (period in nr of beats)
     self.beat_nr = beat_nr      # beat nr during which this ct is performed
     self.n_c = n_c              # length of throw we are catching in nr of beats
     self.n_t = n_t              # length of throw we are throwing in nr of beats
-    self.h_c = h_c              # hand the ball we catch comes from
-    self.h_t = h_t              # hand the ball we throw goes to
+    self.ct_c = None            # ct where catch comes from
+    self.ct_t = None            # ct where throw goes to
 
-    self.p_c = None             # (x, y, z) catch position
-    self.p_t = None             # (x, y, z) throw position
-    self.v_c = None             # (vx, vy, vz) of the catching ball
-    self.v_t = None             # (vx, vy, vz) at the throw point
+    self.t_t = None             # flight time of the ball we catch
+    self.t_dwell = None         # time we have from the catch to the throw
+    self.t_hand = None          # time we have from the catch to the next catch
+    self.p_t = np.zeros(3)      # (x, y, z) position where we catch
+    self.v_t = np.zeros(3)      # (vx, vy, vz) of the catching ball
+
+
     self.traj = None            # the catch-throw trajectory
+    self.balltraj = None
 
-  def initTrajectory(self, r_dwell, tB):
-    t_c = self.n_c * tB
-    t_t = self.n_t * tB
-    self.p_c = self.h.position + r_dwell*( self.h.position)
+  def addCatchThrowCTs(self, ct_c, ct_t):
+    self.ct_c = ct_c            # ct where catch comes from
+    self.ct_t = ct_t            # ct where throw goes to
+
+  def initThrow(self, t_dwell, tB, swingSize):
+    # we assume catch and throw points lie all at z=0
+    self.t_t = self.n_t * tB - t_dwell  # TODO
+    if self.t_t <= 0.0:
+      self.t_t = 0.5 * self.n_t * tB
+    self.t_dwell = self.n_t * tB - self.t_t  # time we have from the catch to the throw
+    self.t_hand = self.h.Th * tB
+
+    c_delta_x, c_delta_y = self.P[:2] - self.ct_c.P[:2]
+    theta = math.atan2(c_delta_y, c_delta_x)
+    self.p_t[0] = self.P[0] - math.cos(theta)*swingSize
+    self.p_t[1] = self.P[1] - math.sin(theta)*swingSize
+    self.p_t[2] = self.P[2]
+
+    self.v_t[0] = (self.ct_c.P[0] - self.p_t[0]) / self.t_t
+    self.v_t[1] = (self.ct_c.P[1] - self.p_t[1]) / self.t_t
+    self.v_t[2] = 0.5 * g * self.t_t
+
+  def initTraj(self):
+    tt = [0.0, self.t_dwell, self.t_hand]
+    xx = [[self.P[0], self.p_t[0], self.P[0]],
+          [self.P[1], self.p_t[1], self.P[1]],
+          [self.P[2], self.p_t[2], self.P[2]]]
+    vv = [[self.ct_c.v_t[0], self.v_t[0], self.ct_c.v_t[0]],
+          [self.ct_c.v_t[1], self.v_t[1], self.ct_c.v_t[1]],
+          [-self.ct_c.v_t[2], self.v_t[2], -self.ct_c.v_t[2]],
+          ]
+    self.traj = MinJerkTraj(dt, tt, xx ,vv)
+    self.ballTraj = BallTraj(self.t_t, self.p_t, self.v_t)
 
   def plotTimeDiagram(self, ax, period=0):
     actual_beat = self.beat_nr + period*self.T
@@ -138,8 +248,30 @@ class CatchThrow():
     plotConnection(ax, actual_beat-self.n_c, actual_beat, self.h_c.h, self.h.h, self.h_c.h==self.h.h)
     plotConnection(ax, actual_beat, actual_beat+self.n_t, self.h.h, self.h_t.h, self.h.h==self.h_t.h)
 
-  def plotTrajectories(self, ax, period):
-    pass
+  def plotTrajectories(self, ax, period=0):
+    ax.scatter(*self.p_t, color='k')
+    ax.scatter(*self.P, color='k')
+    ax.text(self.p_t[0], self.p_t[1], self.p_t[2], 'throw', size=11, zorder=1,  color='k')
+    ax.text(self.P[0], self.P[1], self.P[2], 'catch', size=11, zorder=1,  color='k')
+    col = self.traj.plot(ax)
+    self.ballTraj.plot(ax, col)
+
+
+  @property
+  def P(self):
+    return self.h.position
+
+  @property
+  def T(self):
+    return self.h.T
+
+  @property
+  def h_c(self):
+    return self.ct_c.h
+
+  @property
+  def h_t(self):
+    return self.ct_t.h
 
 class JugglingHand():
   def __init__(self, h, N, hand_positions):
@@ -159,36 +291,37 @@ class JugglingHand():
     self.ct_period = [None]*N                 # list of the ct this hand performs
     self.hand_positions = hand_positions  # position of all existing hands
 
-  def initTrajectories(self, rDwell, tB):
-    tH = self.Th * tB
-    [ct.initTrajectory(rDwell, tB) for ct in self.ct_period]
+  def initThrows(self, tDwell, tB, swingSize):
+    [ct.initThrow(tDwell, tB, swingSize) for ct in self.ct_period]
+  def initTraj(self):
+    [ct.initTraj() for ct in self.ct_period]
+    pass
 
   def addCT(self, i, ct):
     self.ct_period[i] = ct
-
-  def initCTPeriod(self, ct_period):
-    self.ct_period = ct_period
 
   def plotTimeDiagram(self, ax):
     # Plot hand horizontal lines
     ax.axhline(y=self.h)
     # Plot catche-throw point&trajectories
     self.ct_period[0].plotTimeDiagram(ax, 1) # 1 more than the period(first ct is included twice) for visual effects
-    for ct in self.ct_period:
-      ct.plotTimeDiagram(ax)
+    [ct.plotTimeDiagram(ax) for ct in self.ct_period]
 
   def plotHandTrajectories(self, ax):
     ax.scatter(self.position[0], self.position[1])
+    [ct.plotTrajectories(ax) for ct in self.ct_period]
 
 
 class JugglingPlan():
-  def __init__(self, hands, hand_positions, tB, r_dwell):
+  def __init__(self, hands, hand_positions, tB, r_dwell, swing_size):
     self.Nh = len(hands)                  # nr of hands
     self.T = hands[0].T                   # period length in nr of beats( nr of beats after the first ct from the first hand gets repeated)
     self.hands = hands                    # list of hands in this plan
     self.handPositions = hand_positions   # cartesian positions of each hand in this plan
+    self.swingSize = swing_size           # how much we can swing for the throw(normally 1.5*diameter_ball)
 
-    self.tB = tB  # beat length in seconds
+    # Beat length in seconds
+    self.tB = tB  #[seconds]
     # Calculate hand-time (the time between two catches of the same hand)
     self.tH = self.Nh * tB  #[seconds]
     # Compute dwell-time: time in one hand-time where the ball is on the hand.
@@ -196,15 +329,22 @@ class JugglingPlan():
     self.tDwell = r_dwell * self.tH  #[seconds]
 
   def initTrajectories(self):
-    [h.initTrajectories(self.r_dwell, self.tB) for h in self.hands]
+    [h.initThrows(self.tDwell, self.tB, self.swingSize) for h in self.hands]
+    [h.initTraj() for h in self.hands]
 
   def plotHandTrajectories(self):
+    from mpl_toolkits.mplot3d import axes3d, Axes3D  # noqa: F401
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    # ax.set_aspect('equal')
     # Plot hands
-    fig, ax = plt.subplots(1, 1)
-    # ax.scatter(self.handPositions[:,0], self.handPositions[:,1])
     [h.plotHandTrajectories(ax) for h in self.hands]
 
     # [h.plot(ax) for h in self.hands]
+    # ax.set_box_aspect([1,1,1]) # IMPORTANT - this is the new, key line
+    # ax.set_proj_type('ortho') # OPTIONAL - default is perspective (shown in image above)
+    set_axes_equal(ax) # IMPORTANT - this is also required
+    ax.grid()
     plt.show()
 
   def plotTimeDiagram(self):
@@ -224,14 +364,15 @@ class JugglingPlan():
 
 
 class JugglingPlanner():
-  def __init__(self, h=0.3, w=0.4, r_dwell=0.5):
+  def __init__(self, h=0.3, w=0.4, r_dwell=0.5, D=0.07):
     """[summary]
 
     Args:
         nh ([int]): number of hands
         h ([float]): height of the standard 3-throw
-        w ([float]): weidth of the hand positions
+        w ([float]): width of the hand positions
         r_dwell ([float]): ratio of time the ball stays in hand and time between two catches of the same hand
+        D ([float]): diameter of the ball
 
         We assume here that hands throw the balls one after the other, as such they are not allowed to throw simultaniously.
         That means that a hand can throw at most every second step. We call this time, a hand period,
@@ -258,6 +399,7 @@ class JugglingPlanner():
     self.r_dwell = r_dwell
     tf3 = math.sqrt(2.0*h/g)  # time of flight for a 3-throw
     self.tB = tf3 / (3.0 - 2.0*self.r_dwell)
+    self.swing_size = D*1.5
 
   def plan(self, nh, pattern=(3,), rep=1):
     """Plan the juggling trajectories for the hand
@@ -285,10 +427,7 @@ class JugglingPlanner():
     hands = self.initHands(nh, ct_period_per_hand, hand_positions)
 
     # The juggling plan which is intended for further usage(check its API)
-    print(hands[0].ct_period)
-    print(hands[1].ct_period)
-
-    juggPlan = JugglingPlan(hands, hand_positions, self.tB, self.r_dwell)
+    juggPlan = JugglingPlan(hands, hand_positions, self.tB, self.r_dwell, self.swing_size)
     juggPlan.initTrajectories()
 
     return juggPlan
@@ -348,9 +487,13 @@ class JugglingPlanner():
         catch_from = (h-ct_time_seq[k][0]) % nh
         throw_to = (h+ct_time_seq[k][1]) % nh
 
+        # compute beat_nr for the cts this ct is connected to
         catch_throw_beat = (time_beat - ct_time_seq[k][0]) % M
         throw_catch_beat = (time_beat + ct_time_seq[k][1]) % M
 
+        # compute indexes of cts this ct is connected to.
+        # to be used in the lists correspondinh hands,
+        # i.e. ct_catch = ct_period_per_hand[catch_ct_index, catch_from]
         catch_ct_index = (catch_throw_beat - catch_from) // nh
         throw_ct_index = (throw_catch_beat - throw_to) // nh
                                                     # (n_c, n_t)
@@ -358,25 +501,19 @@ class JugglingPlanner():
     return ct_period_per_hand
 
   def initHands(self, nh, ct_period_per_hand, hand_positions):
-    hands = [None] * nh
     N = ct_period_per_hand.shape[0] # nr of ct a hand has to perform before starting to repeat
-    for h in range(nh):
-      hands[h] = JugglingHand(h, N, hand_positions=hand_positions)
-
-    cts = [ [CatchThrow(N*nh, hands[h], *ct[1:4], h_c=hands[ct[4]], h_t=hands[ct[5]]) for i, ct in enumerate(ct_period_per_hand[:, h])] for h in range(nh)]
-
-
+    # initialize hands
+    hands = [JugglingHand(h, N, hand_positions=hand_positions) for h in range(nh)]
+    # Initialize cts
+    cts = [ [ CatchThrow(hands[h], *ct[1:4]) for ct in ct_period_per_hand[:, h] ] for h in range(nh) ]
+    # Add CTs to each hand
     for h in range(nh):
       for i, ct in enumerate(ct_period_per_hand[:, h]):
-        T = N*nh
-        # h_c =
-        h, beat_nr, n_c, n_t, h_c, h_t, ct_c_i, ct_t_i = ct
-        print(h, i, ct_c_i, ct_t_i)
+        # add catch_ct and throw_ct to each ct
+        h_c, h_t, ct_c_i, ct_t_i = ct[-4:]
+        cts[h][i].addCatchThrowCTs(cts[h_c][ct_c_i], cts[h_t][ct_t_i])
+        # add ct to corresponding hand
         hands[h].addCT(i, cts[h][i])
-        # hands[h].addCT(i, CatchThrow(N*nh, hands[h], *ct[1:4], h_c=hands[ct[4]], h_t=hands[ct[5]]))
-
-
-      # hands[h].initCTPeriod([CatchThrow(N*nh, hands[h], *ct[1:4], h_c=hands[ct[4]], h_t=hands[ct[5]]) for i, ct in enumerate(ct_period_per_hand[:, h])])
     return hands
 
   def getHandPositions(self, nh):
@@ -394,6 +531,11 @@ class JugglingPlanner():
 
 if __name__ == "__main__":
   jp = JugglingPlanner()
-  jp.plan(2, pattern=(3,3,3), rep=2).plotTimeDiagram()
-  jp.plan(3, pattern=(4,4,4,4)).plotTimeDiagram()
-  # jp.plan(2, pattern=(3, 3, 4, 2, 3, 3, 4, 2)).plotTimeDiagram()
+  p = jp.plan(4, pattern=(7,), rep=2)
+  # p.plotTimeDiagram()
+  # p.plotHandTrajectories()
+
+  # jp.plan(3, pattern=(4,4,4,4)).plotTimeDiagram()
+  p = jp.plan(2, pattern=(3, 3, 4, 2, 3, 3, 4, 2))
+  # p.plotTimeDiagram()
+  p.plotHandTrajectories()

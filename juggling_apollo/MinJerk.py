@@ -92,7 +92,7 @@ def get_minjerk_trajectory(dt, tt, xx, uu, smooth_acc=False, i_a_end=None, only_
   v_ret[n_last:] = v[-1]
   a_ret[n_last:] = a[-1]
   j_ret[n_last:] = j[-1]
-  
+
   if False and extra_at_end is not None:
     repeat = [1]* N_Whole
     repeat[-1] = extra_at_end
@@ -100,7 +100,7 @@ def get_minjerk_trajectory(dt, tt, xx, uu, smooth_acc=False, i_a_end=None, only_
     v_ret = np.repeat(v_ret, repeats=repeat, axis=0)
     a_ret = np.repeat(a_ret, repeats=repeat, axis=0)
     j_ret = np.repeat(j_ret, repeats=repeat, axis=0)
-    
+
   if extra_at_end is not None:
     repeat = [1]* N_Whole
     repeat[-1] = extra_at_end
@@ -148,7 +148,9 @@ def get_min_jerk_trajectory(dt, ta, tb, x_ta, x_tb, u_ta, u_tb, a_ta=None, a_tb=
       c1, c2, c3, c4, c5, c6 = free_start_acceleration(T, x_ta, x_tb, u_ta, u_tb)
 
   # Trajectory values ta->tb
-  t = np.arange(0, T, dt)  # 0:dt:T ceil((stop - start)/step)
+  N_Whole = steps_from_time(T, dt)
+  t = np.linspace(0, T, N_Whole)
+  # t = np.arange(0, T, dt)  # 0:dt:T ceil((stop - start)/step)
   j, a, v, x = get_trajectories(t, c1, c2, c3, c4, c5, c6)
   return x, v, a, j
 
