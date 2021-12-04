@@ -57,6 +57,7 @@ def plotConnection(ax, actual_beat, catch_beat, y0, y1, same_hand):
     y = a*x + b # straight line starting at actual_beat and ending at actual_beat+nt with y=1
   ax.plot(x, y, color='k')
 
+
 class MinJerkTraj():
   def __init__(self, dt, tt, xx, vv):
     self.dt = dt
@@ -200,6 +201,7 @@ class CatchThrow():
   def h_t(self):
     return self.ct_t.h
 
+
 class JugglingHand():
   def __init__(self, h, N, hand_positions):
     """Represent one juggling hand. Holds trajectory information about how tha hand should move.
@@ -302,6 +304,7 @@ class JugglingPlan():
     fig.tight_layout()
     plt.suptitle('{} hands plan for pattern: {}'.format(self.Nh, self.pattern))
     plt.show()
+
 
 class JugglingPlanner():
   def __init__(self, h=0.3, w=0.3, r_dwell=0.5, D=0.07):
@@ -474,7 +477,6 @@ if __name__ == "__main__":
   jp.plan(1, pattern=(3,3,3), rep=1).plot()
   jp.plan(2, pattern=(3,), rep=1).plot()
   jp.plan(3, pattern=(4,), rep=1).plot()
-
 
   # jp.plan(3, pattern=(4,4,4,4)).plotTimeDiagram()
   # p = jp.plan(4, pattern=(7, 7, 8, 6))
