@@ -184,7 +184,6 @@ class CatchThrow():
     col = self.traj.plot(ax, self.i, h_i)
     self.ballTraj.plot(ax, col)
 
-
   @property
   def P(self):
     return self.h.position
@@ -242,7 +241,8 @@ class JugglingHand():
 
 
 class JugglingPlan():
-  def __init__(self, hands, hand_positions, tB, r_dwell, swing_size):
+  def __init__(self, pattern, hands, hand_positions, tB, r_dwell, swing_size):
+    self.pattern = pattern
     self.Nh = len(hands)                  # nr of hands
     self.T = hands[0].T                   # period length in nr of beats( nr of beats after the first ct from the first hand gets repeated)
     self.hands = hands                    # list of hands in this plan
@@ -261,27 +261,25 @@ class JugglingPlan():
     [h.initThrows(self.tDwell, self.tB, self.swingSize) for h in self.hands]
     [h.initTraj() for h in self.hands]
 
-  def plotHandTrajectories(self):
+  def plotHandTrajectories(self, subplot=111):
     from mpl_toolkits.mplot3d import axes3d, Axes3D  # noqa: F401
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    # ax.set_aspect('equal')
+    # fig = plt.figure()
+    ax = plt.subplot(subplot, projection='3d')
     # Plot hands
     [h.plotHandTrajectories(ax) for h in self.hands]
 
-    # [h.plot(ax) for h in self.hands]
-    # ax.set_box_aspect([1,1,1]) # IMPORTANT - this is the new, key line
-    # ax.set_proj_type('ortho') # OPTIONAL - default is perspective (shown in image above)
     set_axes_equal(ax) # IMPORTANT - this is also required
     ax.set_xlabel('X axis')
     ax.set_ylabel('Y axis')
     ax.set_zlabel('Z axis')
     ax.grid()
     ax.legend()
-    plt.show()
+    ax.set_title('Cartesian Trajectories')
+    if subplot==111:
+      plt.show()
 
-  def plotTimeDiagram(self):
-    fig, ax = plt.subplots(1, 1)
+  def plotTimeDiagram(self, subplot=111):
+    ax = plt.subplot(subplot)
     N_beats = self.T
     heights = np.arange(self.Nh)
 
@@ -293,11 +291,20 @@ class JugglingPlan():
     ax.set_yticklabels([r"H$_{}$".format(n) for n in range(self.Nh)])
     ax.set_xlim((-0.2, N_beats-0.2))
     ax.set_ylim((heights[0]-0.5, heights[-1]+0.5))
+    ax.set_title('Time Diagram')
+    if subplot==111:
+      plt.show()
+
+  def plot(self):
+    fig = plt.figure(figsize=(13,6))
+    self.plotHandTrajectories(122)
+    self.plotTimeDiagram(323)
+    fig.tight_layout()
+    plt.suptitle('{} hands plan for pattern: {}'.format(self.Nh, self.pattern))
     plt.show()
 
-
 class JugglingPlanner():
-  def __init__(self, h=0.5, w=0.4, r_dwell=0.5, D=0.07):
+  def __init__(self, h=0.3, w=0.3, r_dwell=0.5, D=0.07):
     """[summary]
 
     Args:
@@ -332,7 +339,7 @@ class JugglingPlanner():
     self.r_dwell = r_dwell
     tf3 = 2.0*math.sqrt(2.0*h/g)  # time of flight for a 3-throw
     self.tB = tf3 / (3.0 - 2.0*self.r_dwell)
-    self.swing_size = D*2.
+    self.swing_size = D*2.5
 
   def plan(self, nh, pattern=(3,), rep=1):
     """Plan the juggling trajectories for the hand
@@ -360,7 +367,7 @@ class JugglingPlanner():
     hands = self.initHands(nh, ct_period_per_hand, hand_positions)
 
     # The juggling plan which is intended for further usage(check its API)
-    juggPlan = JugglingPlan(hands, hand_positions, self.tB, self.r_dwell, self.swing_size)
+    juggPlan = JugglingPlan(pattern, hands, hand_positions, self.tB, self.r_dwell, self.swing_size)
     juggPlan.initTrajectories()
 
     return juggPlan
@@ -464,8 +471,9 @@ class JugglingPlanner():
 
 if __name__ == "__main__":
   jp = JugglingPlanner()
-  jp.plan(1, pattern=(3,), rep=1).plotHandTrajectories()
-  jp.plan(2, pattern=(3,), rep=1).plotHandTrajectories()
+  jp.plan(1, pattern=(3,3,3), rep=1).plot()
+  jp.plan(2, pattern=(3,), rep=1).plot()
+  jp.plan(3, pattern=(4,), rep=1).plot()
 
 
   # jp.plan(3, pattern=(4,4,4,4)).plotTimeDiagram()
