@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import math
 
 from settings import g, dt
-import utils
 import MinJerk
 
 
@@ -64,7 +63,7 @@ class MinJerkTraj():
     self.tt = tt
     self.xx = xx
     self.vv = vv
-    self.N_Whole = utils.steps_from_time(tt[-1] - tt[0], dt)
+    self.N_Whole = int(np.ceil(tt[-1] - tt[0]/ dt))
     self.ttt = np.arange(0, self.N_Whole) * self.dt
     self.ttt = np.linspace(0, self.N_Whole, self.N_Whole) * self.dt
     xxx, vvv, aaa, jjj = MinJerk.get_minjerk_xyz(dt, tt, xx, vv, only_pos=False)
