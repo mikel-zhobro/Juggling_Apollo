@@ -2,7 +2,7 @@
 import numpy as np
 
 import __add_path__
-from juggling_apollo.utils import steps_from_time, plotIterations, plt
+from juggling_apollo.utils import steps_from_time, plotIterations, plt, rtime
 from juggling_apollo.Simulation import Simulation, plot_simulation
 from juggling_apollo.settings import dt, ABS, g
 from juggling_apollo.ILC import ILC
@@ -21,7 +21,8 @@ tau = 0.5
 dwell_ration = 0.6
 catch_throw_ratio = 0.5
 T_hand, T_empty, ub_throw, H, z_catch = calc(tau, dwell_ration, E)
-T_throw = T_hand*(1-catch_throw_ratio)
+T_hand, T_empty = rtime(T_hand, dt), rtime(T_empty, dt)
+T_throw = rtime(T_hand*(1-catch_throw_ratio), dt)
 T_fly = T_hand + 2*T_empty
 T_FULL = T_throw + T_fly
 
@@ -39,39 +40,23 @@ x_ruhe = -0.2                # starting position for the plate
 x0 = [x_ruhe, x_ruhe, 0, 0]  # the plate and ball in ruhe
 x000 =  [[x0[0], H], x0[1], [x0[2],0], x0[3]]
 
-# %%
-# Learn Throw
-ILC_it = 55  # number of ILC iteration
-
-
-# Init ilc
-# Here we want to set some convention to avoid missunderstandins later on.
-# 1. the state is [xb, xp, ub, up]^T
-# 2. the system can have as input either velocity u_des or the force F_p
-# I. SYSTEM DYNAMICS
-input_is_velocity = True
-sys = DynamicSystem(dt, input_is_velocity=input_is_velocity)
-kf_dpn_params = {
-  'M': 0.031*np.eye(N_1, dtype='float'),      # covariance of noise on the measurment
-  'P0': 0.1*np.eye(N_1, dtype='float'),     # initial disturbance covariance
-  'd0': np.zeros((N_1, 1), dtype='float'),  # initial disturbance value
-  'epsilon0': 0.3,                          # initial variance of noise on the disturbance
-  'epsilon_decrease_rate': 1              # the decreasing factor of noise on the disturbance
-}
-my_ilc = ILC(sys, kf_dpn_params=kf_dpn_params, x_0=x0, impact_timesteps=[False]*N_1) # ignore the ball
 
 sim = Simulation(input_is_force=False, x0=x0, air_drag=True, plate_friction=True)
 sim.reset()
 
+# %%
+# Learn Throw
+ILC_it = 55  # number of ILC iteration
 # Data collection
 # System Trajectories
-x_p_vec = np.zeros([ILC_it, my_ilc.N+1], dtype='float')
-u_p_vec = np.zeros([ILC_it, my_ilc.N+1], dtype='float')
-x_b_vec = np.zeros([ILC_it, my_ilc.N+1, len(x000[0])], dtype='float')
-u_b_vec = np.zeros([ILC_it, my_ilc.N+1, len(x000[0])], dtype='float')
+x_p_vec = np.zeros([ILC_it, N_1+1], dtype='float')
+u_p_vec = np.zeros([ILC_it, N_1+1], dtype='float')
+x_b_vec = np.zeros([ILC_it, N_1+1, len(x000[0])], dtype='float')
+u_b_vec = np.zeros([ILC_it, N_1+1, len(x000[0])], dtype='float')
 # ILC Trajectories
-d_vec = np.zeros([ILC_it, my_ilc.kf_dpn.d.size], dtype='float')
-u_ff_vec = np.zeros([ILC_it, my_ilc.N], dtype='float')
+d_vec = np.zeros([ILC_it, N_1], dtype='float')
+u_ff_vec = np.zeros([ILC_it, N_1], dtype='float')
+
 # Measurments
 u_throw_vec = np.zeros([ILC_it, 1], dtype='float')
 u_d_T_catch_1_vec = np.zeros([ILC_it, 1], dtype='float')
@@ -87,7 +72,7 @@ d_T_catch_3 = 0
 
 # disturbance to be learned
 period = 0.02/dt
-disturbance = 150*np.sin(2*np.pi/period*np.arange(my_ilc.N), dtype='float')  # disturbance on the plate position(0:my_ilc.N-1)
+disturbance = 150*np.sin(2*np.pi/period*np.arange(N_1), dtype='float')  # disturbance on the plate position(0:my_ilc.N-1)
 
 # Min Jerk Params
 # new MinJerk
@@ -101,6 +86,34 @@ uu=[x0[2],    ub_throw,    ub_catch,           ub_throw,         ub_catch]
 if False:
   plotMJ(dt, tt, xx, uu, smooth_acc)
 
+y_des, velo, accel, jerk = get_minjerk_trajectory(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=xx, uu=uu)
+
+
+
+
+
+# Init ilc
+# Here we want to set some convention to avoid missunderstandins later on.
+# 1. the state is [xb, xp, ub, up]^T
+# 2. the system can have as input either velocity u_des or the force F_p
+# I. SYSTEM DYNAMICS
+input_is_velocity = True
+sys = DynamicSystem(dt, x0=x0, input_is_velocity=input_is_velocity)
+kf_dpn_params = {
+  'M': 0.031*np.ones(N_1, dtype='float'),      # covariance of noise on the measurment
+  'P0': 0.1*np.ones(N_1, dtype='float'),     # initial disturbance covariance
+  'd0': np.zeros((N_1, 1), dtype='float'),  # initial disturbance value
+  'epsilon0': 0.3,                          # initial variance of noise on the disturbance
+  'epsilon_decrease_rate': 1              # the decreasing factor of noise on the disturbance
+}
+# my_ilc = ILC(sys, kf_dpn_params=kf_dpn_params, x_0=x0, impact_timesteps=[False]*N_1) # ignore the ball
+my_ilc = ILC(sys, y_des=y_des[1:], kf_dpn_params=kf_dpn_params, lss_params={'impact_timesteps': [False]*N_1}) # ignore the ball
+
+
+
+
+
+
 ub_throw2 = ub_throw
 extra_rep = 2
 for j in range(ILC_it):
@@ -108,7 +121,7 @@ for j in range(ILC_it):
   uu[1] = ub_throw  # update
   uu[3] = ub_throw2  # update
   y_des, velo, accel, jerk = get_minjerk_trajectory(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=xx, uu=uu)
-  u_ff = my_ilc.learnWhole(u_ff_old=u_ff, y_des=y_des[1:], y_meas=y_meas)
+  u_ff = my_ilc.updateStep(y_des=y_des[1:], y_meas=y_meas)
 
   # Main Simulation
   x000[0][1] = H  # update

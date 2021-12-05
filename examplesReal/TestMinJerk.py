@@ -100,8 +100,8 @@ if False:
 ####################################################################################################################################
 ####################################################################################################################################
 
-q_traj_des, q_start, psi_params   = rArmKinematics.seqIK(xyz_traj_des, thetas, T_home)  # [N_1, 7]
-q_traj_des_nn, q_start_nn, _      = rArmKinematics_nn.seqIK(xyz_traj_des, thetas, T_home)  # [N_1, 7]
+cartesian_traj_des, q_traj_des, q_start, psi_params   = rArmKinematics.seqIK(xyz_traj_des, thetas, T_home)  # [N_1, 7]
+cartesian_traj_des, q_traj_des_nn, q_start_nn, _      = rArmKinematics_nn.seqIK(xyz_traj_des, thetas, T_home)  # [N_1, 7]
 assert np.allclose(q_start , q_traj_des[0])
 assert np.allclose(q_start_nn , q_traj_des_nn[0])
 
@@ -111,8 +111,8 @@ if False:
 # B. Initialize ILC
 def kf_params(n_m=0.02, epsilon=1e-5, n_d=0.06):
   kf_dpn_params = {
-    'M': n_m*np.eye(N_1+end_repeat, dtype='float'),       # covariance of noise on the measurment
-    'P0': n_d*np.eye(N_1+end_repeat, dtype='float'),      # initial disturbance covariance
+    'M': n_m*np.ones(N_1+end_repeat, dtype='float'),       # covariance of noise on the measurment
+    'P0': n_d*np.ones(N_1+end_repeat, dtype='float'),      # initial disturbance covariance
     'd0': np.zeros((N_1+end_repeat, 1), dtype='float'),   # initial disturbance value
     'epsilon0': epsilon,                                  # initial variance of noise on the disturbance
     'epsilon_decrease_rate': 1.0                          # the decreasing factor of noise on the disturbance
@@ -197,9 +197,9 @@ for jjoint in range(1):
   UB = 1.6
   for j in range(ILC_it):
     # Learn feed-forward signal
-    # u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=q_traj_des_i[:, i], y_meas=y_meas,             # initial state considered in the dynamics
-    # u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=q_traj_des_i[:, i] - q_start[i], y_meas=y_meas,             # substract the initial state from the desired joint traj
-    u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=q_traj_des_i[1:, i] - q_traj_des_i[1, i], y_meas=y_meas[:,i],             # substract the initial state from the desired joint traj
+    # u_ff = [ilc.updateStep(y_des=q_traj_des_i[:, i], y_meas=y_meas,             # initial state considered in the dynamics
+    # u_ff = [ilc.updateStep(y_des=q_traj_des_i[:, i] - q_start[i], y_meas=y_meas,             # substract the initial state from the desired joint traj
+    u_ff = [ilc.updateStep(y_des=q_traj_des_i[1:, i] - q_traj_des_i[1, i], y_meas=y_meas[:,i],             # substract the initial state from the desired joint traj
                            verbose=False,  # bool(i in learnable_joints and j%every_N==0 and False),
                           #  lb=-UB,ub=UB
                            ) for i, ilc in enumerate(my_ilcs)]

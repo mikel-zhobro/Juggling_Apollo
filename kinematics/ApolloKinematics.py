@@ -12,7 +12,10 @@ class ApolloArmKinematics():
     def __init__(self, r_arm=True, noise=None):
         self.r_arm = r_arm
         self.dh_rob = self.init_dh(noise)
-        self.pin_rob = PinRobot(r_arm=r_arm)
+        try:
+            self.pin_rob = PinRobot(r_arm=r_arm)
+        except:
+            pass
 
     def init_dh(self, noise=None):
         """[summary]
@@ -54,6 +57,7 @@ class ApolloArmKinematics():
         return self.dh_rob.J(q.reshape(7, 1))
 
     def seqFK(self, qs):
+        assert len(qs.shape)>2, "make sure you give a seq of joint states as input"
         return np.array([self.FK(q) for q in qs]).reshape(-1, 4, 4)
 
     def IK(self,p07_d, R07_d, GC2=1.0, GC4=1.0, GC6=1.0):
@@ -95,6 +99,7 @@ class ApolloArmKinematics():
 
         # Init lists
         N = position_traj.shape[0]
+        cartesian_traj = np.zeros((N, 4, 4))
         joint_trajs = np.zeros((N,) + q_joint_state_start.shape)
         psis = np.zeros((N))
         psi_mins = np.zeros((N))
@@ -109,9 +114,13 @@ class ApolloArmKinematics():
                                   [s,   c,   0.0,],
                                   [0.0, 0.0, 1.0,]], dtype='float')
             R_i = R_start.dot(start_R_i)
+            p_i = p_start+pos_goal_i.reshape(3,1)
 
+
+            cartesian_traj[i, :3,:3] = R_i
+            cartesian_traj[i, :3,3:4] = p_i
             # Calc IK for new pose
-            solu, feas_set = IK_anallytical(p_start+pos_goal_i.reshape(3,1), R_i, self.dh_rob, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False)
+            solu, feas_set = IK_anallytical(p_i, R_i, self.dh_rob, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False)
 
             # Choose psi for the new joint configuration
             feas_set = feas_set.range_of(psi)
@@ -126,7 +135,7 @@ class ApolloArmKinematics():
         if verbose:
             self.plot(joint_trajs, psis, psi_mins, psi_maxs)
 
-        return joint_trajs, q_joint_state_start, (psis, psi_mins, psi_maxs)
+        return cartesian_traj, joint_trajs, q_joint_state_start, (psis, psi_mins, psi_maxs)
 
     @property
     def limits(self):
@@ -201,7 +210,7 @@ if __name__ == "__main__":
     # position_traj[:, 1] = np.sin(np.arange(N)*dt)*0.1
     # position_traj[:, 2] = np.sin(np.arange(N)*dt)*0.1
 
-    joints_traj, q_start, _ = rArmKinematics.seqIK(position_traj, thetas_traj, T_start, verbose=True)
+    cartesian_traj_des, joints_traj, q_start, _ = rArmKinematics.seqIK(position_traj, thetas_traj, T_start, verbose=True)
 
 
     rArmInterface.go_to_home_position(q_start, 2000)

@@ -63,8 +63,8 @@ xyz_traj_des = rArmKinematics.seqFK(q_traj_des)[:, :3, -1] - T_home[:3, -1]
 # B. Initialize ILC
 def kf_params(n_m=0.02, epsilon=1e-5, n_d=0.06):
   kf_dpn_params = {
-    'M': n_m*np.eye(N_1+end_repeat, dtype='float'),       # covariance of noise on the measurment
-    'P0': n_d*np.eye(N_1+end_repeat, dtype='float'),      # initial disturbance covariance
+    'M': n_m*np.ones(N_1+end_repeat, dtype='float'),       # covariance of noise on the measurment
+    'P0': n_d*np.ones(N_1+end_repeat, dtype='float'),      # initial disturbance covariance
     'd0': np.zeros((N_1+end_repeat, 1), dtype='float'),   # initial disturbance value
     'epsilon0': epsilon,                                  # initial variance of noise on the disturbance
     'epsilon_decrease_rate': 0.9                          # the decreasing factor of noise on the disturbance
@@ -142,9 +142,9 @@ q_traj_des_i    = q_traj_des.copy()   # Changing (possibly wrong/noisy) desired 
 
 for j in range(ILC_it):
   # Learn feed-forward signal
-  # u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=q_traj_des_i[:, i], y_meas=y_meas[:, i],             # initial state considered in the dynamics
-  # u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=q_traj_des_i[:, i] - q_start[i], y_meas=y_meas[:, i] - q_start[i],             # substract the initial state from the desired joint traj
-  u_ff = [ilc.learnWhole(u_ff_old=u_ff[i], y_des=q_traj_des_i[1:, i] - q_start[i], y_meas=y_meas[:, i] - y_meas[0,i],             # substract the initial state from the desired joint traj
+  # u_ff = [ilc.updateStep(y_des=q_traj_des_i[:, i], y_meas=y_meas[:, i],             # initial state considered in the dynamics
+  # u_ff = [ilc.updateStep(y_des=q_traj_des_i[:, i] - q_start[i], y_meas=y_meas[:, i] - q_start[i],             # substract the initial state from the desired joint traj
+  u_ff = [ilc.updateStep(y_des=q_traj_des_i[1:, i] - q_start[i], y_meas=y_meas[:, i] - y_meas[0,i],             # substract the initial state from the desired joint traj
                           verbose=False,  # bool(i in learnable_joints and j%every_N==0 and False),
                         #  lb=-0.8,ub=0.8
                           )

@@ -28,7 +28,6 @@ def test1():
   set_of_impact_timesteps = (1, 0, 1)
   lss.updateQuadrProgMatrixes(set_of_impact_timesteps)
 
-  print('G', lss.G)
   print('GF', lss.GF)
   print('GK', lss.GK)
   print('Gd0', lss.Gd0)
