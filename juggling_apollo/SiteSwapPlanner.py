@@ -128,7 +128,7 @@ class CatchThrow():
   def __init__(self, i, h, beat_nr, n_c, n_t):
     # We catch at self.h.position.
     # We throw 'swingSize' in the direction of the ct the ball goes to.
-    self.i = i
+    self.i = i                  # order index of this ct in the corresponding hand
     self.h = h                  # hand this ct belongs to
     self.beat_nr = beat_nr      # beat nr during which this ct is performed
     self.n_c = n_c              # length of throw we are catching in nr of beats
@@ -160,12 +160,14 @@ class CatchThrow():
     self.t_dwell = self.n_t * tB - self.t_t  # time we have from the catch to the throw
     self.t_hand = self.h.Th * tB
 
+    # throw position swingSize in the direction of the hand the ball is going to
     c_delta_x, c_delta_y = self.ct_c.P[:2] - self.P[:2]
     theta = math.atan2(c_delta_y, c_delta_x)
     self.p_t[0] = self.P[0] + math.cos(theta)*swingSize
     self.p_t[1] = self.P[1] + math.sin(theta)*swingSize
     self.p_t[2] = self.P[2]
 
+    # throw velocity
     self.v_t[0] = (self.ct_t.P[0] - self.p_t[0]) / self.t_t
     self.v_t[1] = (self.ct_t.P[1] - self.p_t[1]) / self.t_t
     self.v_t[2] = 0.5 * g * self.t_t
