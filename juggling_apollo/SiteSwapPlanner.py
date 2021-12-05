@@ -60,19 +60,27 @@ def plotConnection(ax, actual_beat, catch_beat, y0, y1, same_hand):
 
 class MinJerkTraj():
   def __init__(self, dt, tt, xx, vv):
+    """Computes MinJerk trajectory in 3D cartesian coordinates and saves this information.
+
+    Args:
+        dt ([type]): timestep
+        tt ([type]): time points for mj
+        xx ([type]): positions mj trajectory should go through at the given time points
+        vv ([type]): velocities mj trajectory should have at the given time points
+    """
     self.dt = dt
     self.tt = tt
     self.xx = xx
     self.vv = vv
+
     # self.N_Whole = utils.steps_from_time(tt[-1] - tt[0], dt)
-    self.N_Whole = int(np.ceil(tt[-1] - tt[0]/ dt))
-    self.ttt = np.arange(0, self.N_Whole) * self.dt
-    self.ttt = np.linspace(0, self.N_Whole, self.N_Whole) * self.dt
-    xxx, vvv, aaa, jjj = MinJerk.get_minjerk_xyz(dt, tt, xx, vv, only_pos=False)
-    self.xxx = np.array(xxx).T
-    self.vvv = np.array(vvv).T
-    self.aaa = np.array(aaa).T
-    self.jjj = np.array(jjj).T
+    self.N_Whole = int(np.ceil(tt[-1] - tt[0]/ dt))                               # nr of timesteps in trajectory
+    xxx, vvv, aaa, jjj = MinJerk.get_minjerk_xyz(dt, tt, xx, vv, only_pos=False)  # compute MJ
+    self.ttt = np.linspace(0, self.N_Whole, self.N_Whole) * self.dt               # timesteps in trajectory
+    self.xxx = np.array(xxx).T                                                    # position trajectory
+    self.vvv = np.array(vvv).T                                                    # velocity trajectory
+    self.aaa = np.array(aaa).T                                                    # acceleration trajectory
+    self.jjj = np.array(jjj).T                                                    # jerk trajectory
 
 
   def plot(self, ax, i, h_i):
@@ -90,6 +98,13 @@ class MinJerkTraj():
 
 class BallTraj():
   def __init__(self, t_t, p_t, v_t):
+    """Creates the ideal ball trajectory for the given fly_time throw velocity and throw position.
+
+    Args:
+        t_t (float): fly time of the ball
+        p_t (np.array(3,)): throw position
+        v_t (np.array(3,)): throw velocity
+    """
     self.t_t, self.p_t, self.v_t = t_t, p_t, v_t
     self.tt = np.linspace(0, self.t_t, 50)
     self.xxxBall = np.zeros((50, 3))
@@ -111,8 +126,8 @@ class BallTraj():
 
 class CatchThrow():
   def __init__(self, i, h, beat_nr, n_c, n_t):
-    # We throw from self.h.position.
-    # We catch 'swingSize' behind the self.h.position in the direction of the ct that throws to us.
+    # We catch at self.h.position.
+    # We throw 'swingSize' in the direction of the ct the ball goes to.
     self.i = i
     self.h = h                  # hand this ct belongs to
     self.beat_nr = beat_nr      # beat nr during which this ct is performed
@@ -128,8 +143,8 @@ class CatchThrow():
     self.v_t = np.zeros(3)      # (vx, vy, vz) of the catching ball
 
 
-    self.traj = None            # the catch-throw trajectory
-    self.balltraj = None
+    self.traj = None            # the catch-throw-catch trajectory
+    self.balltraj = None        # ball trajectory, only for visualisation
 
   def addCatchThrowCTs(self, ct_c, ct_t):
     self.ct_c = ct_c            # ct where catch comes from
