@@ -105,6 +105,28 @@ def get_minjerk_trajectory(dt, tt, xx, uu, smooth_acc=False, i_a_end=None, only_
   else:
     return x_ret, v_ret, a_ret, j_ret
 
+def get_min_jerk_xyz(dt, ta, tb, x_ta, x_tb, u_ta, u_tb, a_ta=[None]*3, a_tb=[None]*3, lambdas=False):
+  xx = get_min_jerk_trajectory(dt, ta, tb, x_ta[0], x_tb[0], u_ta[0], u_tb[0], a_ta=a_ta[0], a_tb=a_tb[0], lambdas=lambdas)
+  yy = get_min_jerk_trajectory(dt, ta, tb, x_ta[1], x_tb[1], u_ta[1], u_tb[1], a_ta=a_ta[1], a_tb=a_tb[1], lambdas=lambdas)
+  zz = get_min_jerk_trajectory(dt, ta, tb, x_ta[2], x_tb[2], u_ta[2], u_tb[2], a_ta=a_ta[2], a_tb=a_tb[2], lambdas=lambdas)
+  def tmp(t):
+    x, vx, ax, jx = xx(t)
+    y, vy, ay, jy = yy(t)
+    z, vz, az, jz = zz(t)
+    xxx = np.vstack((x,y,z)).T
+    vvv = np.vstack((vx,vy,vz)).T
+    aaa = np.vstack((ax,ay,az)).T
+    jjj = np.vstack((jx,jy,jz)).T
+    return xxx, vvv, aaa, jjj
+  if lambdas:
+    return tmp
+  else:
+    xxx = np.vstack((xx[0],yy[0],zz[0])).T
+    vvv = np.vstack((xx[1],yy[1],zz[1])).T
+    aaa = np.vstack((xx[2],yy[2],zz[2])).T
+    jjj = np.vstack((xx[3],yy[3],zz[3])).T
+    return xxx, vvv, aaa, jjj
+
 
 def get_min_jerk_trajectory(dt, ta, tb, x_ta, x_tb, u_ta, u_tb, a_ta=None, a_tb=None, lambdas=False):
   """Computes a minjerk trajectory with set or free start and end conditions.
@@ -140,13 +162,13 @@ def get_min_jerk_trajectory(dt, ta, tb, x_ta, x_tb, u_ta, u_tb, a_ta=None, a_tb=
       c1, c2, c3, c4, c5, c6 = free_start_acceleration(T, x_ta, x_tb, u_ta, u_tb)
 
   if lambdas:
-    return lambda t: get_trajectories(t, c1, c2, c3, c4, c5, c6)
+    return lambda t: get_trajectories(t-ta, c1, c2, c3, c4, c5, c6)
   else:
     # Trajectory values ta->tb
     # N_Whole = steps_from_time(T, dt)
     # t = np.linspace(0, T, N_Whole)
-    t = np.arange(0, T, dt)  # 0:dt:T ceil((stop - start)/step)
-    x, v, a, j = get_trajectories(t, c1, c2, c3, c4, c5, c6)
+    t = np.arange(ta, tb, dt)  # 0:dt:T ceil((stop - start)/step)
+    x, v, a, j = get_trajectories(t-ta, c1, c2, c3, c4, c5, c6)
   return x, v, a, j
 
 
@@ -162,7 +184,7 @@ def get_trajectories(t, c1, c2, c3, c4, c5, c6):
   a = c1*t_3/6   - c2*t_2/2  + c3*t     + c4                    # acceleration
   v = c1*t_4/24  - c2*t_3/6  + c3*t_2/2 + c4*t      + c5        # velocity
   x = c1*t_5/120 - c2*t_4/24 + c3*t_3/6 + c4*t_2/2 + c5*t + c6  # position
-  return [x, v, a, j]
+  return x, v, a, j
 
 
 # 1) Acceleration is set at t=0 (a(0)=a0 => c4=a0)
