@@ -66,8 +66,9 @@ class Traj():
     self.vvv = None                         # velocity trajectory
     self.aaa = None                         # acceleration trajectory
     self.jjj = None                         # jerk trajectory
+    self.thetas = None
 
-  def init_traj(self, ttt, xxx, vvv, aaa, jjj):
+  def init_traj(self, ttt, xxx, vvv, aaa, jjj, set_thetas=False):
     # self.N_Whole = utils.steps_from_time(ttt.size, dt)
     self.N_Whole = ttt.size
     self.ttt = ttt
@@ -75,9 +76,14 @@ class Traj():
     self.vvv = vvv
     self.aaa = aaa
     self.jjj = jjj
+    if set_thetas:
+      # orientation is in the direction of the acceleration
+      # only that we take the absolute value of the z-direction so the ball doesn't fall.
+      self.thetas = self.vvv.copy() / np.linalg.norm(self.vvv, axis=1, keepdims=True)
+      self.thetas[:,2] = abs(self.thetas[:,2])
 
-  def get(self):
-    return self.N_Whole, self.xxx, self.vvv, self.aaa, self.jjj
+  def get(self, get_thetas=False):
+    return (self.N_Whole, self.xxx, self.vvv, self.aaa, self.jjj) + ((self.thetas,) if get_thetas else ())
 
 
 class MinJerkTraj(Traj):
@@ -89,6 +95,8 @@ class MinJerkTraj(Traj):
         xx ([type]): positions mj trajectory should go through at the given time points
         vv ([type]): velocities mj trajectory should have at the given time points
     """
+    Traj.__init__(self)
+
     self.tt = tt
     self.xx = np.array(xx).T
     self.vv = np.array(vv).T
@@ -101,7 +109,7 @@ class MinJerkTraj(Traj):
                                                  self.vv[1], self.vv[2], lambdas=True)
 
   def initTraj(self, ttt):
-    self.init_traj(*self._getTraj(ttt))
+    self.init_traj(*self._getTraj(ttt), set_thetas=True)
     return self.get()
 
   def _getTraj(self, t):
@@ -124,6 +132,10 @@ class MinJerkTraj(Traj):
     ax.quiver(self.xxx[ts,0], self.xxx[ts,1], self.xxx[ts,2],
               self.vvv[ts,0], self.vvv[ts,1], self.vvv[ts,2],
               length=0.07, normalize=True, color=a[0].get_color())
+    tmp = 2
+    ax.quiver(self.xxx[0::tmp,0], self.xxx[0::tmp,1], self.xxx[0::tmp,2],
+              self.thetas[::tmp,0], self.thetas[::tmp,1], abs(self.thetas[::tmp,2]),
+              length=0.07, normalize=True, color='k', alpha=0.2)
     return a[0].get_color()
 
 
@@ -136,6 +148,7 @@ class BallTraj(Traj):
         p_t (np.array(3,)): throw position
         v_t (np.array(3,)): throw velocity
     """
+    Traj.__init__(self)
     self.t_t, self.p_t, self.v_t = t_t, p_t, v_t
     self.ttt = np.linspace(0, self.t_t, 50).reshape(-1,1)
     self.aaa = np.zeros((50, 3)); self.aaa[:,-1] = -g
@@ -264,6 +277,7 @@ class JugglingHand(Traj):
                                         (h, beat_nr, n_c, n_t, h_c, h_t)
         hand_positions  ([np.array(nh, 3)]): the x,y,z positions for each hand
     """
+    Traj.__init__(self)
     self.h = h                            # index of this hand
     self.Th = len(hand_positions)         # == nr of hands, == nr of beats from catch to catch
     self.N = N                            # nr of ct this hands perform in one period
@@ -549,5 +563,5 @@ if __name__ == "__main__":
   jp.plan(1, pattern=(3,3,3), rep=1).plot()
   jp.plan(2, pattern=(3,), rep=1).plot()
   p = jp.plan(3, pattern=(4,), rep=1)
-  N_Whole0, x0, v0, a0, j0 = p.hands[0].get()  # get plan for hand0
+  N_Whole0, x0, v0, a0, j0, thetas = p.hands[0].get(True)  # get plan for hand0
   p.plot()
