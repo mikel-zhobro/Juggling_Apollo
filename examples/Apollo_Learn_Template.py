@@ -117,9 +117,10 @@ joint_torque_vec     = np.zeros([ILC_it, N_1, N_joints, 1], dtype='float')
 u_ff_vec       = np.zeros([ILC_it, N_1, N_joints, 1], dtype='float')
 disturbanc_vec = np.zeros([ILC_it, Nf, N_joints], dtype='float')
 # c. Trajectory errors
-error_norms    = np.zeros([ILC_it, N_joints, 1], dtype='float')
+cartesian_error_norms    = np.zeros([ILC_it, 6, 1], dtype='float')  # (x,y,z,nx,ny,nz)
+joint_error_norms    = np.zeros([ILC_it, N_joints, 1], dtype='float')
 joints_d_vec   = np.zeros([ILC_it, N_1, N_joints, 1], dtype='float')
-d_xyz_vec      = np.zeros([ILC_it, N_1, 3], dtype='float')
+d_xyz_vec      = np.zeros([ILC_it, N, 3], dtype='float')
 
 
 
@@ -156,7 +157,8 @@ for j in range(ILC_it):
 
   # Collect Data
   cartesian_traj_i = rArmKinematics_nn.seqFK(q_traj)
-  delta = np.array([utilities.errorForJacobianInverse(T_i=cartesian_traj_i[i], T_goal=cartesian_traj_des[i+1]) for i in range(N_1)]).reshape(-1, 6)
+  delta = np.array([utilities.errorForJacobianInverse(T_i=rArmKinematics_nn.FK(q0), T_goal=cartesian_traj_des[0])]+ 
+                   [utilities.errorForJacobianInverse(T_i=cartesian_traj_i[i], T_goal=cartesian_traj_des[i+1]) for i in range(N_1)]).reshape(-1, 6)
   d_xyz = delta[:, :3]  # measured cartesian error: calculated using the noise-less FK
   # d_xyz = xyz_traj_des[1:] - rArmKinematics_nn.seqFK(q_traj)[:, :3, -1]  # measured cartesian error: calculated using the noise-less FK
   # a. Meas
@@ -171,21 +173,16 @@ for j in range(ILC_it):
   # c. Errors
   d_xyz_vec[j]          = d_xyz   # actual cartesian errors
   joints_d_vec[j]       = delta_q_traj_des_i-delta_y_meas         # actual joint space error
-  error_norms[j]        = np.linalg.norm(joints_d_vec[j, :], axis=0, keepdims=True).T
+  joint_error_norms[j]  = np.linalg.norm(joints_d_vec[j, :], axis=0, keepdims=True).T
+  cartesian_error_norms[j]  = np.linalg.norm(delta, axis=0, keepdims=True).T
 
 
   # For the next iteration
   # TODO: add orientation error
   if CARTESIAN_ERROR:
     for i in range(0, N):
-      if i ==0:
-        qi = q0
-        # di = (xyz_traj_des[0] - rArmKinematics_nn.FK(q0)[:3, -1]).reshape(3,1)
-        di = utilities.errorForJacobianInverse(T_i=rArmKinematics_nn.FK(q0), T_goal=cartesian_traj_des[0]).reshape(6,1)
-        print("home error", di.T, di.shape)
-      else:
-        qi = q_traj[i-1]
-        di = delta[i-1].reshape(6,1)
+      qi = q0 if i==0 else q_traj[i-1]
+      di = delta[i].reshape(6,1)
       
       J_invj          = np.linalg.pinv(rArmKinematics.J(qi)[:,:])
       q_traj_des_i[i] = q_traj_des_i[i] + mu* J_invj.dot(di[:])
@@ -198,11 +195,11 @@ for j in range(ILC_it):
   print_info(j, learnable_joints, joints_d_vec, d_xyz)
 
   if False and j%every_N==0: plot_info(dt, j, learnable_joints,
-                                       joints_q_vec, q_traj_des_i,
-                                       u_ff_vec, q_v_traj[1:],
-                                       joint_torque_vec,
-                                       disturbanc_vec, d_xyz, error_norms,
-                                       v=False, p=True, dp=False, e_xyz=True, e=False, torque=False)
+                             joints_q_vec, q_traj_des_i[1:],
+                             u_ff_vec, q_v_traj[1:],
+                             joint_torque_vec,
+                             disturbanc_vec, d_xyz, joint_error_norms, cartesian_error_norms,
+                             v=False, p=True, dp=False, e_xyz=False, e=True, torque=False)
 
   if False and j%every_N==0:  # How desired  trajectory changes
     plot_A([q_traj_des_nn, q_traj_des_vec[j], q_traj_des_vec[j-1], q_traj_des_vec[0]], learnable_joints, ["des", "it="+str(j), "it="+str(j-1), "it=0"], dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
@@ -228,7 +225,7 @@ if False:
   plot_info(dt, j, learnable_joints,
             joints_q_vec=joints_q_vec, q_traj_des=q_traj_des_i[1:],
             u_ff_vec=u_ff_vec, q_v_traj=q_v_traj,
-            disturbanc_vec=disturbanc_vec, d_xyz=d_xyz, error_norms=error_norms,
+            disturbanc_vec=disturbanc_vec, d_xyz=d_xyz, joint_error_norms=joint_error_norms,
             v=True, p=True, dp=False, e_xyz=False, e=True, N=min(4, ILC_it-1))
 
 if SAVING:
@@ -243,7 +240,8 @@ if SAVING:
        joints_q_vec=joints_q_vec, joints_vq_vec=joints_vq_vec,                           # Joint Informations
        joints_aq_vec=joints_aq_vec, joint_torque_vec=joint_torque_vec,                   #        =|=
        disturbanc_vec=disturbanc_vec, u_ff_vec=u_ff_vec,                                 # Learned Trajectories (uff and disturbance)
-       d_xyz_vec=d_xyz_vec, joints_d_vec=joints_d_vec, error_norms=error_norms,          # Progress Measurments
+       d_xyz_vec=d_xyz_vec, joints_d_vec=joints_d_vec,                                   # Progress Measurments
+       joint_error_norms=joint_error_norms, cartesian_error_norms=cartesian_error_norms,
        mj=mj,                                                                            # Minjerk Params
        ilc_learned_params = [(ilc.d, ilc.P) for ilc in my_ilcs],
        learnable_joints=learnable_joints, alpha=alpha, n_ms=n_ms, n_ds=n_ds, ep_s=ep_s)  # ILC parameters
