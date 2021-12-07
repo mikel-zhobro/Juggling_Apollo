@@ -74,7 +74,7 @@ class ApolloArmKinematics():
         q_joints = solu(psi)                          # Start configuration
 
         if for_seqik:
-            return q_joints, GC2, GC4, GC6, psi
+            return q_joints, GC2, GC4, GC6, psi, feasible_set
         else:
             return q_joints
 
@@ -95,7 +95,7 @@ class ApolloArmKinematics():
         # Find the solution branch we shall follow in this sequence and starting psi
         R_start = T_start[:3, :3]
         p_start = T_start[:3, 3:4]
-        q_joint_state_start, GC2, GC4, GC6, psi = self.IK_best(T_start, for_seqik=True)   # Start configuration
+        q_joint_state_start, GC2, GC4, GC6, psi, _ = self.IK_best(T_start, for_seqik=True)   # Start configuration
 
         # Init lists
         N = position_traj.shape[0]

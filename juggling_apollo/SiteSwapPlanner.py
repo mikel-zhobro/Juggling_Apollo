@@ -310,7 +310,7 @@ class JugglingHand(Traj):
      jjj[N0:N0+N]  = jj
 
      N0 += N
-    self.init_traj(self.ttt, xxx, vvv, aaa, jjj)
+    self.init_traj(self.ttt, xxx, vvv, aaa, jjj, set_thetas=True)
 
   def addCT(self, i, ct):
     self.ct_period[i] = ct

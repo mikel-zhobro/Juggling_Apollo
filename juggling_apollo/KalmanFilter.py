@@ -17,6 +17,7 @@ class KalmanFilter:
     # initial values
     # di = di_0 + ni with ni~N(0,Omega) <- Omega = epsilon*eye(N)
     self.M = np.diag((1+imag)*M)            # covariance of noise on the measurment
+    # self.M = self.lss.GK.dot(np.diag((1+imag)*M)).dot(self.lss.GK.T.conj())
     self.d0 = d0+0*imag                     # initial disturbance value
     self.P0 = np.diag((1+imag)*P0)          # initial disturbance covariance
     self.D0 = epsilon0*self.Ident           # covariance of noise on the disturbance 
@@ -45,8 +46,8 @@ class KalmanFilter:
       # self._P = self.P0
       if P is None:
         P = self.P0
-      self._P = self.lss.GK.dot(P).dot(self.lss.GK.T.conj()) if self.timeDomain else P               # TODO: Is this needed?
-      self._D = self.lss.GK.dot(self.D0).dot(self.lss.GK.T.conj()) if self.timeDomain else self.D0   # TODO: Is this needed?
+      self._P = self.lss.GK.dot(P).dot(self.lss.GK.T.conj()) if False and self.timeDomain else P               # TODO: Is this needed?
+      self._D = self.lss.GK.dot(self.D0).dot(self.lss.GK.T.conj()) if False and self.timeDomain else self.D0   # TODO: Is this needed?
 
   def updateStep(self, u, y_meas):
     # In this case
@@ -55,10 +56,10 @@ class KalmanFilter:
     # y = Fu + Gd0  + ((( GKd ))) + n_y  with n_y ~ N(0, M)
     P1_0 = self._P + self._D
     Theta = self.lss.GK.dot(P1_0).dot(self.lss.GK.T.conj()) + self.M
-    K = P1_0.dot(self.lss.GK.T.conj()).dot(np.linalg.inv(Theta))
+    K = P1_0.dot(self.lss.GK.T.conj()).dot(np.linalg.pinv(Theta))
 
     # Weight
-    if False and self.timeDomain:
+    if False and  self.timeDomain:
       N = y_meas.size
       # D = np.diag(np.linspace(0,1.0,N))
       D = np.diag(np.log10(np.linspace(3.0,10.0,N)))

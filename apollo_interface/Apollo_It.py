@@ -310,11 +310,14 @@ class ApolloInterface:
             obs = self.read()
             error = np.array(home_pose).squeeze()-obs[:,0].squeeze()
             
-            for i in range(int(5./dt)): # try for 5 sec
+            # for i in range(int(5./dt)): # try for 5 sec
+            i = 0
+            while True:
                 if all(np.abs(error) <= eps):
                     break
                 if i==0:
                     obs = self.go_to_posture_array(home_pose, it_time, globs.bursting)
+                i += 1 
                 error = np.array(home_pose).squeeze()-obs[:,0].squeeze()
                 error_D = (error - error_P)/dt
                 error_P = error
