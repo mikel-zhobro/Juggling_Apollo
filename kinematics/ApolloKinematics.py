@@ -63,10 +63,10 @@ class ApolloArmKinematics():
     def IK(self,p07_d, R07_d, GC2=1.0, GC4=1.0, GC6=1.0):
         return IK_anallytical(p07_d, R07_d, self.dh_rob, GC2=GC2, GC4=GC4, GC6=GC6)
 
-    def IK_best(self, T_d, for_seqik=False):
+    def IK_best(self, T_d, for_seqik=False, considered_joints=list(range(7))):
         # Returns joint configuration that correspond to the IK solutions with biggest PSI feasible set
         # PSI is choosen from the middle of the set
-        GC2, GC4, GC6, feasible_set, solu =  IK_heuristic3(p07_d=T_d[:3, 3:4], R07_d=T_d[:3, :3], DH_model=self.dh_rob) # decide branch of solutions
+        GC2, GC4, GC6, feasible_set, solu =  IK_heuristic3(p07_d=T_d[:3, 3:4], R07_d=T_d[:3, :3], DH_model=self.dh_rob, considered_joints=considered_joints) # decide branch of solutions
         assert not feasible_set.empty, "Not possible to calculate IK"
         feasible_set = feasible_set.max_range()
         psi = feasible_set.middle                     # Choose psi for start configuration
@@ -78,12 +78,12 @@ class ApolloArmKinematics():
         else:
             return q_joints
 
-    def seqIK(self, position_traj, thetas_traj, T_start, verbose=False):
+    def seqIK(self, position_traj, thetas_traj, T_start, considered_joints=list(range(7)), verbose=False):
         """[summary]
 
         Args:
             position_traj        ([np.array((N, 3))]): relative movements from start_position
-            thetas_traj          ([np.array(N)])     : relative rotations around z axis from start orientation of TCP (x-down, y-right, z-forward)
+            thetas_traj          ([np.array(N)])     : relative rotations around z axis from start orientation of TCP (x-down, y-left, z-forward) <- upright position
             T_start              ([np.array((4, 4))]): decides start position/orientation from where everything unfolds
             verbose (bool, optional)                 : Ploting for verbose reasons. Defaults to False.
 
@@ -95,7 +95,7 @@ class ApolloArmKinematics():
         # Find the solution branch we shall follow in this sequence and starting psi
         R_start = T_start[:3, :3]
         p_start = T_start[:3, 3:4]
-        q_joint_state_start, GC2, GC4, GC6, psi, _ = self.IK_best(T_start, for_seqik=True)   # Start configuration
+        q_joint_state_start, GC2, GC4, GC6, psi, _ = self.IK_best(T_start, for_seqik=True, considered_joints=considered_joints)   # Start configuration
 
         # Init lists
         N = position_traj.shape[0]
@@ -120,7 +120,7 @@ class ApolloArmKinematics():
             cartesian_traj[i, :3,:3] = R_i
             cartesian_traj[i, :3,3:4] = p_i
             # Calc IK for new pose
-            solu, feas_set = IK_anallytical(p_i, R_i, self.dh_rob, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False)
+            solu, feas_set = IK_anallytical(p_i, R_i, self.dh_rob, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False, considered_joints=considered_joints)
 
             # Choose psi for the new joint configuration
             feas_set = feas_set.range_of(psi)
