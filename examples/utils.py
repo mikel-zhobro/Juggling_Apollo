@@ -9,7 +9,7 @@ from juggling_apollo.utils import DotDict
 colors = ["r", 'g', 'b', 'k', 'c', 'm', 'y']
 line_types = ["-", "--", ":", '-.']
 
-def plot_A(lines_list, indexes_list=list(range(7)), labels=None, dt=1, xlabel="", ylabel="", limits=None, fill_between=None):
+def plot_A(lines_list, indexes_list=list(range(7)), labels=None, dt=1, xlabel="", ylabel="", limits=None, fill_between=None, index_labels=None):
   # assert len(lines_list) == len(labels), "Please use same number of lines and labels"
   N = len(lines_list)
   M = len(indexes_list)
@@ -26,7 +26,7 @@ def plot_A(lines_list, indexes_list=list(range(7)), labels=None, dt=1, xlabel=""
     for i in range(N):
       l = axs.flatten()[iii].plot(timesteps, lines_list[i][:, ix].squeeze(),
                               # color=colors[iii%len(colors)],
-                              linestyle=line_types[i%len(line_types)], label=r"$\theta_{}$ {}".format(ix, labels[i] if labels is not None else ""))
+                              linestyle=line_types[i%len(line_types)], label=r"{} {}".format(r"$\theta_{}$".format(ix) if index_labels is None else index_labels[ix], labels[i] if labels is not None else ""))
     if limits is not None:
       axs.flatten()[iii].axhspan(limits[iii].a, limits[iii].b, color='gray', alpha=0.2, label='feasible set')  # color=l[0].get_color()
       axs.flatten()[iii].set_ylim([min(-np.pi, limits[iii].a), max(np.pi, limits[iii].b)])
@@ -54,15 +54,15 @@ def print_info(j, learnable_joints, joints_d_vec, d_xyz):
   print("ITERATION: " + str(j+1))
   print(          "j. -----------degree----------      L2-norm        L1-norm        e_end      <- unnormalized")
   for i in learnable_joints:
-    print(str(i) + ". Trajectory_track_error_norm: {:13.8f}  {:13.8f} {:13.8f}".format(np.linalg.norm(180.0/np.pi*joints_d_vec[j, :, i]),
-                                                                                       np.linalg.norm(180.0/np.pi*joints_d_vec[j, :, i], ord=1),
+    print(str(i) + ". Trajectory_track_error_norm: {:13.8f}  {:13.8f} {:13.8f}".format(np.linalg.norm(180.0/np.pi*joints_d_vec[j, :, i]),  # /joints_d_vec.shape[1],
+                                                                                       np.linalg.norm(180.0/np.pi*joints_d_vec[j, :, i], ord=1),  # /joints_d_vec.shape[1],
                                                                                        float(np.abs(180.0/np.pi*joints_d_vec[j, -1, i]))
                                                                                         ))
   ls = ['x', 'y', 'z']
   print(          "j. -----------meters----------      L2-norm        L1-norm        e_end      <- unnormalized")
   for i in range(3):
-    print(ls[i] + ". Trajectory_track_error_norm: {:13.8f}  {:13.8f} {:13.8f}".format(np.linalg.norm(d_xyz[:, i]),
-                                                                                      np.linalg.norm(d_xyz[:, i], ord=1),
+    print(ls[i] + ". Trajectory_track_error_norm: {:13.8f}  {:13.8f} {:13.8f}".format(np.linalg.norm(d_xyz[:, i]),  # /d_xyz.shape[0],
+                                                                                      np.linalg.norm(d_xyz[:, i], ord=1),  #/d_xyz.shape[0],
                                                                                       np.abs(d_xyz[-1, i])
                                                                                       ))
 
@@ -71,7 +71,8 @@ def plot_info(dt, j=-1, learnable_joints=list(range(7)),
           joints_q_vec=None, q_traj_des=None,
           u_ff_vec=None, q_v_traj=None,
           joint_torque_vec=None,
-          disturbanc_vec=None, d_xyz=None, error_norms=None,
+          disturbanc_vec=None, d_xyz=None, 
+          joint_error_norms=None, cartesian_error_norms=None,
           v=True, p=True, dp=False, e_xyz=False, e=False, torque=False, N=4):
 
   if joints_q_vec is not None and q_traj_des is not None and p:
@@ -105,11 +106,16 @@ def plot_info(dt, j=-1, learnable_joints=list(range(7)),
     plt.suptitle("Cartesian Error Trajectories")
     plt.show(block=False)
 
-  if error_norms is not None and e:
-    plot_A([error_norms], learnable_joints, ["L2-norm"], xlabel=r"$IT$", ylabel=r"angle [$rad$]")
+  if joint_error_norms is not None and e:
+    plot_A([joint_error_norms], learnable_joints, ["L2-norm"], xlabel=r"$IT$", ylabel=r"angle [$rad$]")
     plt.suptitle("Joint angle errors through iterations")
     plt.show(block=False)
 
+  if cartesian_error_norms is not None and e:
+    labels = ["x", "y", "z", "nx", "ny", "nz"]
+    plot_A([cartesian_error_norms], list(range(6)), None, xlabel=r"$IT$", ylabel="L2 norm", index_labels=labels)
+    plt.suptitle("Cartesian errors through iterations")
+    plt.show(block=False)
 
   if joint_torque_vec is not None and torque:
     plot_A([joint_torque_vec[j]], learnable_joints, ["torque"], dt=dt, xlabel=r"$t$", ylabel=r"Newton")
