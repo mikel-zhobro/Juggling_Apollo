@@ -18,8 +18,7 @@ class ApolloArmKinematics():
             pass
 
     def init_dh(self, noise=None):
-        """[summary]
-
+        """ Initializes the dh model.
         Args:
             noise (float, optional): If not none gives the amplitude of distance noise for the 4 distances of LWR. Defaults to None.
                                      Allow noiy parameters of forward kinematics
@@ -60,13 +59,10 @@ class ApolloArmKinematics():
         assert len(qs.shape)>2, "make sure you give a seq of joint states as input"
         return np.array([self.FK(q) for q in qs]).reshape(-1, 4, 4)
 
-    def IK(self,p07_d, R07_d, GC2=1.0, GC4=1.0, GC6=1.0):
-        return IK_anallytical(p07_d, R07_d, self.dh_rob, GC2=GC2, GC4=GC4, GC6=GC6)
-
-    def IK_best(self, T_d, for_seqik=False, considered_joints=list(range(7))):
+    def IK(self, T_d, for_seqik=False, considered_joints=list(range(7))):
         # Returns joint configuration that correspond to the IK solutions with biggest PSI feasible set
         # PSI is choosen from the middle of the set
-        GC2, GC4, GC6, feasible_set, solu =  IK_heuristic3(p07_d=T_d[:3, 3:4], R07_d=T_d[:3, :3], DH_model=self.dh_rob, considered_joints=considered_joints) # decide branch of solutions
+        GC2, GC4, GC6, feasible_set, solu =  IK_heuristic3(p07_d=T_d[:3, 3:4], R07_d=T_d[:3, :3], DH_model=self.dh_rob, considered_joints=considered_joints) # decide branch of solutions(GC2=1)
         assert not feasible_set.empty, "Not possible to calculate IK"
         feasible_set = feasible_set.max_range()
         psi = feasible_set.middle                     # Choose psi for start configuration
@@ -95,7 +91,7 @@ class ApolloArmKinematics():
         # Find the solution branch we shall follow in this sequence and starting psi
         R_start = T_start[:3, :3]
         p_start = T_start[:3, 3:4]
-        q_joint_state_start, GC2, GC4, GC6, psi, _ = self.IK_best(T_start, for_seqik=True, considered_joints=considered_joints)   # Start configuration
+        q_joint_state_start, GC2, GC4, GC6, psi, _ = self.IK(T_start, for_seqik=True, considered_joints=considered_joints)   # Start configuration
 
         # Init lists
         N = position_traj.shape[0]
