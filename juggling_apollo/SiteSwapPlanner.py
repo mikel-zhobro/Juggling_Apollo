@@ -6,6 +6,10 @@ from settings import g, dt  # globals
 import MinJerk
 
 
+
+
+dt = dt/ 5. 
+
 def gcd(a, b):
     """Calculate the Greatest Common Divisor of a and b.
 
@@ -108,13 +112,13 @@ class MinJerkTraj(Traj):
                                                  self.xx[1], self.xx[2],
                                                  self.vv[1], self.vv[2], lambdas=True)
 
-  def initTraj(self, ttt):
-    self.init_traj(*self._getTraj(ttt), set_thetas=True)
+  def initTraj(self, ttt, last=False):
+    self.init_traj(*self._getTraj(ttt, last), set_thetas=True)
     return self.get()
 
-  def _getTraj(self, t):
+  def _getTraj(self, t, last):
     # Mask out only concerning time steps
-    ttt = t[(self.tt[0] <= t) &  (t <= self.tt[2])]
+    ttt = t[(self.tt[0] <= t) & ( (t <= self.tt[2]) if last else  (t < self.tt[2]))]
     mask = ttt <= self.tt[1]
     # MJ traj for the throw part
     x0, v0, a0, j0 = self.catch_throw(ttt[mask])
@@ -132,7 +136,7 @@ class MinJerkTraj(Traj):
     ax.quiver(self.xxx[ts,0], self.xxx[ts,1], self.xxx[ts,2],
               self.vvv[ts,0], self.vvv[ts,1], self.vvv[ts,2],
               length=0.07, normalize=True, color=a[0].get_color())
-    tmp = 2
+    tmp = 9
     ax.quiver(self.xxx[0::tmp,0], self.xxx[0::tmp,1], self.xxx[0::tmp,2],
               self.thetas[::tmp,0], self.thetas[::tmp,1], abs(self.thetas[::tmp,2]),
               length=0.07, normalize=True, color='k', alpha=0.2)
@@ -220,7 +224,7 @@ class CatchThrow():
     self.v_t[1] = (self.ct_t.P[1] - self.p_t[1]) / self.t_fly
     self.v_t[2] = 0.5 * g * self.t_fly
 
-  def initTraj(self, ttt, ct_next):
+  def initTraj(self, ttt, ct_next, last):
     tt = [self.t_catch, self.t_throw, self.t_catch2]
     xx = [[self.P[0], self.p_t[0], ct_next.P[0]],
           [self.P[1], self.p_t[1], ct_next.P[1]],
@@ -231,7 +235,7 @@ class CatchThrow():
           ]
     self.ballTraj = BallTraj(self.t_fly, self.p_t, self.v_t)
     self.traj = MinJerkTraj(tt, xx ,vv)
-    return self.traj.initTraj(ttt)
+    return self.traj.initTraj(ttt, last=last)
 
   def plotTimeDiagram(self, ax, period=0):
     actual_beat = self.beat_nr + period*self.T
@@ -303,7 +307,7 @@ class JugglingHand(Traj):
     jjj = np.zeros((self.N_Whole, 3))
     N0 = 0
     for i, ct in enumerate(self.ct_period):
-     N, xx, vv, aa, jj = ct.initTraj(self.ttt, self.ct_period[(i+1)%self.N])
+     N, xx, vv, aa, jj = ct.initTraj(self.ttt, ct_next=self.ct_period[(i+1)%self.N], last=i==self.N-1)
      xxx[N0:N0+N]  = xx
      vvv[N0:N0+N]  = vv
      aaa[N0:N0+N]  = aa
@@ -563,5 +567,5 @@ if __name__ == "__main__":
   jp.plan(1, pattern=(3,3,3), rep=1).plot()
   jp.plan(2, pattern=(3,), rep=1).plot()
   p = jp.plan(3, pattern=(4,), rep=1)
-  N_Whole0, x0, v0, a0, j0, thetas = p.hands[0].get(True)  # get plan for hand0
+  # N_Whole0, x0, v0, a0, j0, thetas = p.hands[0].get(True)  # get plan for hand0
   p.plot()
