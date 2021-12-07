@@ -73,9 +73,9 @@ def check_FK_FKDH():
         print(np.linalg.norm(T-T_DH))
 
 print("1. DH Jacobian Test")
-print("\n-- a) Not rBase --\n")
+print("\n-- a) Not rBase --\n")  # REFERENCE IS SIM-APOLLO'S BASE
 check_J_position(fk_dh(False), J_dh(False))
-print("\n-- b) rBase --\n")
+print("\n-- b) rBase --\n")  # REFERENCE IS RIGHT-HAND BASE
 check_J_position(fk_dh(True), J_dh(True))
 print("\n2. Analytical Jacobian Test\n")
 check_J_position(FK, J)

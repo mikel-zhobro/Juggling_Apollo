@@ -8,7 +8,7 @@ np.set_printoptions(precision=4, suppress=True)
 spi6 = 0.5
 cpi6 = cos(np.pi/6)
 
-T_base_rbase = np.array([  # Sets the Arm to the right base frame
+T_base_rbase = np.array([  # Sets the Arm to the correct(main) base frame
     [-spi6,  cpi6,  0.0, 0.0],
     [ cpi6,  spi6,  0.0, 0.0],
     [ 0.0,   0.0,  -1.0, 0.0],
@@ -50,6 +50,15 @@ class DH_revolut():
         self.joints.append(self.Joint(a, alpha, d, theta, limit, name, offset))
 
     def getT(self, j, theta):
+        """Returns the transformation matrix related to joint j and q_j=theta, according to the DH table.
+
+        Args:
+            j (Joint): joint
+            theta (float): joint angle
+
+        Returns:
+            [np.array(4,4)]: j_T_j+1
+        """
         c_th = cos(theta + j.theta + j.offset); s_th = sin(theta + j.theta + j.offset)
         if j.index==6:
             return np.array(
@@ -70,9 +79,10 @@ class DH_revolut():
         T0_7 = np.eye(4)
         for j, theta_j in zip (self.joints, Q):
             T0_7 = T0_7.dot(self.getT(j, theta_j))
-  
+        # dh_base -> r_base
         T0_7 = T_rbase_dhbase.dot(T0_7)
         if not rbase_frame:  # dont enter if we want fk in rbase frame
+            # r_base -> base
             T0_7 = T_base_rbase.dot(T0_7)
         
         return T0_7
@@ -103,11 +113,11 @@ class DH_revolut():
             i_T_j = i_T_j.dot(self.getT(joint, th_j))
         return i_T_j
 
-    def get_goal_in_dh_base_frame(self, p, R):
+    def get_goal_in_dh_base_frame(self, p_base, R_base):
         # base-> rbase
         T_rbase_base = invT(T_base_rbase)
-        R_ret = T_rbase_base[:3,:3].dot(R)
-        p_ret = T_rbase_base[:3,:3].dot(p) + T_rbase_base[:3,3:4]
+        R_ret = T_rbase_base[:3,:3].dot(R_base)
+        p_ret = T_rbase_base[:3,:3].dot(p_base) + T_rbase_base[:3,3:4]
 
         # rbase -> dh_base
         T_dhbase_rbase = invT(T_rbase_dhbase)
@@ -116,21 +126,18 @@ class DH_revolut():
 
         return p_ret, R_ret
 
-    def i_J_j(self, i, j, Qi_j, rbase_frame=False):
+    def i_J_j(self, i, j, Qi_j):
+        # J = [zi(x)delta(pi), .., zk(x)delta(pk), .., zj(x)delta(pj)
+        #      zi            , .., zk            , .., zj            ] where delta(pk) = pj -pk
         assert i < j, 'i:{} and j:{} cannot be equal'.format(i,j)
-        
-        A = T_rbase_dhbase.copy() if i == 0 else np.eye(4)
-        if not rbase_frame:  # dont enter if we want fk in rbase frame
-            A = T_base_rbase.dot(A)
-
         N = j-i
-        z_s = [None]*(N+1); z_s[0] = A[:3, 2:3]
-        p_s = np.zeros((3, N+1)); p_s[:,0] = A[:3, -1]
-        i_T_j = np.eye(4)
-        for n, joint, th_j in zip(range(N), self.joints[i:j], Qi_j):
-            i_T_j = i_T_j.dot(self.getT(joint, th_j)) if n>0 else A.dot(i_T_j.dot(self.getT(joint, th_j)))
-            z_s[n+1]    = i_T_j[:3, 2:3]
-            p_s[:, n+1] = i_T_j[:3, 3]
+        i_T_k = np.eye(4)
+        z_s = [None]*(N+1); z_s[0] = i_T_k[:3, 2:3]
+        p_s = np.zeros((3, N+1)); p_s[:,0] = i_T_k[:3, -1]
+        for n, joint_k, th_k in zip(range(N), self.joints[i:j], Qi_j):
+            i_T_k = i_T_k.dot(self.getT(joint_k, th_k))
+            z_s[n+1]    = i_T_k[:3, 2:3]
+            p_s[:, n+1] = i_T_k[:3, 3]
         
         J_s = []
         for n in range(N):
@@ -143,7 +150,21 @@ class DH_revolut():
         return J
 
     def J(self, q, rbase_frame=False):
-        return self.i_J_j(0, 7, q, rbase_frame=rbase_frame)
+        # In order to tranfsorm the jacobian in the right base frame we have to premultiply with 
+        #  [R_base_base_dh    0 
+        #   0                 R_base_base_dh]
+        # jacobian expresses the cartesian velocities caused byz joint velocities. We want the cartesian velocities in the right base.
+
+        # dh_base -> rbase
+        T_base_dhbase = T_rbase_dhbase.copy()
+        # rbase -> base
+        if not rbase_frame:  # dont enter if we want to work with reference to rbase
+            T_base_dhbase = T_base_rbase.dot(T_base_dhbase)
+
+        TMP = np.eye(6)
+        TMP[:3,:3] = T_base_dhbase[:3,:3]
+        TMP[3:,3:] = T_base_dhbase[:3,:3]
+        return TMP.dot(self.i_J_j(0, 7, q))
     
     def plot(self):
         T0wshoulder = self.get_i_T_j(0, 2)
