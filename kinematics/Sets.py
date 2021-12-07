@@ -84,6 +84,8 @@ class ContinuousSet():
         return self.c_ranges[0].sample()
     
     def max_range(self):
+        if len(self.c_ranges)==0:
+            return ContinuousSet()
         max_range = max(self.c_ranges, key=lambda item: item.b-item.a)
         return ContinuousSet(max_range.a, max_range.b, max_range.a_incl, max_range.b_incl)
     
