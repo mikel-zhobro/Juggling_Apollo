@@ -68,17 +68,13 @@ N, x0, v0, a0, j0, thetas = plan.hands[0].get(get_thetas=True)  # get plan for h
 
 # From direction vector to theta
 # thetas = R_dhtcp_tcp.dot(thetas.T).T
-
-#- thetas[0] + np.array([0,0,1.]).reshape(1,3)
-print(thetas[-1,2])
 thetas = np.arccos(np.clip(thetas[:, 2], -1.0, 1.0))
 thetas2 = np.arccos(np.clip(-(v0/ np.linalg.norm(v0, axis=1, keepdims=True))[:, 2], -1.0, 1.0)) - thetas[0]
 thetas -= thetas[0]
-plt.plot(thetas*180./np.pi)
-plt.plot(thetas2*180./np.pi)
-# plt.show()
-
-plan.plot()
+if True:
+  plt.plot(thetas*180./np.pi)
+  plt.plot(thetas2*180./np.pi)
+  plan.plot()
 
 
 
@@ -185,24 +181,24 @@ for j in range(ILC_it):
   q_v_traj = np.average(q_v_traj[0:], axis=0)
   q_a_traj = np.average(q_a_traj[0:], axis=0)
   F_N_vec  = np.average( F_N_vec[0:], axis=0)
-  
+
   delta_y_meas = q_traj - q_traj[0]  #  np.average(q0[0,], axis=0) #np.average(q0[0:], axis=0, weights=[3,2,1,1]) # calc delta of executed traj
   q_traj = q_start_i + delta_y_meas   # rebase executed traj as if it would start from the exact home position
 
   # Update feed-forward signal
   for i in learnable_joints:
     if FREQ_DOMAIN:
-      u_ff[:,i] = my_ilcs[i].updateStep2(y_meas=delta_y_meas[:,i],  y_des=delta_q_traj_des_i[:, i], 
+      u_ff[:,i] = my_ilcs[i].updateStep2(y_meas=delta_y_meas[:,i],  y_des=delta_q_traj_des_i[:, i],
                                         #  lb=-UB,ub=UB
                                         verbose=False)
     else:
-      u_ff[:,i] = my_ilcs[i].updateStep(y_meas=delta_y_meas[:,i],  y_des=delta_q_traj_des_i[:, i], 
+      u_ff[:,i] = my_ilcs[i].updateStep(y_meas=delta_y_meas[:,i],  y_des=delta_q_traj_des_i[:, i],
                                         #  lb=-UB,ub=UB
                                         verbose=False)
 
   # Collect Data
   cartesian_traj_i = rArmKinematics_nn.seqFK(q_traj)
-  delta = np.array([utilities.errorForJacobianInverse(T_i=rArmKinematics_nn.FK(q0), T_goal=cartesian_traj_des[0])]+ 
+  delta = np.array([utilities.errorForJacobianInverse(T_i=rArmKinematics_nn.FK(q0), T_goal=cartesian_traj_des[0])]+
                    [utilities.errorForJacobianInverse(T_i=cartesian_traj_i[i], T_goal=cartesian_traj_des[i+1]) for i in range(N_1)]).reshape(-1, 6)
   d_xyz = delta[:, :3]  # measured cartesian error: calculated using the noise-less FK
   # d_xyz = xyz_traj_des[1:] - rArmKinematics_nn.seqFK(q_traj)[:, :3, -1]  # measured cartesian error: calculated using the noise-less FK
