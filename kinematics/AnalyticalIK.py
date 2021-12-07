@@ -24,7 +24,7 @@ eps_psi = 1e-4
 delta_psi = 5.0/180*np.pi
 
 
-def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=False, p06=None, p07=None):
+def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=False, p06=None, p07=None, considered_joints=list(range(7))):
     """
         Implementation from paper: "Analytical Inverse Kinematic Computation for 7-DOF Redundant Manipulators...
         With Joint Limits and Its Application to Redundancy Resolution",
@@ -102,7 +102,9 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
     feasible_sets[5], plot_params[5] =  cosine_type(*W6, joint=DH_model.joint(5), GC=GC6, verbose=verbose)
     feasible_sets[6], plot_params[6] = tangent_type(*W7, joint=DH_model.joint(6), verbose=verbose)
     psi_feasible_set = ContinuousSet(-np.pi, np.pi)
-    for fs in feasible_sets:
+    for kkk in considered_joints:
+    # for fs in feasible_sets:
+        fs = feasible_sets[kkk]
         psi_feasible_set -= fs
         if verbose:
             print('fs', fs)
@@ -447,7 +449,7 @@ def IK_heuristic2(p07_d, R07_d, DH_model):
             GC6_final = GC6
     return GC2_final, GC4_final, GC6_final, biggest_feasible_set, solu_function
 
-def IK_heuristic3(p07_d, R07_d, DH_model):
+def IK_heuristic3(p07_d, R07_d, DH_model, considered_joints=list(range(7))):
     # Finds best branch of solutions (with elbo human like)
     biggest_feasible_set = ContinuousSet()
     solu_function = None
@@ -456,7 +458,7 @@ def IK_heuristic3(p07_d, R07_d, DH_model):
     GC6_final = 1.0
     GCs = [(i, ii) for i in [-1.0, 1.0] for ii in [-1.0, 1.0]]
     for GC2, GC6 in GCs:
-        sf, psi_feasible_set = IK_anallytical(p07_d, R07_d, DH_model, GC2=GC2_final, GC4=GC4_final, GC6=GC6, verbose=False, p06=None, p07=None)
+        sf, psi_feasible_set = IK_anallytical(p07_d, R07_d, DH_model, GC2=GC2_final, GC4=GC4_final, GC6=GC6, verbose=False, p06=None, p07=None, considered_joints=considered_joints)
         if psi_feasible_set.max_range().size > biggest_feasible_set.size:
             biggest_feasible_set = psi_feasible_set.max_range()
             solu_function = sf
