@@ -122,15 +122,36 @@ def clip_c(v, min=-1.0, max=1.0):
     return np.clip(v, min, max)
 
 def pR2T(p,R):
-    T = np.eye(4)
-    T[:3,:3] = R
-    T[:3, 3:4] = p
+    """ From positions and rotations to homogenous transformations
+        It handles both trajectories and single ones.
+
+    Args:
+        p ([type]): position or position trajectory
+        R ([type]): rotation or rotation trajectory
+
+    Returns:
+        [type]: [description]
+    """
+    p_shape = p.shape
+    R_shape = R.shape
+    p = p.reshape(-1,3,1)
+    R = R.reshape(-1,3,3)
+
+    N = R.shape[0]
+    T = np.zeros((N,4,4))
+    for i, (p_, R_) in enumerate(zip(p, R)):
+        T[i, :3,:3] = R_
+        T[i, :3, 3:4] = p_
+        T[i, 3, 3] = 1.0
+
+    p = p.reshape(p_shape)
+    R = R.reshape(R_shape)
     return T
 
 def invT(T):
-    T = T.copy()
-    T[:3,:3] = T[:3,:3].T
-    T[:3,3:4] = -T[:3,:3].dot(T[:3,3:4])
+    T_ = T.copy()
+    T_[:3,:3] = T[:3,:3].T
+    T_[:3,3:4] = -T_[:3,:3].dot(T[:3,3:4])
     return T
 
 
