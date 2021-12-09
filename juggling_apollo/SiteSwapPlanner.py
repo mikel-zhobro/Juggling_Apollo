@@ -8,7 +8,7 @@ import MinJerk
 
 
 
-dt = dt/ 5. 
+dt = dt/ 4.
 
 def gcd(a, b):
     """Calculate the Greatest Common Divisor of a and b.
@@ -83,8 +83,23 @@ class Traj():
     if set_thetas:
       # orientation is in the direction of the acceleration
       # only that we take the absolute value of the z-direction so the ball doesn't fall.
-      self.thetas = self.vvv.copy() / np.linalg.norm(self.vvv, axis=1, keepdims=True)
-      self.thetas[:,2] = abs(self.thetas[:,2])
+
+      # Create the axis
+
+      _x = self.vvv.copy() / (np.linalg.norm(self.vvv, axis=1, keepdims=True) + 1e-9)
+      _x[:,2] = abs(_x[:,2])
+      _x *= -1.0
+      _z = np.cross(self.vvv, self.aaa)
+      _z /= (np.linalg.norm(_z, axis=1, keepdims=True) + 1e-9)
+      # _z = np.zeros_like(_x)
+      # _z[:,1] = 1.0
+      _y = np.cross(_z, _x)
+
+      # Fill the rotation trajectory
+      self.thetas = np.zeros((xxx.shape[0],3,3))
+      self.thetas[:,:,0] = _x
+      self.thetas[:,:,1] = _y
+      self.thetas[:,:,2] = _z
 
   def get(self, get_thetas=False):
     return (self.N_Whole, self.xxx, self.vvv, self.aaa, self.jjj) + ((self.thetas,) if get_thetas else ())
@@ -107,10 +122,15 @@ class MinJerkTraj(Traj):
 
     self.catch_throw = MinJerk.get_min_jerk_xyz(dt, tt[0], tt[1],
                                                 self.xx[0], self.xx[1],
-                                                self.vv[0], self.vv[1], lambdas=True)
+                                                self.vv[0], self.vv[1],
+                                                a_ta=np.zeros(3),
+                                                lambdas=True)
+    a1 = self.catch_throw(tt[1])[2]
     self.throw_catch2 = MinJerk.get_min_jerk_xyz(dt, tt[1], tt[2],
                                                  self.xx[1], self.xx[2],
-                                                 self.vv[1], self.vv[2], lambdas=True)
+                                                 self.vv[1], self.vv[2],
+                                                 a_ta=a1.squeeze(), a_tb=np.zeros(3),
+                                                 lambdas=True)
 
   def initTraj(self, ttt, last=False):
     self.init_traj(*self._getTraj(ttt, last), set_thetas=True)
@@ -137,9 +157,28 @@ class MinJerkTraj(Traj):
               self.vvv[ts,0], self.vvv[ts,1], self.vvv[ts,2],
               length=0.07, normalize=True, color=a[0].get_color())
     tmp = 9
+    # ax.quiver(self.xxx[0::tmp,0], self.xxx[0::tmp,1], self.xxx[0::tmp,2],
+    #           -self.thetas[::tmp,0,0], -self.thetas[::tmp,1,0], -self.thetas[::tmp,2,0],
+    #           length=0.07, normalize=True, color='r', alpha=0.2, label='_'*int(bool(i or h_i)) + '-x direction')
+
+    # ax.quiver(self.xxx[0::tmp,0], self.xxx[0::tmp,1], self.xxx[0::tmp,2],
+    #           self.thetas[::tmp,0,1], self.thetas[::tmp,1,1], self.thetas[::tmp,2,1],
+    #           length=0.07, normalize=True, color='b', alpha=0.2, label='_'*int(bool(i or h_i)) + 'z direction')
     ax.quiver(self.xxx[0::tmp,0], self.xxx[0::tmp,1], self.xxx[0::tmp,2],
-              self.thetas[::tmp,0], self.thetas[::tmp,1], abs(self.thetas[::tmp,2]),
-              length=0.07, normalize=True, color='k', alpha=0.2)
+              self.thetas[::tmp,0,2], self.thetas[::tmp,1,2], self.thetas[::tmp,2,2],
+              length=0.07, normalize=True, color='g', alpha=0.2, label='_'*int(bool(i or h_i)) + 'y direction')
+
+    print('a',np.max(self.aaa, axis=0))
+    print('v',np.max(self.vvv, axis=0))
+    # plt.figure()
+    # plt.plot(self.ttt, self.vvv[:,0], label='vx')
+    # plt.plot(self.ttt, self.vvv[:,1], label='vy')
+    # plt.plot(self.ttt, self.vvv[:,2], label='vz')
+    # plt.plot(self.ttt, self.aaa[:,0], label='x')
+    # plt.plot(self.ttt, self.aaa[:,1], label='y')
+    # plt.plot(self.ttt, self.aaa[:,2], label='z')
+    # plt.legend()
+    # plt.show(block=False)
     return a[0].get_color()
 
 
@@ -197,7 +236,7 @@ class CatchThrow():
     self.ct_c = ct_c            # ct where catch comes from
     self.ct_t = ct_t            # ct where throw goes to
 
-  def initThrow(self, t_dwell, tB, swingSize):
+  def initThrow(self, t_dwell, tB, swingSize, h=0.1):
     self.tB = tB
     # we assume catch and throw points lie all at z=0
     self.t_fly = self.n_t * tB - t_dwell
@@ -217,21 +256,20 @@ class CatchThrow():
     theta = math.atan2(c_delta_y, c_delta_x)
     self.p_t[0] = self.P[0] + math.cos(theta)*swingSize
     self.p_t[1] = self.P[1] + math.sin(theta)*swingSize
-    self.p_t[2] = self.P[2]
-
+    self.p_t[2] = self.P[2] + h
     # throw velocity
     self.v_t[0] = (self.ct_t.P[0] - self.p_t[0]) / self.t_fly
     self.v_t[1] = (self.ct_t.P[1] - self.p_t[1]) / self.t_fly
-    self.v_t[2] = 0.5 * g * self.t_fly
+    self.v_t[2] = 0.5 * g * self.t_fly - h/self.t_fly
 
   def initTraj(self, ttt, ct_next, last):
     tt = [self.t_catch, self.t_throw, self.t_catch2]
     xx = [[self.P[0], self.p_t[0], ct_next.P[0]],
           [self.P[1], self.p_t[1], ct_next.P[1]],
           [self.P[2], self.p_t[2], ct_next.P[2]]]
-    vv = [[ self.ct_c.v_t[0], self.v_t[0],  ct_next.ct_c.v_t[0]],
-          [ self.ct_c.v_t[1], self.v_t[1],  ct_next.ct_c.v_t[1]],
-          [-self.ct_c.v_t[2], self.v_t[2], -ct_next.ct_c.v_t[2]],
+    vv = [[ self.ct_c.v_t[0]*0., self.v_t[0],  ct_next.ct_c.v_t[0]*0.],
+          [ self.ct_c.v_t[1]*0., self.v_t[1],  ct_next.ct_c.v_t[1]*0.],
+          [-self.ct_c.v_t[2]*0., self.v_t[2], -ct_next.ct_c.v_t[2]*0.],
           ]
     self.ballTraj = BallTraj(self.t_fly, self.p_t, self.v_t)
     self.traj = MinJerkTraj(tt, xx ,vv)
@@ -564,8 +602,13 @@ class JugglingPlanner():
 
 if __name__ == "__main__":
   jp = JugglingPlanner()
-  jp.plan(1, pattern=(3,3,3), rep=1).plot()
+  # jp.plan(1, pattern=(3,3,3), rep=1).plot()
   jp.plan(2, pattern=(3,), rep=1).plot()
-  p = jp.plan(3, pattern=(4,), rep=1)
+  # jp.plan(4, pattern=(3,), rep=1).plot()
+  jp.plan(3, pattern=(4,), rep=1).plot()
   # N_Whole0, x0, v0, a0, j0, thetas = p.hands[0].get(True)  # get plan for hand0
-  p.plot()
+  # plt.plot(a0[:,0])
+  # plt.plot(a0[:,1])
+  # plt.plot(a0[:,2])
+  # plt.show()
+  # p.plot()
