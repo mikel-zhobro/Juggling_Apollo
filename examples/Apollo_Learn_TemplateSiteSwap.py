@@ -54,57 +54,55 @@ T_home = np.array([[0.0, -1.0, 0.0,  0.32],  # uppword orientation(cup is up)
                    [-1.0, 0.0, 0.0, -0.49],
                    [0.0,  0.0, 0.0,  0.0 ]], dtype='float')
 
-R_dhtcp_tcp = np.array([[0.0, -1.0, 0.0],
-                        [0.0,  0.0, 1.0],
-                        [-1.0, 0.0, 0.0]]).T
+T_dhtcp_tcp = np.eye(4)
+T_dhtcp_tcp[:3,:3] = T_home[:3,:3].T
 ########################################################################################################
 ########################################################################################################
 ########################################################################################################
 
 # A. COMPUTE TRAJECTORIES IN CARTESIAN AND JOINT SPACE
-jp = SiteSwapPlanner.JugglingPlanner(w=0.7, D=0.152)
+jp = SiteSwapPlanner.JugglingPlanner(w=0.3, D=0.052)
 plan = jp.plan(1, pattern=(3,), rep=1)
-N, x0, v0, a0, j0, thetas = plan.hands[0].get(get_thetas=True)  # get plan for hand0
+N, x0, v0, a0, j0, rot_traj_des = plan.hands[0].get(get_thetas=True)  # get plan for hand0
 
-# From direction vector to theta
-# thetas = R_dhtcp_tcp.dot(thetas.T).T
-thetas = np.arccos(np.clip(thetas[:, 2], -1.0, 1.0))
-thetas2 = np.arccos(np.clip(-(v0/ np.linalg.norm(v0, axis=1, keepdims=True))[:, 2], -1.0, 1.0)) - thetas[0]
-thetas -= thetas[0]
-if True:
-  plt.plot(thetas*180./np.pi)
-  plt.plot(thetas2*180./np.pi)
-  plan.plot()
-
-
+rot_traj_des[:,] = T_home[:3,:3]
 
 # From positions get delta position
 delta_xyz_traj_des = (x0 - x0[0])
 # delta_xyz_traj_des[:,[0, 1]] = delta_xyz_traj_des[:,[1, 0]]
 xyz_traj_des = delta_xyz_traj_des + T_home[:3, -1]
+T_traj = utilities.pR2T(xyz_traj_des, rot_traj_des)
+print(T_traj[0])
 print(np.max(delta_xyz_traj_des, 0) - np.min(delta_xyz_traj_des, 0))
-
+# plt.plot(T_traj[:,0,3], label='x')
+# plt.plot(T_traj[:,1,3], label='y')
+# plt.plot(T_traj[:,2,3])
+# plt.legend()
+# plan.plot()
+# rot_traj_des[:,[1, 2]] = rot_traj_des[:,[2, 1]]
 
 T_FULL = N*dt - 0.002
 N_1 = N-1
 
 # 0. Create Apollo objects
 # A) INTERFACE: create rArmInterface and go to home position
-N_joints = 7
 rArmInterface = ApolloInterface(r_arm=True)
 
 # B) KINEMATICS: create rArmInterface and go to home position
 rArmKinematics    = ApolloArmKinematics(r_arm=True, noise=NOISE)  ## kinematics with noise (used for its (wrong)IK calculations)
 rArmKinematics_nn = ApolloArmKinematics(r_arm=True)               ## kinematics without noise  (used to calculate measurments, plays the wrole of a localization system)
+# T_traj = rArmKinematics.transform_in_dh_frames(T_dhtcp_tcp, T_traj)
+q_start = rArmKinematics.IK(T_home)
 
 
-
-cartesian_traj_des, q_traj_des, q_start, psi_params = rArmKinematics.seqIK(delta_xyz_traj_des, thetas, T_home, considered_joints=learnable_joints[:])  # [N, 7]
+print('EY')
+q_traj_des, q_start, psi_params = rArmKinematics.seqIK(T_traj, considered_joints=learnable_joints)  # [N, 7]
 # cartesian_traj_des, q_traj_des_nn, q_start_nn, _    = rArmKinematics_nn.seqIK(delta_xyz_traj_des, thetas, T_home)  # [N, 7]
 
-
+print(q_start)
 # Set to 0 the non learning joints
-for i in set(range(7)) - set(learnable_joints):
+N_joints = 7
+for i in set(range(N_joints)) - set(learnable_joints):
   q_traj_des[:,i] = 0.0
   # q_traj_des_nn[:,i] = 0.0
 
@@ -174,6 +172,14 @@ for i in learnable_joints:
 for j in range(ILC_it):
   # Limit Input
   # u_ff = np.clip(u_ff,-UB,UB)
+  if True and j%every_N==0: plot_info(dt, j, learnable_joints,
+                             joints_q_vec, q_traj_des_i[1:],
+                            #  u_ff_vec, q_v_traj[1:],
+                             joint_torque_vec,
+                            #  disturbanc_vec,
+                            #  d_xyz,
+                             joint_error_norms, cartesian_error_norms,
+                             v=False, p=True, dp=False, e_xyz=False, e=True, torque=False)
 
   # Main Simulation
   q_traj, q_v_traj, q_a_traj, F_N_vec, _, q0 = rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL, u=u_ff, joint_home_config=q_start_i, repetitions=3 if FREQ_DOMAIN else 1, it=j)
@@ -198,8 +204,8 @@ for j in range(ILC_it):
 
   # Collect Data
   cartesian_traj_i = rArmKinematics_nn.seqFK(q_traj)
-  delta = np.array([utilities.errorForJacobianInverse(T_i=rArmKinematics_nn.FK(q0), T_goal=cartesian_traj_des[0])]+
-                   [utilities.errorForJacobianInverse(T_i=cartesian_traj_i[i], T_goal=cartesian_traj_des[i+1]) for i in range(N_1)]).reshape(-1, 6)
+  delta = np.array([utilities.errorForJacobianInverse(T_i=rArmKinematics_nn.FK(q0), T_goal=T_traj[0])]+
+                   [utilities.errorForJacobianInverse(T_i=cartesian_traj_i[i], T_goal=T_traj[i+1]) for i in range(N_1)]).reshape(-1, 6)
   d_xyz = delta[:, :3]  # measured cartesian error: calculated using the noise-less FK
   # d_xyz = xyz_traj_des[1:] - rArmKinematics_nn.seqFK(q_traj)[:, :3, -1]  # measured cartesian error: calculated using the noise-less FK
   # a. Meas
@@ -237,12 +243,6 @@ for j in range(ILC_it):
 
   print_info(j, learnable_joints, joints_d_vec, d_xyz)
 
-  if False and j%every_N==0: plot_info(dt, j, learnable_joints,
-                             joints_q_vec, q_traj_des_i[1:],
-                             u_ff_vec, q_v_traj[1:],
-                             joint_torque_vec,
-                             disturbanc_vec, d_xyz, joint_error_norms, cartesian_error_norms,
-                             v=False, p=True, dp=False, e_xyz=False, e=True, torque=False)
 
   if False and j%every_N==0:  # How desired  trajectory changes
     plot_A([q_traj_des_nn, q_traj_des_vec[j], q_traj_des_vec[j-1], q_traj_des_vec[0]], learnable_joints, ["des", "it="+str(j), "it="+str(j-1), "it=0"], dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
