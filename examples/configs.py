@@ -3,7 +3,7 @@ import numpy as np
 
 from utils import DotDict
 from juggling_apollo.utils import steps_from_time, plt, rtime
-from juggling_apollo import JugglingPlanner, MinJerk
+from Planners import JugglingPlanner, MinJerk
 from juggling_apollo import MinJerk
 
 

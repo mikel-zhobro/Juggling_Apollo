@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 
-from settings import g #dt  # globals
+from utils import g #dt  # globals
 import MinJerk
 
 

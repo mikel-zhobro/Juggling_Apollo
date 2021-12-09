@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import __add_path__
 from juggling_apollo.settings import dt
 from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal
-from juggling_apollo.MinJerk import plotMJ
+from Planners.MinJerk import plotMJ
 from apollo_interface.Apollo_It import ApolloInterface, plot_simulation
 from kinematics.ApolloKinematics import ApolloArmKinematics
 from utils import plot_A, load, colors
