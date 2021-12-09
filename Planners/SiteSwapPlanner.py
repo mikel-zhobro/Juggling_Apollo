@@ -141,21 +141,18 @@ class MinJerkTraj(Traj):
                                                  a_ta=a1.squeeze()*0., a_tb=np.zeros(3),
                                                  lambdas=True)
 
-  def initTraj(self, ttt, last=False):
-    self.init_traj(*self._getTraj(ttt, last), set_thetas=True, v_throw=self.vv[1])
+  def initMJTraj(self, ttt, last=False):
+    # Mask out only concerning time steps
+    ttt_ = ttt[(self.tt[0] <= ttt) & ( (ttt <= self.tt[2]) if last else  (ttt < self.tt[2]))]
+    mask = ttt_ <= self.tt[1]
+    # MJ traj for the throw part
+    x0, v0, a0, j0 = self.catch_throw(ttt_[mask])
+    # MJ traj for the catch part
+    x1, v1, a1, j1 = self.throw_catch2(ttt_[np.invert(mask)])
+    self.init_traj(ttt_, np.vstack((x0, x1)), np.vstack((v0, v1)), np.vstack((a0, a1)), np.vstack((j0, j1)), set_thetas=True, v_throw=self.vv[1])
     return self.get()
 
-  def _getTraj(self, t, last):
-    # Mask out only concerning time steps
-    ttt = t[(self.tt[0] <= t) & ( (t <= self.tt[2]) if last else  (t < self.tt[2]))]
-    mask = ttt <= self.tt[1]
-    # MJ traj for the throw part
-    x0, v0, a0, j0 = self.catch_throw(ttt[mask])
-    # MJ traj for the catch part
-    x1, v1, a1, j1 = self.throw_catch2(ttt[np.invert(mask)])
-    return ttt, np.vstack((x0, x1)), np.vstack((v0, v1)), np.vstack((a0, a1)), np.vstack((j0, j1))
-
-  def plot(self, ax, ttt, i, h_i):
+  def plotMJTraj(self, ax, ttt, i, h_i):
     # Plot path
     a = ax.plot3D(self.xxx[:,0], self.xxx[:,1], self.xxx[:,2], label='{}_{}'.format(h_i, i))
 
@@ -198,7 +195,7 @@ class BallTraj(Traj):
     self.vvv = self.v_t + self.aaa*self.ttt
     self.xxx = p_t + self.ttt*v_t + 0.5*self.aaa*self.ttt**2
 
-  def plot(self, ax, col):
+  def plotBallTraj(self, ax, col):
     # plot path
     ax.plot3D(self.xxx[:,0], self.xxx[:,1], self.xxx[:,2], color=col, linestyle='--')
 
@@ -236,7 +233,7 @@ class CatchThrow():
     self.ct_c = ct_c            # ct where catch comes from
     self.ct_t = ct_t            # ct where throw goes to
 
-  def initThrow(self, t_dwell, tB, swingSize, throw_height=0.1):
+  def initCTThrow(self, t_dwell, tB, swingSize, throw_height=0.1):
     self.tB = tB
     # we assume catch and throw points lie all at z=0
     self.t_fly = self.n_t * tB - t_dwell
@@ -262,7 +259,7 @@ class CatchThrow():
     self.v_t[1] = (self.ct_t.P[1] - self.p_t[1]) / self.t_fly
     self.v_t[2] = 0.5 * g * self.t_fly - throw_height/self.t_fly
 
-  def initTraj(self, dt, ttt, ct_next, last):
+  def initCTTraj(self, dt, ttt, ct_next, last):
     tt = [self.t_catch, self.t_throw, self.t_catch2]
     xx = [[self.P[0], self.p_t[0], ct_next.P[0]],
           [self.P[1], self.p_t[1], ct_next.P[1]],
@@ -273,9 +270,9 @@ class CatchThrow():
           ]
     self.ballTraj = BallTraj(self.t_fly, self.p_t, self.v_t)
     self.traj = MinJerkTraj(dt, tt, xx ,vv)
-    return self.traj.initTraj(ttt, last=last)
+    return self.traj.initMJTraj(ttt, last=last)
 
-  def plotTimeDiagram(self, ax, period=0):
+  def plotCTTimeDiagram(self, ax, period=0):
     actual_beat = self.beat_nr + period*self.T
     x , y = actual_beat, self.h.h
     # Plot point and annonate
@@ -285,13 +282,13 @@ class CatchThrow():
     plotConnection(ax, actual_beat-self.n_c, actual_beat, self.h_c.h, self.h.h, self.h_c.h==self.h.h)
     plotConnection(ax, actual_beat, actual_beat+self.n_t, self.h.h, self.h_t.h, self.h.h==self.h_t.h)
 
-  def plotTrajectories(self, ax, ttt, h_i, period=0):
+  def plotCTTrajectory(self, ax, ttt, h_i, period=0):
     ax.scatter(*self.p_t, color='k')
     ax.scatter(*self.P, color='k')
     ax.text(self.p_t[0], self.p_t[1], self.p_t[2], 'throw', size=11, zorder=1,  color='k')
     ax.text(self.P[0], self.P[1], self.P[2], 'catch', size=11, zorder=1,  color='k')
-    col = self.traj.plot(ax, ttt, self.i, h_i)
-    self.ballTraj.plot(ax, col)
+    col = self.traj.plotMJTraj(ax, ttt, self.i, h_i)
+    self.ballTraj.plotBallTraj(ax, col)
 
   @property
   def P(self):
@@ -329,23 +326,20 @@ class JugglingHand(Traj):
     self.ct_period = [None]*N             # list of the ct this hand performs
     self.hand_positions = hand_positions  # position of all existing hands
 
-  def initThrows(self, dt, tDwell, tB, swingSize, throw_height):
+  def initHandThrows(self, dt, tDwell, tB, swingSize, throw_height):
     # self.ttt = np.arange(0.0, self.Th*tB, dt)
     self.ttt = np.linspace(self.h*tB, self.T*tB+self.h*tB, self.T*tB//dt)
     self.N_Whole = self.ttt.size
-    [ct.initThrow(tDwell, tB, swingSize, throw_height) for ct in self.ct_period]
+    [ct.initCTThrow(tDwell, tB, swingSize, throw_height) for ct in self.ct_period]
 
-  def getTraj(self):
-    return self.ttt,
-
-  def initTraj(self, dt):
+  def initHandTraj(self, dt):
     xxx = np.zeros((self.N_Whole, 3))
     vvv = np.zeros((self.N_Whole, 3))
     aaa = np.zeros((self.N_Whole, 3))
     jjj = np.zeros((self.N_Whole, 3))
     N0 = 0
     for i, ct in enumerate(self.ct_period):
-     N, xx, vv, aa, jj = ct.initTraj(dt, self.ttt, ct_next=self.ct_period[(i+1)%self.N], last=i==self.N-1)
+     N, xx, vv, aa, jj = ct.initCTTraj(dt, self.ttt, ct_next=self.ct_period[(i+1)%self.N], last=i==self.N-1)
      xxx[N0:N0+N]  = xx
      vvv[N0:N0+N]  = vv
      aaa[N0:N0+N]  = aa
@@ -357,17 +351,17 @@ class JugglingHand(Traj):
   def addCT(self, i, ct):
     self.ct_period[i] = ct
 
-  def plotTimeDiagram(self, ax):
+  def plotHandTimeDiagram(self, ax):
     # Plot hand horizontal lines
     ax.axhline(y=self.h)
     # Plot catche-throw point&trajectories
-    self.ct_period[0].plotTimeDiagram(ax, 1) # 1 more than the period(first ct is included twice) for visual effects
-    [ct.plotTimeDiagram(ax) for ct in self.ct_period]
+    self.ct_period[0].plotCTTimeDiagram(ax, 1) # 1 more than the period(first ct is included twice) for visual effects
+    [ct.plotCTTimeDiagram(ax) for ct in self.ct_period]
 
-  def plotHandTrajectories(self, ax):
+  def plotHandTrajectory(self, ax):
     ax.scatter(self.position[0], self.position[1])
     for ct in self.ct_period:
-      ct.plotTrajectories(ax, self.ttt, self.h)
+      ct.plotCTTrajectory(ax, self.ttt, self.h)
 
 
 class JugglingPlan():
@@ -387,9 +381,9 @@ class JugglingPlan():
     self.r_dwell = r_dwell
     self.tDwell = r_dwell * self.tH  #[seconds]
 
-  def initTrajectories(self, dt, throw_height):
-    [h.initThrows(dt, self.tDwell, self.tB, self.swingSize, throw_height) for h in self.hands]
-    [h.initTraj(dt) for h in self.hands]
+  def initHands(self, dt, throw_height):
+    [h.initHandThrows(dt, self.tDwell, self.tB, self.swingSize, throw_height) for h in self.hands]
+    [h.initHandTraj(dt) for h in self.hands]
 
   def getFlightTimes(self):
     return [[ ct.t_fly for ct in h.ct_period] for h in self.hands]
@@ -397,12 +391,12 @@ class JugglingPlan():
   def getBallNPlatte(self):
     return [[ (ct.traj, ct.ballTraj) for ct in h.ct_period] for h in self.hands]
 
-  def plotHandTrajectories(self, subplot=111):
+  def plotTrajectories(self, subplot=111):
     from mpl_toolkits.mplot3d import axes3d, Axes3D  # noqa: F401
     # fig = plt.figure()
     ax = plt.subplot(subplot, projection='3d')
     # Plot hands
-    [h.plotHandTrajectories(ax) for h in self.hands]
+    [h.plotHandTrajectory(ax) for h in self.hands]
 
     set_axes_equal(ax) # IMPORTANT - this is also required
     ax.set_xlabel('X axis')
@@ -419,7 +413,7 @@ class JugglingPlan():
     N_beats = self.T
     heights = np.arange(self.Nh)
 
-    [h.plotTimeDiagram(ax) for h in self.hands]
+    [h.plotHandTimeDiagram(ax) for h in self.hands]
 
     ax.grid(axis='x')
     ax.set_xticks(np.arange(0, N_beats+1, 1))
@@ -433,7 +427,7 @@ class JugglingPlan():
 
   def plot(self):
     fig = plt.figure(figsize=(13,6))
-    self.plotHandTrajectories(122)
+    self.plotTrajectories(122)
     self.plotTimeDiagram(323)
     fig.tight_layout()
     plt.suptitle('{} hands plan for pattern: {}'.format(self.Nh, self.pattern))
@@ -504,7 +498,7 @@ class JugglingPlanner():
 
     # The juggling plan which is intended for further usage(check its API)
     juggPlan = JugglingPlan(pattern, hands, hand_positions, tB, r_dwell, swing_size)
-    juggPlan.initTrajectories(dt, throw_height=throw_height)
+    juggPlan.initHands(dt, throw_height=throw_height)
 
     return juggPlan
 
