@@ -97,7 +97,6 @@ class ApolloArmKinematics():
         psi_maxs = np.zeros((N))
 
         # Find the solution branch we shall follow in this sequence and starting psi
-        print(T_dhTCP_traj[0])
         q_joint_state_start, GC2, GC4, GC6, psi, _ = self.IK(T_dhTCP_traj[0], for_seqik=True, considered_joints=considered_joints)   # Start configuration
         # Add start configuration
         joint_trajs[0] = q_joint_state_start
@@ -120,13 +119,13 @@ class ApolloArmKinematics():
 
         return joint_trajs, q_joint_state_start, (psis, psi_mins, psi_maxs)
 
-    def transform_in_dh_frames(self, T_dhTCP_TCP, T):
+    def transform_in_dh_frames(self, T_dhTCP_TCP, T_TCP):
         # T can be a trajectory of homogenous transformations (N, 4, 4) or one single homogenous transformation
         # T is gives T_base_TCP, i.e. the transformation for the TCP. Where the connection to the dhTCP is given by T_dhTCP_TCP.
-        T_shape = T.shape
-        TT = T.reshape(-1, 4, 4 ).copy()
+        T_shape = T_TCP.shape
+        TT = T_TCP.reshape(-1, 4, 4 ).copy()
         T_TCP_dhTCP = invT(T_dhTCP_TCP)
-        for i, Ti in enumerate(T):
+        for i, Ti in enumerate(T_TCP):
             TT[i] =  Ti.dot(T_TCP_dhTCP)
         return TT.reshape(T_shape)
 
