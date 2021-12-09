@@ -4,7 +4,7 @@ from math import sin, cos, acos, sqrt, atan2, asin
 
 from DH import DH_revolut
 from utilities import R_joints, L_joints, JOINTS_LIMITS
-from utilities import skew, vec, clip_c
+from utilities import invT
 from fk_pin_local import PinRobot
 from AnalyticalIK import IK_anallytical, IK_heuristic2, IK_heuristic3
 
@@ -74,10 +74,10 @@ class ApolloArmKinematics():
         else:
             return q_joints
 
-    def seqIK(self, position_traj, thetas_traj, T_start, considered_joints=list(range(7)), verbose=False):
-        """[summary]
-
+    def seqIK(self, T_dhTCP_traj, considered_joints=list(range(7)), verbose=False):
+        """
         Args:
+            T_traj_TCP           ([np.array((N, 4,4))]): relative movements from start_position
             position_traj        ([np.array((N, 3))]): relative movements from start_position
             thetas_traj          ([np.array(N)])     : relative rotations around z axis from start orientation of TCP (x-down, y-left, z-forward) <- upright position
             T_start              ([np.array((4, 4))]): decides start position/orientation from where everything unfolds
@@ -86,52 +86,50 @@ class ApolloArmKinematics():
         Returns:
             [np.array((N, 7))]: Joint trajectories
         """
-        assert np.all(position_traj[0] == 0.0) and thetas_traj[0]==0.0, "Make sure both position_traj&thetas_traj start with 0s."
         mu = 0.02
-        # Find the solution branch we shall follow in this sequence and starting psi
-        R_start = T_start[:3, :3]
-        p_start = T_start[:3, 3:4]
-        q_joint_state_start, GC2, GC4, GC6, psi, _ = self.IK(T_start, for_seqik=True, considered_joints=considered_joints)   # Start configuration
+
 
         # Init lists
-        N = position_traj.shape[0]
-        cartesian_traj = np.zeros((N, 4, 4))
-        joint_trajs = np.zeros((N,) + q_joint_state_start.shape)
+        N = T_dhTCP_traj.shape[0]
+        joint_trajs = np.zeros((N,7,1))
         psis = np.zeros((N))
         psi_mins = np.zeros((N))
         psi_maxs = np.zeros((N))
 
+        # Find the solution branch we shall follow in this sequence and starting psi
+        print(T_dhTCP_traj[0])
+        q_joint_state_start, GC2, GC4, GC6, psi, _ = self.IK(T_dhTCP_traj[0], for_seqik=True, considered_joints=considered_joints)   # Start configuration
         # Add start configuration
-        for i, (pos_goal_i, theta_i) in enumerate(zip(position_traj, thetas_traj)): # position_traj and thetas should start from 0
-
-            # Compute next orientation from theta
-            s = sin(theta_i); c = cos(theta_i)
-            start_R_i = np.array([[c,  -s,   0.0,],
-                                  [s,   c,   0.0,],
-                                  [0.0, 0.0, 1.0,]], dtype='float')
-            R_i = R_start.dot(start_R_i)
-            p_i = p_start+pos_goal_i.reshape(3,1)
-
-
-            cartesian_traj[i, :3,:3] = R_i
-            cartesian_traj[i, :3,3:4] = p_i
+        joint_trajs[0] = q_joint_state_start
+        for i, T_i in enumerate(T_dhTCP_traj[1:]): # position_traj and thetas should start from 0
             # Calc IK for new pose
-            solu, feas_set = IK_anallytical(p_i, R_i, self.dh_rob, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False, considered_joints=considered_joints)
+            solu, feas_set = IK_anallytical(T_i[:3,3:4], T_i[:3,:3], self.dh_rob, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False, considered_joints=considered_joints)
 
             # Choose psi for the new joint configuration
             feas_set = feas_set.range_of(psi)
             psi = (1-mu)*psi + mu*feas_set.middle  # TODO: Find range closest to previous one, not just max_range
 
             # Fill verbose lists
-            joint_trajs[i] = solu(psi)
-            psis[i] = psi
-            psi_mins[i] = feas_set.a
-            psi_maxs[i] = feas_set.b
+            joint_trajs[i+1] = solu(psi)
+            psis[i+1] = psi
+            psi_mins[i+1] = feas_set.a
+            psi_maxs[i+1] = feas_set.b
 
         if verbose:
             self.plot(joint_trajs, psis, psi_mins, psi_maxs)
 
-        return cartesian_traj, joint_trajs, q_joint_state_start, (psis, psi_mins, psi_maxs)
+        return joint_trajs, q_joint_state_start, (psis, psi_mins, psi_maxs)
+
+    def transform_in_dh_frames(self, T_dhTCP_TCP, T):
+        # T can be a trajectory of homogenous transformations (N, 4, 4) or one single homogenous transformation
+        # T is gives T_base_TCP, i.e. the transformation for the TCP. Where the connection to the dhTCP is given by T_dhTCP_TCP.
+        T_shape = T.shape
+        TT = T.reshape(-1, 4, 4 ).copy()
+        T_TCP_dhTCP = invT(T_dhTCP_TCP)
+        for i, Ti in enumerate(T):
+            TT[i] =  Ti.dot(T_TCP_dhTCP)
+        return TT.reshape(T_shape)
+
 
     @property
     def limits(self):
