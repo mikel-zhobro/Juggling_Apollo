@@ -152,7 +152,7 @@ def invT(T):
     T_ = T.copy()
     T_[:3,:3] = T[:3,:3].T
     T_[:3,3:4] = -T_[:3,:3].dot(T[:3,3:4])
-    return T
+    return T_
 
 
 
