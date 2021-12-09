@@ -5,7 +5,9 @@
 # different constraints.
 
 import numpy as np
-from utils import plot_intervals, plt, steps_from_time, plot_lines_coord
+import matplotlib.pyplot as plt
+
+from utils import plot_intervals, steps_from_time, plot_lines_coord
 
 
 def get_minjerk_xyz(dt, tt, xx, uu, smooth_acc=False, i_a_end=None, only_pos=True):

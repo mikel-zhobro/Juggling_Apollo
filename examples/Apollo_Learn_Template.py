@@ -4,10 +4,10 @@ import time
 import __add_path__
 import configs
 from juggling_apollo.utils import steps_from_time, plt
-from juggling_apollo.JugglingPlanner import calc
 from juggling_apollo.settings import dt
 from juggling_apollo.ILC import ILC
-from juggling_apollo.MinJerk import plotMJ, get_minjerk_trajectory
+from Planners.MinJerk import plotMJ, get_minjerk_trajectory
+from Planners.JugglingPlanner import calc
 from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal, ApolloDynSys2
 from apollo_interface.Apollo_It import ApolloInterface, plot_simulation
 from kinematics.ApolloKinematics import ApolloArmKinematics
