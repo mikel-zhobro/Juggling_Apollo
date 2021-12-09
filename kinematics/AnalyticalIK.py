@@ -458,11 +458,11 @@ def IK_heuristic3(p07_d, R07_d, DH_model, considered_joints=list(range(7))):
     GC6_final = 1.0
     GCs = [(i, ii) for i in [-1.0, 1.0] for ii in [-1.0, 1.0]]
     for GC2, GC6 in GCs:
-        sf, psi_feasible_set = IK_anallytical(p07_d, R07_d, DH_model, GC2=GC2_final, GC4=GC4_final, GC6=GC6, verbose=False, p06=None, p07=None, considered_joints=considered_joints)
+        sf, psi_feasible_set = IK_anallytical(p07_d, R07_d, DH_model, GC2=GC2, GC4=GC4_final, GC6=GC6, verbose=False, p06=None, p07=None, considered_joints=considered_joints)
         if psi_feasible_set.max_range().size > biggest_feasible_set.size:
             biggest_feasible_set = psi_feasible_set.max_range()
             solu_function = sf
-            GC2_final = GC2_final
+            GC2_final = GC2
             GC6_final = GC6
     return GC2_final, GC4_final, GC6_final, biggest_feasible_set, solu_function
 
