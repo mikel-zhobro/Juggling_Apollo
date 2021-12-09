@@ -2,13 +2,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 
-from settings import g, dt  # globals
+from settings import g #dt  # globals
 import MinJerk
 
 
-
-
-dt = dt/ 4.
+def rollavg_cumsum_edges(a,n):
+    'numpy.cumsum, edge handling'
+    n = n if n%2==1 else n+1
+    N = len(a)
+    # cumsum_vec = np.cumsum(np.insert(np.pad(a,(n-1,n-1),'constant'), 0, 0)) 
+    cumsum_vec = np.cumsum(np.insert(np.pad(a,((n-1,n-1),(0,0)),'wrap'), 0, 0, 0), axis=0)
+    
+    d = np.hstack((np.arange(n//2+1,n),np.ones(N-n)*n,np.arange(n,n//2,-1))).reshape(-1,1)  
+    return (cumsum_vec[n+n//2:-n//2+1] - cumsum_vec[n//2:-n-n//2]) / d
 
 def gcd(a, b):
     """Calculate the Greatest Common Divisor of a and b.
@@ -72,8 +78,7 @@ class Traj():
     self.jjj = None                         # jerk trajectory
     self.thetas = None
 
-  def init_traj(self, ttt, xxx, vvv, aaa, jjj, set_thetas=False):
-    # self.N_Whole = utils.steps_from_time(ttt.size, dt)
+  def init_traj(self, ttt, xxx, vvv, aaa, jjj, set_thetas=False, v_throw=None):
     self.N_Whole = ttt.size
     self.ttt = ttt
     self.xxx = xxx
@@ -81,19 +86,23 @@ class Traj():
     self.aaa = aaa
     self.jjj = jjj
     if set_thetas:
-      # orientation is in the direction of the acceleration
-      # only that we take the absolute value of the z-direction so the ball doesn't fall.
-
       # Create the axis
+      N_smooth_window = len(self.vvv)//2
+      vvv_smoothed =rollavg_cumsum_edges(self.vvv, N_smooth_window)
+      aaa_smoothed =rollavg_cumsum_edges(self.aaa, N_smooth_window)
 
-      _x = self.vvv.copy() / (np.linalg.norm(self.vvv, axis=1, keepdims=True) + 1e-9)
-      _x[:,2] = abs(_x[:,2])
-      _x *= -1.0
-      _z = np.cross(self.vvv, self.aaa)
-      _z /= (np.linalg.norm(_z, axis=1, keepdims=True) + 1e-9)
-      # _z = np.zeros_like(_x)
-      # _z[:,1] = 1.0
-      _y = np.cross(_z, _x)
+      tmp = 0.7
+      _z = vvv_smoothed / np.linalg.norm(vvv_smoothed, axis=1, keepdims=True)
+      _z[:,2] = abs(_z[:,2])
+      if v_throw is not None:
+        _z = (1-tmp)*_z + tmp*v_throw
+      else:
+        _z[:,2] = np.clip(_z[:,2], 0.8, np.inf)
+      _z /= np.linalg.norm(_z, axis=1, keepdims=True)
+      
+      _y = -np.cross(vvv_smoothed, aaa_smoothed)
+      _y /= np.linalg.norm(_y, axis=1, keepdims=True)
+      _x = np.cross(_y, _z)
 
       # Fill the rotation trajectory
       self.thetas = np.zeros((xxx.shape[0],3,3))
@@ -106,7 +115,7 @@ class Traj():
 
 
 class MinJerkTraj(Traj):
-  def __init__(self, tt, xx, vv):
+  def __init__(self, dt, tt, xx, vv):
     """Computes MinJerk trajectory in 3D cartesian coordinates and saves this information.
 
     Args:
@@ -129,11 +138,11 @@ class MinJerkTraj(Traj):
     self.throw_catch2 = MinJerk.get_min_jerk_xyz(dt, tt[1], tt[2],
                                                  self.xx[1], self.xx[2],
                                                  self.vv[1], self.vv[2],
-                                                 a_ta=a1.squeeze(), a_tb=np.zeros(3),
+                                                 a_ta=a1.squeeze()*0., a_tb=np.zeros(3),
                                                  lambdas=True)
 
   def initTraj(self, ttt, last=False):
-    self.init_traj(*self._getTraj(ttt, last), set_thetas=True)
+    self.init_traj(*self._getTraj(ttt, last), set_thetas=True, v_throw=self.vv[1])
     return self.get()
 
   def _getTraj(self, t, last):
@@ -163,22 +172,13 @@ class MinJerkTraj(Traj):
 
     # ax.quiver(self.xxx[0::tmp,0], self.xxx[0::tmp,1], self.xxx[0::tmp,2],
     #           self.thetas[::tmp,0,1], self.thetas[::tmp,1,1], self.thetas[::tmp,2,1],
-    #           length=0.07, normalize=True, color='b', alpha=0.2, label='_'*int(bool(i or h_i)) + 'z direction')
+    #           length=0.07, normalize=True, color='g', alpha=0.2, label='_'*int(bool(i or h_i)) + 'y direction')
     ax.quiver(self.xxx[0::tmp,0], self.xxx[0::tmp,1], self.xxx[0::tmp,2],
               self.thetas[::tmp,0,2], self.thetas[::tmp,1,2], self.thetas[::tmp,2,2],
-              length=0.07, normalize=True, color='g', alpha=0.2, label='_'*int(bool(i or h_i)) + 'y direction')
+              length=0.07, normalize=True, color='b', alpha=0.2, label='_'*int(bool(i or h_i)) + 'z direction')
 
     print('a',np.max(self.aaa, axis=0))
     print('v',np.max(self.vvv, axis=0))
-    # plt.figure()
-    # plt.plot(self.ttt, self.vvv[:,0], label='vx')
-    # plt.plot(self.ttt, self.vvv[:,1], label='vy')
-    # plt.plot(self.ttt, self.vvv[:,2], label='vz')
-    # plt.plot(self.ttt, self.aaa[:,0], label='x')
-    # plt.plot(self.ttt, self.aaa[:,1], label='y')
-    # plt.plot(self.ttt, self.aaa[:,2], label='z')
-    # plt.legend()
-    # plt.show(block=False)
     return a[0].get_color()
 
 
@@ -230,13 +230,13 @@ class CatchThrow():
     self.v_t = np.zeros(3)      # (vx, vy, vz) velocity we throw the ball with
 
     self.traj = None            # the catch-throw-catch trajectory
-    self.balltraj = None        # ball trajectory, only for visualisation
+    self.ballTraj = None        # ball trajectory, only for visualisation
 
   def addCatchThrowCTs(self, ct_c, ct_t):
     self.ct_c = ct_c            # ct where catch comes from
     self.ct_t = ct_t            # ct where throw goes to
 
-  def initThrow(self, t_dwell, tB, swingSize, h=0.1):
+  def initThrow(self, t_dwell, tB, swingSize, throw_height=0.1):
     self.tB = tB
     # we assume catch and throw points lie all at z=0
     self.t_fly = self.n_t * tB - t_dwell
@@ -256,23 +256,23 @@ class CatchThrow():
     theta = math.atan2(c_delta_y, c_delta_x)
     self.p_t[0] = self.P[0] + math.cos(theta)*swingSize
     self.p_t[1] = self.P[1] + math.sin(theta)*swingSize
-    self.p_t[2] = self.P[2] + h
+    self.p_t[2] = self.P[2] + throw_height
     # throw velocity
     self.v_t[0] = (self.ct_t.P[0] - self.p_t[0]) / self.t_fly
     self.v_t[1] = (self.ct_t.P[1] - self.p_t[1]) / self.t_fly
-    self.v_t[2] = 0.5 * g * self.t_fly - h/self.t_fly
+    self.v_t[2] = 0.5 * g * self.t_fly - throw_height/self.t_fly
 
-  def initTraj(self, ttt, ct_next, last):
+  def initTraj(self, dt, ttt, ct_next, last):
     tt = [self.t_catch, self.t_throw, self.t_catch2]
     xx = [[self.P[0], self.p_t[0], ct_next.P[0]],
           [self.P[1], self.p_t[1], ct_next.P[1]],
           [self.P[2], self.p_t[2], ct_next.P[2]]]
-    vv = [[ self.ct_c.v_t[0]*0., self.v_t[0],  ct_next.ct_c.v_t[0]*0.],
-          [ self.ct_c.v_t[1]*0., self.v_t[1],  ct_next.ct_c.v_t[1]*0.],
-          [-self.ct_c.v_t[2]*0., self.v_t[2], -ct_next.ct_c.v_t[2]*0.],
+    vv = [[ self.ct_c.v_t[0]*0.2, self.v_t[0],  ct_next.ct_c.v_t[0]*0.2],
+          [ self.ct_c.v_t[1]*0.2, self.v_t[1],  ct_next.ct_c.v_t[1]*0.2],
+          [-self.ct_c.v_t[2]*0.2, self.v_t[2], -ct_next.ct_c.v_t[2]*0.2],
           ]
     self.ballTraj = BallTraj(self.t_fly, self.p_t, self.v_t)
-    self.traj = MinJerkTraj(tt, xx ,vv)
+    self.traj = MinJerkTraj(dt, tt, xx ,vv)
     return self.traj.initTraj(ttt, last=last)
 
   def plotTimeDiagram(self, ax, period=0):
@@ -329,23 +329,23 @@ class JugglingHand(Traj):
     self.ct_period = [None]*N             # list of the ct this hand performs
     self.hand_positions = hand_positions  # position of all existing hands
 
-  def initThrows(self, tDwell, tB, swingSize):
+  def initThrows(self, dt, tDwell, tB, swingSize, throw_height):
     # self.ttt = np.arange(0.0, self.Th*tB, dt)
     self.ttt = np.linspace(self.h*tB, self.T*tB+self.h*tB, self.T*tB//dt)
     self.N_Whole = self.ttt.size
-    [ct.initThrow(tDwell, tB, swingSize) for ct in self.ct_period]
+    [ct.initThrow(tDwell, tB, swingSize, throw_height) for ct in self.ct_period]
 
   def getTraj(self):
     return self.ttt,
 
-  def initTraj(self):
+  def initTraj(self, dt):
     xxx = np.zeros((self.N_Whole, 3))
     vvv = np.zeros((self.N_Whole, 3))
     aaa = np.zeros((self.N_Whole, 3))
     jjj = np.zeros((self.N_Whole, 3))
     N0 = 0
     for i, ct in enumerate(self.ct_period):
-     N, xx, vv, aa, jj = ct.initTraj(self.ttt, ct_next=self.ct_period[(i+1)%self.N], last=i==self.N-1)
+     N, xx, vv, aa, jj = ct.initTraj(dt, self.ttt, ct_next=self.ct_period[(i+1)%self.N], last=i==self.N-1)
      xxx[N0:N0+N]  = xx
      vvv[N0:N0+N]  = vv
      aaa[N0:N0+N]  = aa
@@ -387,9 +387,15 @@ class JugglingPlan():
     self.r_dwell = r_dwell
     self.tDwell = r_dwell * self.tH  #[seconds]
 
-  def initTrajectories(self):
-    [h.initThrows(self.tDwell, self.tB, self.swingSize) for h in self.hands]
-    [h.initTraj() for h in self.hands]
+  def initTrajectories(self, dt, throw_height):
+    [h.initThrows(dt, self.tDwell, self.tB, self.swingSize, throw_height) for h in self.hands]
+    [h.initTraj(dt) for h in self.hands]
+
+  def getFlightTimes(self):
+    return [[ ct.t_fly for ct in h.ct_period] for h in self.hands]
+  
+  def getBallNPlatte(self):
+    return [[ (ct.traj, ct.ballTraj) for ct in h.ct_period] for h in self.hands]
 
   def plotHandTrajectories(self, subplot=111):
     from mpl_toolkits.mplot3d import axes3d, Axes3D  # noqa: F401
@@ -435,9 +441,8 @@ class JugglingPlan():
 
 
 class JugglingPlanner():
-  def __init__(self, h=0.3, w=0.3, r_dwell=0.5, D=0.07):
-    """[summary]
-
+  def __init__(self):
+    """
     Args:
         nh ([int]): number of hands
         h ([float]): height of the standard 3-throw
@@ -447,7 +452,7 @@ class JugglingPlanner():
 
         We assume here that hands throw the balls one after the other, as such they are not allowed to throw simultaniously.
         That means that a hand can throw at most every second step. We call this time, a hand period,
-        i.e. the time between two catches of the same hand if we are are performing a cascade or shower with 2+ balls.
+        i.e. the time between two catches of the same hand if we are are performing a cascade or shower with 2+ balls and 2 hands.
         tH = 2*tB
 
         h----> tf3 --r_dwell --> tB, t_handperiode
@@ -457,27 +462,27 @@ class JugglingPlanner():
 
         The jugglingPlan can be then further used to compute the hand trajectories for realizing the desired pattern.
     """
-    # assert 0 < nh <= 2, 'For the moment we accept only 2 hands or less.'
 
-    self.hands = None  # this variable keeps the juggling trajectories for each hand
-    self.h = h
-    self.w = w
-
-    # We calculate the beat time from the fly time of a 3 ball using 2 hands and r_dwell.
-    # It is just a definition, in general the nr of hands can be different.
-    # tf3 = 0.5*(3*tH - 2*r_dwell*tH) = (3*tB - 2*r_dwell*tB) = tB(3 - 2*r_dwell)
-    # where 2*r_dwell*tB is the dwell time with which we have to shorten the flight time.
-    self.r_dwell = r_dwell
-    tf3 = 2.0*math.sqrt(2.0*h/g)  # time of flight for a 3-throw
-    self.tB = tf3 / (3.0 - 2.0*self.r_dwell)
-    self.swing_size = D*2.5
-
-  def plan(self, nh, pattern=(3,), rep=1):
+  def plan(self, dt, nh, pattern=(3,), h=0.5, r_dwell=0.5, throw_height=0.2, swing_size=0.2, w=0.3, slower=1.0, rep=1):
     """Plan the juggling trajectories for the hand
 
     Args:
         pattern (tuple, optional): The siteswap pattern to be juggled. Defaults to (3,).
     """
+    dt = dt/slower
+
+
+    # We calculate the beat time from the fly time of a 3 ball using 2 hands and r_dwell.
+    # It is just a definition, in general the nr of hands can be different.
+    # tf3 = 0.5*(3*tH - 2*r_dwell*tH) = (3*tB - 2*r_dwell*tB) = tB(3 - 2*r_dwell)
+    # where 2*r_dwell*tB is the dwell time with which we have to shorten the flight time. TODO: (not doing that right now, but could do)
+    nb = min(pattern)
+    tf3 = 2.0*math.sqrt(2.0*(h-throw_height)/g)  # time of flight for a 3-throw
+    tB = tf3 / (nb - nh*r_dwell)
+
+
+
+
     pattern = tuple(pattern)
 
     # Check if pattern is jugglable
@@ -492,14 +497,14 @@ class JugglingPlanner():
     ct_period_per_hand = self.getCatchThrowHandPeriod(nh, ct_time_sequence)
 
     # Caresian positions of the hands. Are assumed to lie on the edges of a nh-polygon with side-length = w
-    hand_positions = self.getHandPositions(nh)
+    hand_positions = self.getHandPositions(nh, w)
 
     # List of JugglingHand objects, one for each hand
     hands = self.initHands(nh, ct_period_per_hand, hand_positions)
 
     # The juggling plan which is intended for further usage(check its API)
-    juggPlan = JugglingPlan(pattern, hands, hand_positions, self.tB, self.r_dwell, self.swing_size)
-    juggPlan.initTrajectories()
+    juggPlan = JugglingPlan(pattern, hands, hand_positions, tB, r_dwell, swing_size)
+    juggPlan.initTrajectories(dt, throw_height=throw_height)
 
     return juggPlan
 
@@ -587,7 +592,7 @@ class JugglingPlanner():
         hands[h].addCT(i, cts[h][i])
     return hands
 
-  def getHandPositions(self, nh):
+  def getHandPositions(self, nh, w):
     hand_positions = np.zeros((nh, 3))
     angle_step = np.pi*(float(nh) - 2.0)/float(nh) - np.pi
     angles  = np.arange(nh)*angle_step + np.pi
@@ -595,17 +600,18 @@ class JugglingPlanner():
     for h in range(nh):
       hand_positions[h] = (x,y,z)
       # update x,y for next hand, assume hands are on the same height
-      x = x + self.w * math.cos(angles[h])
-      y = y + self.w * math.sin(angles[h])
+      x = x + w * math.cos(angles[h])
+      y = y + w * math.sin(angles[h])
     return hand_positions
 
 
 if __name__ == "__main__":
+  dt = 0.004
   jp = JugglingPlanner()
   # jp.plan(1, pattern=(3,3,3), rep=1).plot()
-  jp.plan(2, pattern=(3,), rep=1).plot()
+  jp.plan(dt, 2, pattern=(3,), slower=5, rep=1).plot()
   # jp.plan(4, pattern=(3,), rep=1).plot()
-  jp.plan(3, pattern=(4,), rep=1).plot()
+  jp.plan(dt, 3, pattern=(4,), slower=5, rep=1).plot()
   # N_Whole0, x0, v0, a0, j0, thetas = p.hands[0].get(True)  # get plan for hand0
   # plt.plot(a0[:,0])
   # plt.plot(a0[:,1])
