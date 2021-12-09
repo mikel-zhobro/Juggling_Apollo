@@ -144,9 +144,9 @@ def get_min_jerk_trajectory(dt, ta, tb, x_ta, x_tb, u_ta, u_tb, a_ta=None, a_tb=
   """
   # Get polynom parameters for different conditions
   T = tb-ta
-  if a_ta:
+  if a_ta is not None:
     # 1. set start acceleration
-    if a_tb:
+    if a_tb is not None:
       # a. set end acceleration
       c1, c2, c3, c4, c5, c6 = set_start_acceleration(T, x_ta, x_tb, u_ta, u_tb, a_ta, a_tb)
     else:
@@ -154,7 +154,7 @@ def get_min_jerk_trajectory(dt, ta, tb, x_ta, x_tb, u_ta, u_tb, a_ta=None, a_tb=
       c1, c2, c3, c4, c5, c6 = set_start_acceleration(T, x_ta, x_tb, u_ta, u_tb, a_ta)
   else:
     # 2. free start acceleration
-    if a_tb:
+    if a_tb is not None:
       # a. set end acceleration
       c1, c2, c3, c4, c5, c6 = free_start_acceleration(T, x_ta, x_tb, u_ta, u_tb, a_tb)
     else:
