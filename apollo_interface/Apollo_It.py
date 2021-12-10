@@ -116,10 +116,19 @@ def go_to_posture(posture, nb_iterations, bursting, override=False):
     return observation
 
 
-def read():
+def read(nb_iterations=None):
     """Returns an observation
     """
-    return apollo.read()
+    observation=None
+    if nb_iterations:
+        # SL current iteration
+        observation = apollo.pulse()
+        current_iteration = observation.get_iteration()
+        target_iteration = current_iteration + nb_iterations
+        observation = apollo.iteration_sync(target_iteration)
+    else:
+        observation = apollo.read()
+    return observation
 
 
 class ApolloInterface:
@@ -130,7 +139,7 @@ class ApolloInterface:
         else:
             self.joints_list = L_joints
 
-    def obs_to_numpy(self, obs):
+    def obs_to_numpy(self, obs, des=False):
         """Transform a O8O observation to a numpy matrix
 
         Args:
@@ -140,18 +149,39 @@ class ApolloInterface:
             [type]: a [10, 4] numpy array:  angle, angle_velocity, angle_acceleration, sensed_torque
         """
         # first for loop traverses the joints, second one the angle, ang_vel, ang_acc of the end effector!!!
-        obs = obs.get_observed_states()
+        obs_o = obs.get_observed_states()
 
         obs_np = np.zeros((len(self.joints_list), 4))
         for joint in self.joints_list:
             i = jointsToIndexDict[joint]
             for k in range(3):
-                obs_np[i][k] = obs.get(i).get()[k]
-            obs_np[i][3] = obs.get(i).get_sensed_load()
-        return obs_np
+                obs_np[i][k] = obs_o.get(i).get()[k]
+            obs_np[i][3] = obs_o.get(i).get_sensed_load()
+        
+        if not des:
+            return obs_np
+
+        obs_o = obs.get_desired_states()
+        des_np = np.zeros((len(self.joints_list), 4))
+        for joint in self.joints_list:
+            i = jointsToIndexDict[joint]
+            for k in range(3):
+                des_np[i][k] = obs_o.get(i).get()[k]
+            des_np[i][3] = obs_o.get(i).get_sensed_load()
+
+        return obs_np, des_np
     
-    def read(self):
-        return self.obs_to_numpy(read())
+    def read(self, nb_iteration=None, des=False):
+        """[summary]
+
+        Args:
+            des (bool): whether to return the desired states
+            nb_iteration (int): If not None, waits nb_iteration before reading.
+
+        Returns:
+            [type]: obs or (obs, des)
+        """
+        return self.obs_to_numpy(read(nb_iteration), des=des)
 
     def apollo_run_one_iteration(self, dt, T, u, joint_home_config=None, repetitions=1, it=0, go2position=False):
         """ Runs the system for the time interval 0->T
@@ -250,10 +280,23 @@ class ApolloInterface:
                 dP_N_vec[r,i] = obs_np[:,3].reshape(7, 1)
             if r == repetitions-1:
                 break
-            real_homes[r] = thetas_s[r,-1]
+            real_homes[r] = thetas_s[r,-1]           
         return thetas_s, vel_s, acc_s, dP_N_vec, u, real_homes
 
-
+    def measure_extras(self, dt, time):
+        N_extra = int(time/dt)
+        thetas_s = np.zeros((N_extra, 7, 1))
+        vel_s    = np.zeros((N_extra, 7, 1))
+        thetas_dess    = np.zeros((N_extra, 7, 1))
+        vel_dess = np.zeros((N_extra, 7, 1))
+        delta_it = int(1000*dt)
+        for i in range(N_extra):
+            obs_np, des_np = self.read(delta_it, des=True)
+            thetas_s[i]         = obs_np[:, 0].reshape(7,1)
+            vel_s[i]            = obs_np[:, 1].reshape(7,1)
+            thetas_dess[i]      = des_np[:, 0].reshape(7,1)
+            vel_dess[i]         = des_np[:, 1].reshape(7,1)
+        return thetas_s, vel_s, thetas_dess, vel_dess
 
     def go_to_speed_array(self, speeds, nb_iterations, bursting, override=True):
         """Move right arm to a certain joint configuration and reset pinocchio jointstates.
