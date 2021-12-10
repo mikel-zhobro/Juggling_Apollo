@@ -20,10 +20,10 @@ print("juggling_apollo")
 ########################################################################################################
 ########################################################################################################
 ########################################################################################################
-FREQ_DOMAIN=True
+FREQ_DOMAIN=False
 NF=18
 
-SAVING = True
+SAVING = False
 UB = 1003.87
 
 CARTESIAN_ERROR = False
@@ -39,11 +39,11 @@ non_learnable_joints = list(set(range(N_joints)) - set(learnable_joints))
 
 # ILC Params
 n_ms  = np.ones((N_joints,))* 3e-3;   # covariance of noise on the measurment
-n_ms[3:] = 1e-4
+n_ms[4:] = 1e-5
 n_ds  = [1e-2]*N_joints               # initial disturbance covariance
 ep_s  = [1e-3]*N_joints               # covariance of noise on the disturbance
 alpha = np.ones((N_joints,)) * 18.0
-alpha[0:] = 90.0
+alpha[4:] = 90.0
 syss  = [ApolloDynSys2(dt, x0=np.zeros((2,1)), alpha_=a, freq_domain=FREQ_DOMAIN) for a in alpha]
 
 # Cartesian Error propogation params
@@ -162,7 +162,7 @@ for j in range(ILC_it):
   q_extra, qv_extra, q_des_extra, qv_des_extra = rArmInterface.measure_extras(dt, 2.3)
   
   
-  if j ==ILC_it-1 or j==0:
+  if False and j ==ILC_it-1 or j==0:
     plot_A([180./np.pi*q_extra, 180./np.pi*q_des_extra], labels=["observed", "desired"])
     plt.suptitle("{}. Joint angles it({})".format("freq" if FREQ_DOMAIN else "time", j))
     plt.savefig("/home/apollo/Desktop/Investigation/{}_Joint_angles_it{}.png".format("Freq" if FREQ_DOMAIN else "Time", j))
