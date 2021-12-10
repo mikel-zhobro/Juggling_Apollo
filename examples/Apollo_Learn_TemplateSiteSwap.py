@@ -31,14 +31,14 @@ UB = 0.87
 CARTESIAN_ERROR = False
 NOISE=0.0
 
-ILC_it = 8  # number of ILC iteration
+ILC_it = 18  # number of ILC iteration
 end_repeat = 0  if not FREQ_DOMAIN else 0 # repeat the last position value this many time
 
 # Learnable Joints
-learnable_joints = [0,1,2,3,4,5,6]
+learnable_joints = [0,1,2,3,]
 
 # ILC Params
-n_ms  = np.ones((7,))* 3e-5;   n_ms[3:] = 1e-5  # covariance of noise on the measurment
+n_ms  = np.ones((7,))* 3e-4;   n_ms[3:] = 1e-5  # covariance of noise on the measurment
 n_ds  = [1e-2]*7    # initial disturbance covariance
 ep_s  = [1e-3]*7    # covariance of noise on the disturbance
 alpha = np.ones((7,)) * 18.0; alpha[3:] = 90.0; alpha[0:] = 33.0
@@ -130,10 +130,10 @@ def kf_params(n_m=0.02, epsilon=1e-5, n_d=0.06):
 # ILC Works on differences(ie delta)
 # Changing (possibly wrong/noisy) desired trajectory to make up for kinematics errors
 q_traj_des_i       = q_traj_des.copy()
-# q_start_i          = q_start.copy()
-q_start_i = q_traj_des_i[1]; #q_start_i[-1,0] = np.pi/4.
+q_start_i          = q_start.copy()
+# q_start_i = q_traj_des_i[1]; #q_start_i[-1,0] = np.pi/4.
 print("START", q_start_i.shape, q_start_i.T)
-delta_q_traj_des_i = q_traj_des_i[1:] - q_start_i
+delta_q_traj_des_i = q_traj_des_i[1:] - q_traj_des_i[1]
 
 my_ilcs = [
   ILC(sys=syss[i], y_des=delta_q_traj_des_i[:, i], kf_dpn_params=kf_params(n_ms[i], ep_s[i], n_ds[i]), freq_domain=FREQ_DOMAIN, Nf=Nf)                # make sure to make up for the initial state during learning
