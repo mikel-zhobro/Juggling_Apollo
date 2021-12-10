@@ -24,26 +24,26 @@ FREQ_DOMAIN=True
 NF=18
 
 SAVING = True
-UB = 3.87
+UB = 1003.87
 
 CARTESIAN_ERROR = False
 NOISE=0.0
 
-ILC_it = 3                                # number of ILC iteration
+ILC_it = 23                                # number of ILC iteration
 end_repeat = 0  if not FREQ_DOMAIN else 0 # repeat the last position value this many time
 
 # Learnable Joints
 N_joints = 7
-learnable_joints = [0,1,2,3,5]
+learnable_joints = [0,1,2,3,4,5,6]
 non_learnable_joints = list(set(range(N_joints)) - set(learnable_joints))
 
 # ILC Params
 n_ms  = np.ones((N_joints,))* 3e-3;   # covariance of noise on the measurment
-#n_ms[3:] = 1e-4
+n_ms[3:] = 1e-4
 n_ds  = [1e-2]*N_joints               # initial disturbance covariance
 ep_s  = [1e-3]*N_joints               # covariance of noise on the disturbance
 alpha = np.ones((N_joints,)) * 18.0
-#alpha[3:] = 90.0
+alpha[0:] = 90.0
 syss  = [ApolloDynSys2(dt, x0=np.zeros((2,1)), alpha_=a, freq_domain=FREQ_DOMAIN) for a in alpha]
 
 # Cartesian Error propogation params
@@ -72,36 +72,14 @@ rArmKinematics    = ApolloArmKinematics(r_arm=True, noise=NOISE)  ## kinematics 
 rArmKinematics_nn = ApolloArmKinematics(r_arm=True)               ## kinematics without noise  (used to calculate measurments, plays the wrole of a localization system)
 
 # C) PLANNINGs
-# jp = SiteSwapPlanner.JugglingPlanner()
-# pattern=(1,); h=0.3; r_dwell=0.6; throw_height=0.15; swing_size=0.15; w=0.3; slower=1.0; rep=1
-# plan = jp.plan(dt, 1, pattern=pattern, h=h, r_dwell=r_dwell, throw_height=throw_height, swing_size=swing_size, w=w, slower=slower, rep=rep)
-# N, x0, v0, a0, j0, rot_traj_des = plan.hands[0].get(get_thetas=True)  # get plan for hand0
-
-# # Transform to dh frames and do IK
-# T_traj = utilities.pR2T(x0-x0[0]+T_home[:3, -1], rot_traj_des)
-# T_traj = rArmKinematics.transform_in_dh_frames(T_dhtcp_tcp, T_traj)
-# T_home = T_traj[0].copy()
-# q_traj_des, q_start, psi_params = rArmKinematics.seqIK(T_traj, considered_joints=learnable_joints)  # [N, 7]
-# # Remove trajectories we are not learning
-# q_traj_des[:,non_learnable_joints] = 0
-
-# print("T_Home\n",T_traj[0])
-# print("FLIGHT TIMES: ", plan.getFlightTimes())
-# print("1.Start: ", q_start.T)
-# print()
-# plan.plot()
-# if False:
-#   aa = plan.getBallNPlatte()
-#   rArmKinematics.plot(q_traj_des, *psi_params)
-########################################################################################################
-q_traj_des = OneBallThrowPlanner.plan(dt, T_home, IK=rArmKinematics.IK, J=rArmKinematics.J, verbose=True)
+q_traj_des = OneBallThrowPlanner.plan(dt, T_home, IK=rArmKinematics.IK, J=rArmKinematics.J, verbose=False)
 T_traj = rArmKinematics.seqFK(q_traj_des)
 
 N = len(q_traj_des)
 q_start = q_traj_des[0]
 T_home = T_traj[0]
 
-if True:
+if False:
     from mpl_toolkits.mplot3d import axes3d, Axes3D  # noqa: F401
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
@@ -170,7 +148,7 @@ for i in learnable_joints:
 for j in range(ILC_it):
   # Limit Input
   u_ff = np.clip(u_ff,-UB,UB)
-  if True and j%every_N==0: plot_info(dt, j, learnable_joints,
+  if False and j%every_N==0: plot_info(dt, j, learnable_joints,
                              joints_q_vec, q_traj_des_i[1:],
                             #  u_ff_vec, q_v_traj[1:],
                              joint_torque_vec,
@@ -181,6 +159,17 @@ for j in range(ILC_it):
 
   # Main Simulation
   q_traj, q_v_traj, q_a_traj, F_N_vec, _, q0 = rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL, u=u_ff, joint_home_config=q_start_i, repetitions=3 if FREQ_DOMAIN else 1, it=j)
+  q_extra, qv_extra, q_des_extra, qv_des_extra = rArmInterface.measure_extras(dt, 2.3)
+  
+  
+  if j ==ILC_it-1 or j==0:
+    plot_A([180./np.pi*q_extra, 180./np.pi*q_des_extra], labels=["observed", "desired"])
+    plt.suptitle("{}. Joint angles it({})".format("freq" if FREQ_DOMAIN else "time", j))
+    plt.savefig("/home/apollo/Desktop/Investigation/{}_Joint_angles_it{}.png".format("Freq" if FREQ_DOMAIN else "Time", j))
+    plot_A([180./np.pi*qv_extra, 180./np.pi*qv_des_extra], labels=["observed", "desired"])
+    plt.suptitle("{}. Joint velocities it({})".format("freq" if FREQ_DOMAIN else "time", j))
+    plt.savefig("/home/apollo/Desktop/Investigation/{}_Joint_velocities_it{}.png".format("Freq" if FREQ_DOMAIN else "Time", j))
+    # plt.show()
   q_traj   = np.average(  q_traj[0:], axis=0)
   q_v_traj = np.average(q_v_traj[0:], axis=0)
   q_a_traj = np.average(q_a_traj[0:], axis=0)
@@ -262,7 +251,7 @@ if True:
             joints_q_vec=joints_q_vec, q_traj_des=q_traj_des_i[1:],
             u_ff_vec=u_ff_vec, q_v_traj=q_v_traj, cartesian_error_norms = cartesian_error_norms,
             disturbanc_vec=disturbanc_vec, d_xyz=d_xyz, joint_error_norms=joint_error_norms,
-            v=True, p=True, dp=False, e_xyz=True, e=True, N=min(4, ILC_it-1))
+            v=True, p=False, dp=False, e_xyz=False, e=True, N=min(4, ILC_it-1))
 
 if SAVING:
   # Saving Results

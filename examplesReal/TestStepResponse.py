@@ -18,7 +18,7 @@ T_home = np.array([[0.0, -1.0, 0.0,  0.32],  # uppword orientation(cup is up)
 
 # 0. Create Apollo objects
 rArmKinematics = ApolloArmKinematics(r_arm=True)  ## noise noisifies the forward dynamics only
-q_start = rArmKinematics.IK_best(T_home)
+q_start = rArmKinematics.IK(T_home)
 # A) INTERFACE: create rArmInterface and go to home position
 N_joints = 7
 rArmInterface = ApolloInterface(r_arm=True)
@@ -31,7 +31,7 @@ N_1 = 1000; T_FULL=N_1*dt
 N_step = 150; N_start = (N_1-N_step)//2
 
 
-step_value = -0.1
+step_value = -1
 for i in range(8):
   u_ff = np.zeros((N_1,7,1))
   if i==7:
@@ -46,7 +46,7 @@ for i in range(8):
   learnable_joints = [i] if i<7 else list(range(7))
   plot_info(dt, learnable_joints=learnable_joints,
             u_ff_vec=u_ff[np.newaxis, :], q_v_traj=q_v_traj[1:],
-            v=True, p=False, dp=False, e_xyz=False, e=False, torque=False, N=1)
+            v=True, p=False, dp=False, e_xyz=False, e=False, torque=False, N=1, fname="/home/apollo/Desktop/Investigation/")
 
 
   SAVING = True
