@@ -75,18 +75,19 @@ def plot_info(dt, j=-1, learnable_joints=list(range(7)),
           joint_error_norms=None, cartesian_error_norms=None,
           v=True, p=True, dp=False, e_xyz=False, e=False, torque=False, N=4):
 
+  M = 1
   if joints_q_vec is not None and q_traj_des is not None and p:
-    line_list = [q_traj_des] + [joints_q_vec[j-i] for i in np.arange(0,joints_q_vec.shape[0],2)]
-    label_list = ["des"] + ["it="+str(j-i) for i in np.arange(0,joints_q_vec.shape[0],2)]
-    plot_A(line_list, learnable_joints, label_list, dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
+    line_list = [180./np.pi*q_traj_des] + [180./np.pi*joints_q_vec[j-i] for i in np.arange(0,joints_q_vec.shape[0],M)]
+    label_list = ["des"] + ["it="+str(j-i) for i in np.arange(0,joints_q_vec.shape[0],M)]
+    plot_A(line_list, learnable_joints, label_list, dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]")
     plt.suptitle("Angle Positions")
     plt.show(block=False)
 
   if u_ff_vec is not None and q_v_traj is not None and v:
-    line_list = [q_v_traj] + [u_ff_vec[j-i] for i in np.arange(0,u_ff_vec.shape[0],2)]
-    label_list = ["performed"] + ["it="+str(j-i) for i in np.arange(0,u_ff_vec.shape[0],2)]
+    line_list = [180./np.pi*q_v_traj] + [180./np.pi*u_ff_vec[j-i] for i in np.arange(0,u_ff_vec.shape[0],M)]
+    label_list = ["performed"] + ["it="+str(j-i) for i in np.arange(0,u_ff_vec.shape[0],M)]
     plot_A(line_list, learnable_joints, fill_between=[np.max(u_ff_vec, axis=0), np.min(u_ff_vec, axis=0)],
-           labels=label_list, dt=dt, xlabel=r"$t$ [s]", ylabel=r" angle velocity [$\frac{rad}{s}$]")
+           labels=label_list, dt=dt, xlabel=r"$t$ [s]", ylabel=r" angle velocity [$\frac{grad}{s}$]")
     plt.suptitle("Angle Velocities")
     plt.show(block=False)
 
