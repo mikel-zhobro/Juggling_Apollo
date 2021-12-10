@@ -14,10 +14,10 @@ def get_minjerk_xyz(dt, tt, xx, uu, smooth_acc=False, i_a_end=None, only_pos=Tru
   """Computes a multi-interval minjerk trajectory in 3 dimension(xyz)
 
   Args:
-      dt ([list]): [[double] x nr_intervals] x 3
-      tt ([list]): [[double] x nr_intervals] x 3
-      xx ([list]): [[double] x nr_intervals] x 3
-      uu ([list]): [[double] x nr_intervals] x 3
+      dt ([list]): [dim x nr_intervals]
+      tt ([list]): [dim x nr_intervals]
+      xx ([list]): [dim x nr_intervals]
+      uu ([list]): [dim x nr_intervals]
       smooth_acc (bool, optional): Whether the acceleartion between intervals should be smooth.
       i_a_end ([type], optional): If not None shows the number of the interval, whose end-acceleration should be used for the last interval.
 
