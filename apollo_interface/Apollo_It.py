@@ -149,7 +149,7 @@ class ApolloInterface:
                 obs_np[i][k] = obs.get(i).get()[k]
             obs_np[i][3] = obs.get(i).get_sensed_load()
         return obs_np
-    
+
     def read(self):
         return self.obs_to_numpy(read())
 
@@ -284,7 +284,7 @@ class ApolloInterface:
         return obs_np
 
     def go_to_home_position(self, home_pose=None, it_time=4000):
-        eps = 3e-4 # 2e-3  # <2mm
+        eps = 2e-3 # 2e-3  # <2mm
         # eps = 2e-3
         if home_pose is None:
             home_pose = np.zeros((7,1))
@@ -298,7 +298,7 @@ class ApolloInterface:
                     break
         else:
             print("Not using IK_dynamics")
-            
+
             dt = 0.002
             P = 1.6
             I = 0.04
@@ -306,18 +306,18 @@ class ApolloInterface:
             error_P = np.zeros(7)
             error_I = np.zeros(7)
             error_D = np.zeros(7)
-            
+
             obs = self.read()
             error = np.array(home_pose).squeeze()-obs[:,0].squeeze()
-            
+
             # for i in range(int(5./dt)): # try for 5 sec
-            i = 0
+            firstTime = True
             while True:
                 if all(np.abs(error) <= eps):
                     break
-                if i==0:
+                if firstTime:
+                    firstTime = False
                     obs = self.go_to_posture_array(home_pose, it_time, globs.bursting)
-                i += 1 
                 error = np.array(home_pose).squeeze()-obs[:,0].squeeze()
                 error_D = (error - error_P)/dt
                 error_P = error
@@ -332,8 +332,8 @@ class ApolloInterface:
                 # print(error_D*D)
                 # print(error_D)
 
-        obs = self.go_to_speed_array(np.zeros_like(home_pose), it_time/4, globs.bursting)
-        print("{}. HOME with error: {} mm".format(i, 1000.0*np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze())))
+        obs = self.go_to_speed_array(np.zeros_like(home_pose), it_time/2, globs.bursting)
+        print("HOME with error: {} mm".format( 1000.0*np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze())))
         print(np.array(home_pose).squeeze()- obs[:,0].squeeze())
         return obs[:,0:2].reshape(7, 2)
 
