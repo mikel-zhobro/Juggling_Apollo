@@ -82,7 +82,7 @@ def plan(dt, T_home, IK, J, seqFK, h=0.5, throw_height=0.2, swing_size=0.2, slow
         plt.suptitle("Angle Accelerations")
         plt.show()
         
-    if True:
+    if verbose:
         from mpl_toolkits.mplot3d import axes3d, Axes3D  # noqa: F401
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
