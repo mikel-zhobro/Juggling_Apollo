@@ -31,13 +31,14 @@ N_1 = 1000; T_FULL=N_1*dt
 N_step = 150; N_start = (N_1-N_step)//2
 
 
-step_value = -1
-for i in range(8):
+step_value = -1.0
+try_out_joints = [0,1,2,3,4,5,6]
+for i in try_out_joints:
   u_ff = np.zeros((N_1,7,1))
   if i==7:
     u_ff[N_start:N_start+N_step,:,0] = -step_value
   else:
-    u_ff[N_start:N_start+N_step,i,0] = -step_value
+    u_ff[N_start:N_start+N_step,i,0] = -step_value if i !=1 else step_value
 
   ####################################################################################################################################
   q_traj, q_v_traj, q_a_traj, F_N_vec, u_vec = rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL, u=u_ff, joint_home_config=q_start, repetitions=1)
@@ -46,7 +47,8 @@ for i in range(8):
   learnable_joints = [i] if i<7 else list(range(7))
   plot_info(dt, learnable_joints=learnable_joints,
             u_ff_vec=u_ff[np.newaxis, :], q_v_traj=q_v_traj[1:],
-            v=True, p=False, dp=False, e_xyz=False, e=False, torque=False, N=1, fname="/home/apollo/Desktop/Investigation/")
+            v=True, p=False, dp=False, e_xyz=False, e=False, torque=False, N=1,
+            fname="/home/apollo/Desktop/Investigation/v_{}_joint_{}_{}".format(str(abs(step_value)).replace('.', ''), learnable_joints, time.strftime("%Y_%m_%d-%H_%M_%S")))
 
 
   SAVING = True

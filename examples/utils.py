@@ -71,7 +71,7 @@ def plot_info(dt, j=-1, learnable_joints=list(range(7)),
           joints_q_vec=None, q_traj_des=None,
           u_ff_vec=None, q_v_traj=None,
           joint_torque_vec=None,
-          disturbanc_vec=None, d_xyz=None, 
+          disturbanc_vec=None, d_xyz=None,
           joint_error_norms=None, cartesian_error_norms=None,
           v=True, p=True, dp=False, e_xyz=False, e=False, torque=False, N=4,
           fname=None):
@@ -84,7 +84,7 @@ def plot_info(dt, j=-1, learnable_joints=list(range(7)),
     label_list = ["des"] + ["it="+str(j-i) for i in np.arange(0,joints_q_vec.shape[0],M)]
     plot_A(line_list, learnable_joints, label_list, dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]")
     plt.suptitle("Angle Positions")
-    plt.show(block=False)
+    # plt.show(block=False)
     save("angle_pos")
 
   if u_ff_vec is not None and q_v_traj is not None and v:
@@ -93,7 +93,7 @@ def plot_info(dt, j=-1, learnable_joints=list(range(7)),
     plot_A(line_list, learnable_joints, fill_between=[np.max(u_ff_vec, axis=0), np.min(u_ff_vec, axis=0)],
            labels=label_list, dt=dt, xlabel=r"$t$ [s]", ylabel=r" angle velocity [$\frac{grad}{s}$]")
     plt.suptitle("Angle Velocities")
-    plt.show(block=False)
+    # plt.show(block=False)
     save("angle_pos")
 
   if disturbanc_vec is not None and dp:
@@ -101,7 +101,7 @@ def plot_info(dt, j=-1, learnable_joints=list(range(7)),
     label_list = ["it="+str(j-i) for i in range(N)]
     plot_A(line_list, learnable_joints, label_list, dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
     plt.suptitle("Disturbance")
-    plt.show(block=False)
+    # plt.show(block=False)
     save("disturbance")
 
   if d_xyz is not None and e_xyz:
@@ -111,28 +111,28 @@ def plot_info(dt, j=-1, learnable_joints=list(range(7)),
       axs[ii].plot(np.abs(d_xyz[:, ii]), c=colors[ii], label="d_"+ls[ii], linestyle=line_types[0])
       axs[ii].legend(loc=1)
     plt.suptitle("Cartesian Error Trajectories")
-    plt.show(block=False)
+    # plt.show(block=False)
     save("d_xyz")
 
   if joint_error_norms is not None and e:
     plot_A([joint_error_norms], learnable_joints, ["L2-norm"], xlabel=r"$IT$", ylabel=r"angle [$rad$]")
     plt.suptitle("Joint angle errors through iterations")
-    plt.show(block=False)
+    # plt.show(block=False)
     save("joint_error")
 
   if cartesian_error_norms is not None and e:
     labels = ["x", "y", "z", "nx", "ny", "nz"]
     plot_A([cartesian_error_norms], list(range(6)), None, xlabel=r"$IT$", ylabel="L2 norm", index_labels=labels)
     plt.suptitle("Cartesian errors through iterations")
-    plt.show(block=False)
+    # plt.show(block=False)
     save("cartesian_error")
 
   if joint_torque_vec is not None and torque:
     plot_A([joint_torque_vec[j]], learnable_joints, ["torque"], dt=dt, xlabel=r"$t$", ylabel=r"Newton")
     plt.suptitle("Torque trajectories for each joint")
-    plt.show(block=False)
+    # plt.show(block=False)
     save("joint_torque")
-      
+
 
   if fname is None:
     plt.show()
