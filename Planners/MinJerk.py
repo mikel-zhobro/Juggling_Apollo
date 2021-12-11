@@ -167,9 +167,9 @@ def get_min_jerk_trajectory(dt, ta, tb, x_ta, x_tb, u_ta, u_tb, a_ta=None, a_tb=
     return lambda t: get_trajectories(t-ta, c1, c2, c3, c4, c5, c6)
   else:
     # Trajectory values ta->tb
-    # N_Whole = steps_from_time(T, dt)
-    # t = np.linspace(0, T, N_Whole)
-    t = np.arange(ta, tb, dt)  # 0:dt:T ceil((stop - start)/step)
+    N_Whole = steps_from_time(T, dt)
+    t = np.linspace(ta, tb, N_Whole)
+    # t = np.arange(ta, tb, dt)  # 0:dt:T ceil((stop - start)/step)
     x, v, a, j = get_trajectories(t-ta, c1, c2, c3, c4, c5, c6)
   return x, v, a, j
 
