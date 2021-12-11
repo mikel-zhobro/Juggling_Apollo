@@ -52,8 +52,8 @@ mu              = 0.35
 
 # Home Configuration
 T_home = np.array([[0.0, -1.0, 0.0,  0.32],  # uppword orientation(cup is up)
-                   [0.0,  0.0, 1.0,  0.81],
-                   [-1.0, 0.0, 0.0, -0.49],
+                   [0.0,  0.0, 1.0,  0.41],
+                   [-1.0, 0.0, 0.0, -0.69],
                    [0.0,  0.0, 0.0,  0.0 ]], dtype='float')
 
 T_dhtcp_tcp = np.eye(4)
@@ -72,20 +72,13 @@ rArmKinematics    = ApolloArmKinematics(r_arm=True, noise=NOISE)  ## kinematics 
 rArmKinematics_nn = ApolloArmKinematics(r_arm=True)               ## kinematics without noise  (used to calculate measurments, plays the wrole of a localization system)
 
 # C) PLANNINGs
-q_traj_des = OneBallThrowPlanner.plan(dt, T_home, IK=rArmKinematics.IK, J=rArmKinematics.J, verbose=False)
-T_traj = rArmKinematics.seqFK(q_traj_des)
+q_traj_des, T_traj = OneBallThrowPlanner.plan(dt, T_home, IK=rArmKinematics.IK, J=rArmKinematics.J, seqFK=rArmKinematics.seqFK, verbose=True)
+
 
 N = len(q_traj_des)
 q_start = q_traj_des[0]
 T_home = T_traj[0]
 
-if False:
-    from mpl_toolkits.mplot3d import axes3d, Axes3D  # noqa: F401
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.plot3D(T_traj[:,0, -1], T_traj[:,1, -1], T_traj[:,2, -1], 'gray')
-    ax.scatter(*T_traj[0, 0:3, -1])
-    plt.show()
 ########################################################################################################
 
 
