@@ -157,7 +157,7 @@ class ApolloInterface:
             for k in range(3):
                 obs_np[i][k] = obs_o.get(i).get()[k]
             obs_np[i][3] = obs_o.get(i).get_sensed_load()
-        
+
         if not des:
             return obs_np
 
@@ -170,7 +170,7 @@ class ApolloInterface:
             des_np[i][3] = obs_o.get(i).get_sensed_load()
 
         return obs_np, des_np
-    
+
     def read(self, nb_iteration=None, des=False):
         """[summary]
 
@@ -280,7 +280,7 @@ class ApolloInterface:
                 dP_N_vec[r,i] = obs_np[:,3].reshape(7, 1)
             if r == repetitions-1:
                 break
-            real_homes[r] = thetas_s[r,-1]           
+            real_homes[r] = thetas_s[r,-1]
         return thetas_s, vel_s, acc_s, dP_N_vec, u, real_homes
 
     def measure_extras(self, dt, time):
@@ -327,7 +327,7 @@ class ApolloInterface:
         return obs_np
 
     def go_to_home_position(self, home_pose=None, it_time=4000):
-        eps = 3e-4 # 2e-3  # <2mm
+        eps = 3e-3 # 2e-3  # <2mm
         # eps = 2e-3
         if home_pose is None:
             home_pose = np.zeros((7,1))
@@ -341,7 +341,7 @@ class ApolloInterface:
                     break
         else:
             print("Not using IK_dynamics")
-            
+
             dt = 0.002
             P = 1.6
             I = 0.04
@@ -349,10 +349,10 @@ class ApolloInterface:
             error_P = np.zeros(7)
             error_I = np.zeros(7)
             error_D = np.zeros(7)
-            
+
             obs = self.read()
             error = np.array(home_pose).squeeze()-obs[:,0].squeeze()
-            
+
             # for i in range(int(5./dt)): # try for 5 sec
             i = 0
             while True:
@@ -360,7 +360,7 @@ class ApolloInterface:
                     break
                 if i==0:
                     obs = self.go_to_posture_array(home_pose, it_time, globs.bursting)
-                i += 1 
+                i += 1
                 error = np.array(home_pose).squeeze()-obs[:,0].squeeze()
                 error_D = (error - error_P)/dt
                 error_P = error
