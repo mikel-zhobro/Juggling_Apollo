@@ -247,7 +247,39 @@ class ApolloInterface:
         Returns:
             [type]: x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec of shape [1, N]
         """
-        assert abs(T-len(u)*dt) <= dt, "Input signal is of length {} instead of length {}".format(len(u)*dt ,T)
+        N0 = len(u)
+        assert N0>0, "Please give a valid feed forward input"
+        assert abs(T-N0*dt) <= dt, "Input signal is of length {} instead of length {}".format(len(u)*dt ,T)
+
+        real_homes = np.zeros((repetitions, 7,1))
+        if joint_home_config is not None:
+            self.go_to_home_position(joint_home_config)[:,0:1] # we dont directly save this, but real_homes[r] = thetas_s[r,0], does that implicitely
+
+        # Vectors to collect the history of the system states
+        N = N0 * repetitions + 1
+        n_joints = 7
+        thetas_s = np.zeros((repetitions, N0, n_joints, 1))
+        vel_s    = np.zeros((repetitions, N0, n_joints, 1))
+        acc_s    = np.zeros((repetitions, N0, n_joints, 1))
+        dP_N_vec = np.zeros((repetitions, N0, n_joints, 1))
+
+        # Action Loop
+        delta_it = int(1000*dt)
+        for r in range(repetitions):
+            for i in range(N0):
+                # one step simulation
+                if go2position:
+                    obs_np = self.go_to_posture_array(u[i], delta_it, globs.bursting)
+                else:
+                    obs_np = self.go_to_speed_array(u[i], delta_it, globs.bursting)
+                # collect state of the system
+                thetas_s[r,i] = obs_np[:,0].reshape(7, 1)
+                vel_s[r,i] = obs_np[:,1].reshape(7, 1)
+                acc_s[r,i] = obs_np[:,2].reshape(7, 1)
+                # collect helpers
+                dP_N_vec[r,i] = obs_np[:,3].reshape(7, 1)
+            real_homes[r] = thetas_s[r,0]
+        return thetas_s, vel_s, acc_s, dP_N_vec, u, real_homes
 
         N0 = len(u)
 

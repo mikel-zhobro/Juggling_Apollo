@@ -24,14 +24,16 @@ class DynamicSystem:
     self.Hu = None  # C(sI - A)^-1 B
     self.Hd = None  # C(sI - A)^-1 Bd
 
-    try:
-      self.initTransferFunction(**kwargs)
-    except:
-      pass
-    try:
-      self.initDynSys(dt, **kwargs)
-    except:
-      pass
+    if freq_domain:
+      try:
+        self.initTransferFunction(**kwargs)
+      except:
+        assert False, "No freq domain equations present."
+    else:
+      try:
+        self.initDynSys(dt, **kwargs)
+      except:
+        assert False, "No time domain equations present."
 
   @abstractmethod
   def initDynSys(self, dt, **kwargs):
@@ -205,3 +207,42 @@ class ApolloDynSys2(DynamicSystem):
 
     self.Hu = lambda s: self.alpha /(s*(s+self.alpha))
     self.Hd = lambda s: 1.0 /(s*(s+self.alpha))
+    
+class ApolloDynSysWithFeedback(DynamicSystem): #TODO: update Lifted Space to allow delay
+  def __init__(self, dt, x0, alpha_=alpha, K=None, freq_domain=False):
+    self.alpha = alpha_
+    self.K = 2**-2 * self.alpha if K is None else K
+    DynamicSystem.__init__(self, dt, x0=x0, freq_domain=freq_domain)
+
+  def initDynSys(self, dt):
+    self.Ad, self.Bd, self.Cd, self.S, self.c = self.getSystemMarixesVelocityControl(dt)
+
+  def getSystemMarixesVelocityControl(self, dt):
+    # x_k = A*x_k-1 + B*u_k-1 + Bd*d_k + Bn*n_k + c
+    # y_k = C*x_k
+    adt = self.alpha*dt
+    tmp = 0.5*adt*dt
+    a =  self.K*tmp + adt - 2.0 # 2.0 - self.alpha*dt + tmp*self.K
+    b =  self.K*tmp - adt + 1.0
+
+    A = np.array([-a, -b,
+                  1., 0.], dtype='float').reshape(2,2)
+
+    B = tmp/self.K* np.array([1., 1.,
+                              0., 0.], dtype='float').reshape(2,2)
+
+    C = np.array([1.0, 0.0], dtype='float').reshape(1,2)
+    Bd = self.alpha**-1 * B
+    Bn = np.array([0.0, 1.0], dtype='float').reshape(2,1)
+    c = np.array([0.0, 0.0], dtype='float').reshape(2,1)
+
+    return A, B, C, Bd, c
+
+  def initTransferFunction(self):
+    # x[k+1] = A*x[k] + B*u[k] + S*d[k]
+    # y = C*x
+    # |
+    # X(z) = C(zI -A)^-1*B * U(z) + C(zI -A)^-1*Bd * D(z) <-- z transform
+    # |
+    # X(kw) = cu_k * U(kw) +  cd_k D(kw)  <-- discrete fourier transformation
+    pass
