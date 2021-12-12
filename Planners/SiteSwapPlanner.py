@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 
-from utils import g #dt  # globals
+from utils import g, set_axes_equal
 import MinJerk
 
 
@@ -29,28 +29,6 @@ def gcd(a, b):
 def lcm(a,b):
     "Calculate the lowest common multiple of two integers a and b"
     return a*b//gcd(a,b)
-
-def set_axes_equal(ax):
-    """Set 3D plot axes to equal scale.
-
-    Make axes of 3D plot have equal scale so that spheres appear as
-    spheres and cubes as cubes.  Required since `ax.axis('equal')`
-    and `ax.set_aspect('equal')` don't work on 3D.
-    """
-    limits = np.array([
-        ax.get_xlim3d(),
-        ax.get_ylim3d(),
-        ax.get_zlim3d(),
-    ])
-    origin = np.mean(limits, axis=1)
-    radius = 0.5 * np.max(np.abs(limits[:, 1] - limits[:, 0]))
-    _set_axes_radius(ax, origin, radius)
-
-def _set_axes_radius(ax, origin, radius):
-    x, y, z = origin
-    ax.set_xlim3d([x - radius, x + radius])
-    ax.set_ylim3d([y - radius, y + radius])
-    ax.set_zlim3d([z - radius, z + radius])
 
 def plotConnection(ax, actual_beat, catch_beat, y0, y1, same_hand):
   y0, y1 = float(y0), float(y1)
