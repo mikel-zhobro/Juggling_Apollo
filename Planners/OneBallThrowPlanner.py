@@ -23,7 +23,7 @@ def plan(dt, T_home, IK, J, seqFK, h=0.5, throw_height=0.2, swing_size=0.2, slow
     tf = 2.0*math.sqrt(2.0*(h-throw_height)/g)  # time of flight
     t1 = 0.4                        # swing time
     t2 = t1 + tf/4.                 # stop time
-    t3 = t1 + 0.7*tf                    # catch time
+    t3 = t1 + 1.*tf                    # catch time
     t4 = t2 + 2.*tf                  # wait time
     t5 = t4 + 4.*t1                 # back home time
     # ts = [0., t1, t2, t4, t5]
@@ -32,7 +32,7 @@ def plan(dt, T_home, IK, J, seqFK, h=0.5, throw_height=0.2, swing_size=0.2, slow
     # Cartesian positions
     stop_height = throw_height+(h-throw_height)/4.
     catch_height = throw_height/4
-    x0 = np.zeros((3,1))                                            
+    x0 = np.zeros((3,1))
     x1 = np.array([0., swing_size, throw_height]).reshape(3,1)      # swing position
     x2 = np.array([0., swing_size, stop_height]).reshape(3,1)       # stop position
     x3 = np.array([0., swing_size, catch_height]).reshape(3,1)      # catch position
@@ -68,7 +68,7 @@ def plan(dt, T_home, IK, J, seqFK, h=0.5, throw_height=0.2, swing_size=0.2, slow
 
     q_traj, qv_traj, qa_traj, qj_traj = MinJerk.get_minjerk_xyz(dt, ts, q_s.transpose(1,0,2), qv_s.transpose(1,0,2), smooth_acc=False, only_pos=False)
     q_traj, qv_traj, qa_traj, qj_traj = np.asarray(q_traj).T, np.asarray(qv_traj).T, np.asarray(qa_traj).T, np.asarray(qj_traj).T
-    
+
     q_traj = q_traj.reshape(-1,7,1)
 
     T_traj = seqFK(q_traj)
@@ -81,7 +81,7 @@ def plan(dt, T_home, IK, J, seqFK, h=0.5, throw_height=0.2, swing_size=0.2, slow
         # plot_A(180./np.pi*qa_traj.reshape(1,-1,7,1))
         # plt.suptitle("Angle Accelerations")
         plt.show()
-        
+
     if verbose:
         from mpl_toolkits.mplot3d import axes3d, Axes3D  # noqa: F401
         fig = plt.figure()
