@@ -1,5 +1,7 @@
 import __add_path__
 import matplotlib.pyplot as plt
+import os
+import time
 import numpy as np
 import pickle
 
@@ -67,41 +69,39 @@ def print_info(j, learnable_joints, joints_d_vec, d_xyz):
                                                                                       ))
 
 
-def plot_info(dt, j=-1, learnable_joints=list(range(7)),
+def plot_info(dt, learnable_joints=list(range(7)),
           joints_q_vec=None, q_traj_des=None,
           u_ff_vec=None, q_v_traj=None,
           joint_torque_vec=None,
           disturbanc_vec=None, d_xyz=None,
           joint_error_norms=None, cartesian_error_norms=None,
-          v=True, p=True, dp=False, e_xyz=False, e=False, torque=False, N=4,
+          v=True, p=True, dp=False, e_xyz=False, e=False, torque=False, N=None, M=1,
           fname=None):
+
   def save(typ):
     if fname is not None:
       plt.savefig(fname+ "_" +typ)
-  M = 1
+
   if joints_q_vec is not None and q_traj_des is not None and p:
-    line_list = [180./np.pi*q_traj_des] + [180./np.pi*joints_q_vec[j-i] for i in np.arange(0,joints_q_vec.shape[0],M)]
-    label_list = ["des"] + ["it="+str(j-i) for i in np.arange(0,joints_q_vec.shape[0],M)]
+    line_list = [180./np.pi*q_traj_des] + list(180./np.pi*joints_q_vec[::M])
+    label_list = ["des"] + ["it="+str(i) for i in np.arange(0,len(line_list)-1,M)]
     plot_A(line_list, learnable_joints, label_list, dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]")
     plt.suptitle("Angle Positions")
-    # plt.show(block=False)
     save("angle_pos")
 
   if u_ff_vec is not None and q_v_traj is not None and v:
-    line_list = [180./np.pi*q_v_traj] + [180./np.pi*u_ff_vec[j-i] for i in np.arange(0,u_ff_vec.shape[0],M)]
-    label_list = ["performed"] + ["it="+str(j-i) for i in np.arange(0,u_ff_vec.shape[0],M)]
+    line_list = [180./np.pi*q_v_traj] + list(180./np.pi*u_ff_vec[::M])
+    label_list = ["performed"] + ["it="+str(i) for i in np.arange(0,len(line_list)-1,M)]
     plot_A(line_list, learnable_joints, fill_between=[np.max(u_ff_vec, axis=0), np.min(u_ff_vec, axis=0)],
            labels=label_list, dt=dt, xlabel=r"$t$ [s]", ylabel=r" angle velocity [$\frac{grad}{s}$]")
     plt.suptitle("Angle Velocities")
-    # plt.show(block=False)
-    save("angle_pos")
+    save("angle_vel")
 
   if disturbanc_vec is not None and dp:
-    line_list = [disturbanc_vec[j-i] for i in range(N)]
-    label_list = ["it="+str(j-i) for i in range(N)]
+    line_list = list(disturbanc_vec[::M])
+    label_list = ["it="+str(i) for i in range(0,len(line_list),M)]
     plot_A(line_list, learnable_joints, label_list, dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
     plt.suptitle("Disturbance")
-    # plt.show(block=False)
     save("disturbance")
 
   if d_xyz is not None and e_xyz:
@@ -111,28 +111,50 @@ def plot_info(dt, j=-1, learnable_joints=list(range(7)),
       axs[ii].plot(np.abs(d_xyz[:, ii]), c=colors[ii], label="d_"+ls[ii], linestyle=line_types[0])
       axs[ii].legend(loc=1)
     plt.suptitle("Cartesian Error Trajectories")
-    # plt.show(block=False)
     save("d_xyz")
 
   if joint_error_norms is not None and e:
     plot_A([joint_error_norms], learnable_joints, ["L2-norm"], xlabel=r"$IT$", ylabel=r"angle [$rad$]")
     plt.suptitle("Joint angle errors through iterations")
-    # plt.show(block=False)
     save("joint_error")
 
-  if cartesian_error_norms is not None and e:
+  if cartesian_error_norms is not None and e_xyz:
     labels = ["x", "y", "z", "nx", "ny", "nz"]
     plot_A([cartesian_error_norms], list(range(6)), None, xlabel=r"$IT$", ylabel="L2 norm", index_labels=labels)
     plt.suptitle("Cartesian errors through iterations")
-    # plt.show(block=False)
     save("cartesian_error")
 
   if joint_torque_vec is not None and torque:
-    plot_A([joint_torque_vec[j]], learnable_joints, ["torque"], dt=dt, xlabel=r"$t$", ylabel=r"Newton")
+    plot_A([joint_torque_vec[-1]], learnable_joints, ["torque"], dt=dt, xlabel=r"$t$", ylabel=r"Newton")
     plt.suptitle("Torque trajectories for each joint")
-    # plt.show(block=False)
     save("joint_torque")
-
 
   if fname is None:
     plt.show()
+
+
+def save_all(filename, **kwargs):
+  "Backups the data for reproduction, creates plots and saves plots."
+  directory="/home/apollo/Desktop/Investigation/{}/".format(time.strftime("%Y_%m_%d"))
+  if not os.path.exists(directory):
+      os.makedirs(directory)
+
+  dir_exp =directory+"{}/".format(time.strftime("%H_%M_%S"))
+  if not os.path.exists(dir_exp):
+      os.makedirs(dir_exp)
+
+  ld = DotDict(kwargs)
+  filename = dir_exp + filename +'.data'
+
+  # Save backup file
+  save(filename, **ld)
+  # Write down name of backup file
+  with open(directory + 'list_files_all.txt', 'a') as f:
+    f.write(filename + "\n")
+  # Save plots
+  plot_info(1, ld.learnable_joints,
+            joints_q_vec=ld.joints_q_vec, q_traj_des=ld.q_traj_des_vec[-1],
+            u_ff_vec=ld.u_ff_vec, q_v_traj=ld.joints_vq_vec[-1,],
+            joint_torque_vec=ld.joint_torque_vec, cartesian_error_norms =ld.cartesian_error_norms,
+            disturbanc_vec=ld.disturbanc_vec, d_xyz=ld.d_xyz_vec[-1], joint_error_norms=ld.joint_error_norms,
+            v=True, p=True, dp=True, e_xyz=True, e=True, torque=True, M=2,fname=dir_exp)
