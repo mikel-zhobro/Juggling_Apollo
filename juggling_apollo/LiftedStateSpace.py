@@ -46,6 +46,7 @@ class LiftedStateSpace:
         N[(int)]: nr of steps
         impact_timesteps ([tuple]): ith element is 1/True if there is an impact at timestep i
     """
+     #TODO: update Lifted Space to allow delay
     # impact_timesteps{t} = False if no impact, = True if impact for the timesteps 0 -> N-1
     # sizes
     if impact_timesteps is not None:
