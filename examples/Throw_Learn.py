@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import __add_path__
 from juggling_apollo.settings import dt
 from juggling_apollo.ILC import ILC
-from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal, ApolloDynSys2
+from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal, ApolloDynSys2, ApolloDynSysWithFeedback
 from apollo_interface.Apollo_It import ApolloInterface
 from kinematics.ApolloKinematics import ApolloArmKinematics
 from kinematics import utilities
@@ -29,7 +29,7 @@ UB = 1003.87
 CARTESIAN_ERROR = False
 NOISE=0.0
 
-ILC_it = 23                                # number of ILC iteration
+ILC_it = 1                                # number of ILC iteration
 end_repeat = 0  if not FREQ_DOMAIN else 0 # repeat the last position value this many time
 
 # Learnable Joints
@@ -72,7 +72,7 @@ rArmKinematics    = ApolloArmKinematics(r_arm=True, noise=NOISE)  ## kinematics 
 rArmKinematics_nn = ApolloArmKinematics(r_arm=True)               ## kinematics without noise  (used to calculate measurments, plays the wrole of a localization system)
 
 # C) PLANNINGs
-q_traj_des, T_traj = OneBallThrowPlanner.plan(dt, T_home, IK=rArmKinematics.IK, J=rArmKinematics.J, seqFK=rArmKinematics.seqFK, verbose=True)
+q_traj_des, T_traj = OneBallThrowPlanner.plan(dt, T_home, IK=rArmKinematics.IK, J=rArmKinematics.J, seqFK=rArmKinematics.seqFK, verbose=False)
 
 
 N = len(q_traj_des)
@@ -141,28 +141,10 @@ for i in learnable_joints:
 for j in range(ILC_it):
   # Limit Input
   u_ff = np.clip(u_ff,-UB,UB)
-  if False and j%every_N==0: plot_info(dt, j, learnable_joints,
-                             joints_q_vec, q_traj_des_i[1:],
-                            #  u_ff_vec, q_v_traj[1:],
-                             joint_torque_vec,
-                            #  disturbanc_vec,
-                            #  d_xyz,
-                             joint_error_norms, cartesian_error_norms,
-                             v=False, p=True, dp=False, e_xyz=False, e=True, torque=False)
 
   # Main Simulation
-  q_traj, q_v_traj, q_a_traj, F_N_vec, _, q0 = rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL, u=u_ff, joint_home_config=q_start_i, repetitions=3 if FREQ_DOMAIN else 1, it=j)
+  q_traj, q_v_traj, q_a_traj, F_N_vec, _, q0 = rArmInterface.apollo_run_one_iteration_with_feedback(dt=dt, T=T_FULL, u=u_ff, thetas_des=q_traj_des_i, joint_home_config=q_start_i, repetitions=3 if FREQ_DOMAIN else 1, it=j)
   q_extra, qv_extra, q_des_extra, qv_des_extra = rArmInterface.measure_extras(dt, 2.3)
-  
-  
-  if False and j ==ILC_it-1 or j==0:
-    plot_A([180./np.pi*q_extra, 180./np.pi*q_des_extra], labels=["observed", "desired"])
-    plt.suptitle("{}. Joint angles it({})".format("freq" if FREQ_DOMAIN else "time", j))
-    plt.savefig("/home/apollo/Desktop/Investigation/{}_Joint_angles_it{}.png".format("Freq" if FREQ_DOMAIN else "Time", j))
-    plot_A([180./np.pi*qv_extra, 180./np.pi*qv_des_extra], labels=["observed", "desired"])
-    plt.suptitle("{}. Joint velocities it({})".format("freq" if FREQ_DOMAIN else "time", j))
-    plt.savefig("/home/apollo/Desktop/Investigation/{}_Joint_velocities_it{}.png".format("Freq" if FREQ_DOMAIN else "Time", j))
-    # plt.show()
   q_traj   = np.average(  q_traj[0:], axis=0)
   q_v_traj = np.average(q_v_traj[0:], axis=0)
   q_a_traj = np.average(q_a_traj[0:], axis=0)
@@ -218,10 +200,25 @@ for j in range(ILC_it):
     delta_q_traj_des_i = q_traj_des_i[1:] - q_start_i
     mu = 0.95*mu
 
-
+  if False and (j ==ILC_it-1 or j==0):
+    plot_A([180./np.pi*q_extra, 180./np.pi*q_des_extra], labels=["observed", "desired"])
+    plt.suptitle("{}. Joint angles it({})".format("freq" if FREQ_DOMAIN else "time", j))
+    plt.savefig("/home/apollo/Desktop/Investigation/{}_Joint_angles_it{}.png".format("Freq" if FREQ_DOMAIN else "Time", j))
+    plot_A([180./np.pi*qv_extra, 180./np.pi*qv_des_extra], labels=["observed", "desired"])
+    plt.suptitle("{}. Joint velocities it({})".format("freq" if FREQ_DOMAIN else "time", j))
+    plt.savefig("/home/apollo/Desktop/Investigation/{}_Joint_velocities_it{}.png".format("Freq" if FREQ_DOMAIN else "Time", j))
+    # plt.show()
 
   print_info(j, learnable_joints, joints_d_vec, d_xyz)
 
+  if False and j%every_N==0: plot_info(dt, j, learnable_joints,
+                             joints_q_vec, q_traj_des_i[1:],
+                            #  u_ff_vec, q_v_traj[1:],
+                             joint_torque_vec,
+                            #  disturbanc_vec,
+                            #  d_xyz,
+                             joint_error_norms, cartesian_error_norms,
+                             v=False, p=True, dp=False, e_xyz=False, e=True, torque=False)
 
   if False and j%every_N==0:  # How desired  trajectory changes
     plot_A([q_traj_des_nn, q_traj_des_vec[j], q_traj_des_vec[j-1], q_traj_des_vec[0]], learnable_joints, ["des", "it="+str(j), "it="+str(j-1), "it=0"], dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
@@ -239,7 +236,7 @@ for j in range(ILC_it):
 
 
 # After Main Loop has finished
-if True:
+if False:
   plot_info(dt, j, learnable_joints,
             joints_q_vec=joints_q_vec, q_traj_des=q_traj_des_i[1:],
             u_ff_vec=u_ff_vec, q_v_traj=q_v_traj, cartesian_error_norms = cartesian_error_norms,
@@ -271,5 +268,5 @@ if SAVING:
 
 
 # Run Simulation with several repetition
-rArmInterface.apollo_run_one_iteration2(dt=dt, T=end_repeat*dt, u=u_ff[:end_repeat], joint_home_config=q_start_i, repetitions=1, it=j)
+# rArmInterface.apollo_run_one_iteration2(dt=dt, T=end_repeat*dt, u=u_ff[:end_repeat], joint_home_config=q_start_i, repetitions=1, it=j)
 rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL-end_repeat*dt, u=u_ff[end_repeat:], repetitions=5, it=j)
