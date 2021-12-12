@@ -281,7 +281,23 @@ class ApolloInterface:
             real_homes[r] = thetas_s[r,0]
         return thetas_s, vel_s, acc_s, dP_N_vec, u, real_homes
 
+    def apollo_run_one_iteration_with_feedback(self, dt, T, u, thetas_des, P=0.07, I=0.0, D=0.0, joint_home_config=None, repetitions=1, it=0, go2position=False):
+        """ Runs the system for the time interval 0->T
+
+        Args:
+            dt ([double]): timestep
+            T ([double]): approximate time required for the iteration
+            joint_home_config ([list]): home_state(if set the robot has to first go there before runing the inputs)
+            u ([np.array(double)]): [N_steps, 7(n_joints)] inputs of the shape
+            thetas_des ([np.array(double)]): [N_steps, 7(n_joints)] desired joint trajectory with which we perform feedback control
+            repetitions (int, optional): Nr of times to repeat the given input trajectory.
+
+        Returns:
+            [type]: x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec of shape [1, N]
+        """
         N0 = len(u)
+        assert N0>0, "Please give a valid feed forward input"
+        assert abs(T-N0*dt) <= dt, "Input signal is of length {} instead of length {}".format(len(u)*dt ,T)
 
         real_homes = np.zeros((repetitions, 7,1))
         if joint_home_config is not None:
@@ -296,20 +312,30 @@ class ApolloInterface:
         dP_N_vec = np.zeros((repetitions, N0, n_joints, 1))
 
         # Action Loop
+        error_P = np.zeros((7,1))
+        error_I = np.zeros((7,1))
+        error_D = np.zeros((7,1))
         delta_it = int(1000*dt)
         for r in range(repetitions):
+            feedback = np.zeros((7,1))
             for i in range(N0):
                 # one step simulation
                 if go2position:
                     obs_np = self.go_to_posture_array(u[i], delta_it, globs.bursting)
                 else:
-                    obs_np = self.go_to_speed_array(u[i], delta_it, globs.bursting)
+                    obs_np = self.go_to_speed_array(u[i]+feedback, delta_it, globs.bursting)
                 # collect state of the system
                 thetas_s[r,i] = obs_np[:,0].reshape(7, 1)
                 vel_s[r,i] = obs_np[:,1].reshape(7, 1)
                 acc_s[r,i] = obs_np[:,2].reshape(7, 1)
                 # collect helpers
                 dP_N_vec[r,i] = obs_np[:,3].reshape(7, 1)
+                # calculate feedback
+                error = thetas_des[i] - thetas_s[r,i]
+                error_D = (error - error_P)/dt
+                error_P = error
+                error_I += error_P*dt
+                feedback = P*error_P + D*error_D + I*error_I
             if r == repetitions-1:
                 break
             real_homes[r] = thetas_s[r,-1]
@@ -400,12 +426,6 @@ class ApolloInterface:
 
                 controller_Input = error_P*P + error_I*I + error_D*D
                 obs = self.go_to_speed_array(controller_Input, int(dt*1000), globs.bursting)
-                # print("HOME with error:", np.linalg.norm(error_P))
-                # print(error)
-                # print(error_P*P)
-                # print(error_I*I)
-                # print(error_D*D)
-                # print(error_D)
 
         obs = self.go_to_speed_array(np.zeros_like(home_pose), it_time/4, globs.bursting)
         print("{}. HOME with error: {} mm".format(i, 1000.0*np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze())))
