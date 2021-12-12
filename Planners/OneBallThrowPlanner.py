@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import MinJerk
-from utils import g, plot_A
+from utils import g, plot_A, set_axes_equal
 
 
 def plan(dt, T_home, IK, J, seqFK, h=0.5, throw_height=0.2, swing_size=0.2, slower=1.0, rep=1, verbose=False):
@@ -78,8 +78,8 @@ def plan(dt, T_home, IK, J, seqFK, h=0.5, throw_height=0.2, swing_size=0.2, slow
         plt.suptitle("Angle Positions")
         plot_A(180./np.pi*qv_traj.reshape(1,-1,7,1))
         plt.suptitle("Angle Velocities")
-        plot_A(180./np.pi*qa_traj.reshape(1,-1,7,1))
-        plt.suptitle("Angle Accelerations")
+        # plot_A(180./np.pi*qa_traj.reshape(1,-1,7,1))
+        # plt.suptitle("Angle Accelerations")
         plt.show()
         
     if verbose:
@@ -93,6 +93,7 @@ def plan(dt, T_home, IK, J, seqFK, h=0.5, throw_height=0.2, swing_size=0.2, slow
         ax.set_xlabel('X axis')
         ax.set_ylabel('Y axis')
         ax.set_zlabel('Z axis')
+        set_axes_equal(ax)
         plt.legend()
         plt.show()
 
