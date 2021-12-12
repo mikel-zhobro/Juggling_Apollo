@@ -11,7 +11,7 @@ from apollo_interface.Apollo_It import ApolloInterface
 from kinematics.ApolloKinematics import ApolloArmKinematics
 from kinematics import utilities
 from Planners import SiteSwapPlanner, OneBallThrowPlanner
-from utils import plot_A, save, colors, line_types, print_info, plot_info
+from utils import plot_A, save, save_all, colors, line_types, print_info, plot_info
 
 np.set_printoptions(precision=4, suppress=True)
 
@@ -23,27 +23,27 @@ print("juggling_apollo")
 FREQ_DOMAIN=False
 NF=18
 
-SAVING = False
-UB = 1003.87
+SAVING = True
+UB = 4.7
 
 CARTESIAN_ERROR = False
 NOISE=0.0
 
-ILC_it = 1                                # number of ILC iteration
+ILC_it = 2                                # number of ILC iteration
 end_repeat = 0  if not FREQ_DOMAIN else 0 # repeat the last position value this many time
 
 # Learnable Joints
 N_joints = 7
-learnable_joints = [0,1,2,3,4,5,6]
+learnable_joints = [0,1,2,3,]
 non_learnable_joints = list(set(range(N_joints)) - set(learnable_joints))
 
 # ILC Params
 n_ms  = np.ones((N_joints,))* 3e-3;   # covariance of noise on the measurment
-n_ms[4:] = 1e-5
+# n_ms[:] = 1e-4
 n_ds  = [1e-2]*N_joints               # initial disturbance covariance
 ep_s  = [1e-3]*N_joints               # covariance of noise on the disturbance
 alpha = np.ones((N_joints,)) * 18.0
-alpha[4:] = 90.0
+# alpha[:] = 90.0
 syss  = [ApolloDynSys2(dt, x0=np.zeros((2,1)), alpha_=a, freq_domain=FREQ_DOMAIN) for a in alpha]
 
 # Cartesian Error propogation params
@@ -72,7 +72,7 @@ rArmKinematics    = ApolloArmKinematics(r_arm=True, noise=NOISE)  ## kinematics 
 rArmKinematics_nn = ApolloArmKinematics(r_arm=True)               ## kinematics without noise  (used to calculate measurments, plays the wrole of a localization system)
 
 # C) PLANNINGs
-q_traj_des, T_traj = OneBallThrowPlanner.plan(dt, T_home, IK=rArmKinematics.IK, J=rArmKinematics.J, seqFK=rArmKinematics.seqFK, verbose=False)
+q_traj_des, T_traj = OneBallThrowPlanner.plan(dt, T_home, h=0.3, IK=rArmKinematics.IK, J=rArmKinematics.J, seqFK=rArmKinematics.seqFK, verbose=False)
 
 
 N = len(q_traj_des)
@@ -131,7 +131,7 @@ d_xyz_vec             = np.zeros([ILC_it, N, 3], dtype='float')
 
 
 # D. Main Loop
-every_N = 5
+every_N = 1
 
 # Use linear model to compute first input
 u_ff   = np.zeros([N-1, N_joints, 1], dtype='float')
@@ -142,6 +142,9 @@ for j in range(ILC_it):
   # Limit Input
   u_ff = np.clip(u_ff,-UB,UB)
 
+  if j==5:
+    plot_A([u_ff])
+    plt.show()
   # Main Simulation
   q_traj, q_v_traj, q_a_traj, F_N_vec, _, q0 = rArmInterface.apollo_run_one_iteration_with_feedback(dt=dt, T=T_FULL, u=u_ff, thetas_des=q_traj_des_i, joint_home_config=q_start_i, repetitions=3 if FREQ_DOMAIN else 1, it=j)
   q_extra, qv_extra, q_des_extra, qv_des_extra = rArmInterface.measure_extras(dt, 2.3)
@@ -211,14 +214,15 @@ for j in range(ILC_it):
 
   print_info(j, learnable_joints, joints_d_vec, d_xyz)
 
-  if False and j%every_N==0: plot_info(dt, j, learnable_joints,
-                             joints_q_vec, q_traj_des_i[1:],
-                            #  u_ff_vec, q_v_traj[1:],
-                             joint_torque_vec,
-                            #  disturbanc_vec,
-                            #  d_xyz,
-                             joint_error_norms, cartesian_error_norms,
-                             v=False, p=True, dp=False, e_xyz=False, e=True, torque=False)
+  if False and j%every_N==0:
+    plot_info(dt, j, learnable_joints,joints_q_vec, q_traj_des_i[1:],
+              u_ff_vec, q_v_traj,
+              joint_torque_vec,
+            #  disturbanc_vec,
+            #  d_xyz,
+              joint_error_norms, cartesian_error_norms,
+              v=True, p=True, dp=False, e_xyz=False, e=True, torque=False)
+    plt.show()
 
   if False and j%every_N==0:  # How desired  trajectory changes
     plot_A([q_traj_des_nn, q_traj_des_vec[j], q_traj_des_vec[j-1], q_traj_des_vec[0]], learnable_joints, ["des", "it="+str(j), "it="+str(j-1), "it=0"], dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
@@ -247,8 +251,8 @@ if SAVING:
   # Saving Results
   freq = 'freq_domain' if FREQ_DOMAIN else "time_domain"
   cartesian_err = 'cart_err_on' if CARTESIAN_ERROR else "cart_err_off"
-  filename = "examples/data/AllJoints3/" + time.strftime("%Y_%m_%d-%H_%M_%S") + "siteswap_joint_{}_alpha_{}_eps_{}_{}_{}".format(learnable_joints, alpha, ep_s[0], freq, cartesian_err)
-  save(filename,
+  filename = "one_throw_joint_{}_alpha_{}_eps_{}_{}_{}".format(learnable_joints, alpha, ep_s[0], freq, cartesian_err)
+  save_all(filename,
        dt=dt,
        q_start=q_start_i, T_home=T_home,                                                 # Home
        T_traj=T_traj, q_traj_des_vec=q_traj_des_vec,                                     # Desired Trajectories
@@ -262,11 +266,8 @@ if SAVING:
        ilc_learned_params = [(ilc.d, ilc.P) for ilc in my_ilcs],
        learnable_joints=learnable_joints, alpha=alpha, n_ms=n_ms, n_ds=n_ds, ep_s=ep_s)  # ILC parameters
 
-  with open('examples/data/AllJoints3/list_files_all.txt', 'a') as f:
-      f.write(filename + "\n")
-
 
 
 # Run Simulation with several repetition
 # rArmInterface.apollo_run_one_iteration2(dt=dt, T=end_repeat*dt, u=u_ff[:end_repeat], joint_home_config=q_start_i, repetitions=1, it=j)
-rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL-end_repeat*dt, u=u_ff[end_repeat:], repetitions=5, it=j)
+# rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL-end_repeat*dt, u=u_ff[end_repeat:], repetitions=5, it=j)
