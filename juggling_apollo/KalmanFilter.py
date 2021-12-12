@@ -3,7 +3,7 @@ import numpy as np
 
 class KalmanFilter:
   def __init__(self, lss, M, d0, P0, epsilon0, freqDomain=False, epsilon_decrease_rate=0.9):
-    
+
     self.timeDomain = not freqDomain
     # size of the state
     self.N = d0.size
@@ -11,7 +11,7 @@ class KalmanFilter:
     # pointer to the lifted space (can be changed from outside)
     self.lss = lss
     self.epsilon_decrease_rate = epsilon_decrease_rate
-    
+
     imag = 1j if freqDomain else 0.0
     self.Ident = (1+imag)*np.eye(self.N)
     # initial values
@@ -20,7 +20,7 @@ class KalmanFilter:
     # self.M = self.lss.GK.dot(np.diag((1+imag)*M)).dot(self.lss.GK.T.conj())
     self.d0 = d0+0*imag                     # initial disturbance value
     self.P0 = np.diag((1+imag)*P0)          # initial disturbance covariance
-    self.D0 = epsilon0*self.Ident           # covariance of noise on the disturbance 
+    self.D0 = epsilon0*self.Ident           # covariance of noise on the disturbance
 
     # current values
     self._d = None
@@ -59,7 +59,7 @@ class KalmanFilter:
     K = P1_0.dot(self.lss.GK.T.conj()).dot(np.linalg.pinv(Theta))
 
     # Weight
-    if False and  self.timeDomain:
+    if False and self.timeDomain:
       N = y_meas.size
       # D = np.diag(np.linspace(0,1.0,N))
       D = np.diag(np.log10(np.linspace(3.0,10.0,N)))
