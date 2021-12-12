@@ -35,8 +35,11 @@ def plot_A(lines_list, indexes_list=list(range(7)), labels=None, dt=1, xlabel=""
     if fill_between is not None:
       axs.flatten()[iii].fill_between(timesteps, fill_between[0][:, ix].squeeze(), fill_between[1][:, ix].squeeze(), color='gray', alpha=0.2)
 
-    axs.flatten()[iii].legend(loc=1)
     axs.flatten()[iii].grid(True)
+
+  # Put legend on last axis
+  handles, labels = axs.flatten()[iii].get_legend_handles_labels()
+  axs.flatten()[-1].legend(handles, labels, loc='upper center')
   fig.text(0.5, 0.04, xlabel, ha='center')
   fig.text(0.04, 0.5, ylabel, va='center', rotation='vertical')
 
@@ -80,7 +83,9 @@ def plot_info(dt, learnable_joints=list(range(7)),
 
   def save(typ):
     if fname is not None:
-      plt.savefig(fname+ "_" +typ)
+      fig = plt.gcf()
+      fig.set_size_inches((25.5, 8), forward=False)
+      plt.savefig(fname+ "_" +typ, bbox_inches='tight')
 
   if joints_q_vec is not None and q_traj_des is not None and p:
     line_list = [180./np.pi*q_traj_des] + list(180./np.pi*joints_q_vec[::M])
