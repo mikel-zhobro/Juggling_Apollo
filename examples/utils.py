@@ -88,23 +88,23 @@ def plot_info(dt, learnable_joints=list(range(7)),
       plt.savefig(fname+ "_" +typ, bbox_inches='tight')
 
   if joints_q_vec is not None and q_traj_des is not None and p:
-    line_list = [180./np.pi*q_traj_des] + list(180./np.pi*joints_q_vec[::M])
-    label_list = ["des"] + ["it="+str(i) for i in np.arange(0,len(line_list)-1,M)]
+    line_list = [180./np.pi*q_traj_des] + list(180./np.pi*joints_q_vec[:N:M])
+    label_list = ["des"] + ["it="+str(i*M) for i in np.arange(len(line_list)-1)]
     plot_A(line_list, learnable_joints, label_list, dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]")
     plt.suptitle("Angle Positions")
     save("angle_pos")
 
   if u_ff_vec is not None and q_v_traj is not None and v:
-    line_list = [180./np.pi*q_v_traj] + list(180./np.pi*u_ff_vec[::M])
-    label_list = ["performed"] + ["it="+str(i) for i in np.arange(0,len(line_list)-1,M)]
+    line_list = [q_v_traj] + list(u_ff_vec[:N:M])
+    label_list = ["performed"] + ["it="+str(i*M) for i in np.arange(len(line_list)-1)]
     plot_A(line_list, learnable_joints, fill_between=[np.max(u_ff_vec, axis=0), np.min(u_ff_vec, axis=0)],
            labels=label_list, dt=dt, xlabel=r"$t$ [s]", ylabel=r" angle velocity [$\frac{grad}{s}$]")
     plt.suptitle("Angle Velocities")
     save("angle_vel")
 
   if disturbanc_vec is not None and dp:
-    line_list = list(disturbanc_vec[::M])
-    label_list = ["it="+str(i) for i in range(0,len(line_list),M)]
+    line_list = list(disturbanc_vec[:N:M])
+    label_list = ["it="+str(i*M) for i in range(len(line_list))]
     plot_A(line_list, learnable_joints, label_list, dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
     plt.suptitle("Disturbance")
     save("disturbance")
@@ -162,4 +162,4 @@ def save_all(filename, **kwargs):
             u_ff_vec=ld.u_ff_vec, q_v_traj=ld.joints_vq_vec[-1,],
             joint_torque_vec=ld.joint_torque_vec, cartesian_error_norms =ld.cartesian_error_norms,
             disturbanc_vec=ld.disturbanc_vec, d_xyz=ld.d_xyz_vec[-1], joint_error_norms=ld.joint_error_norms,
-            v=True, p=True, dp=True, e_xyz=True, e=True, torque=True, M=2,fname=dir_exp)
+            v=True, p=True, dp=True, e_xyz=True, e=True, torque=True, M=3,fname=dir_exp)
