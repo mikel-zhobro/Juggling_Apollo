@@ -22,8 +22,9 @@ def plan(dt, T_home, IK, J, seqFK, h=0.75, throw_height=0.35, swing_size=0.46, s
 
     tf = 2.0*math.sqrt(2.0*(h-throw_height)/g)  # time of flight
     t1 = 0.8                        # throw time
-    t2 = t1 + 0.8*tf                 # catch time
-    ts = [0., t1,  t2]
+    t2 = 2*t1               # catch time
+    t3 = t2 + 0.8*tf                 # catch time
+    ts = [0., t1, t2,  t3]
 
     # Cartesian positions
     stop_height = throw_height+(h-throw_height)/4.
@@ -31,7 +32,7 @@ def plan(dt, T_home, IK, J, seqFK, h=0.75, throw_height=0.35, swing_size=0.46, s
     x0 = np.zeros((3,1))
     x1 = np.array([0., swing_size, throw_height]).reshape(3,1)      # swing position
     x2 = np.array([0., swing_size, catch_height]).reshape(3,1)   # catch-wait position
-    xs = [x0, x1, x2]
+    xs = [x2, x0, x1, x2]
 
     # Cartesian velocities
     alpha = 0.3
@@ -42,7 +43,7 @@ def plan(dt, T_home, IK, J, seqFK, h=0.75, throw_height=0.35, swing_size=0.46, s
     v0 = np.zeros((3,1))
     v1 = np.array([0.,sa*v_throw, ca*v_throw]).reshape(3,1)
     v2 = np.zeros((3,1))
-    vs = [v0, v1, v2]
+    vs = [v2, v0, v1, v2]
 
     a_s = [None, None, ]
     # Joint Positions
