@@ -279,6 +279,8 @@ class ApolloInterface:
                 # collect helpers
                 dP_N_vec[r,i] = obs_np[:,3].reshape(7, 1)
             real_homes[r] = thetas_s[r,0]
+        obs = self.go_to_speed_array(np.zeros((7,1)), 1000, globs.bursting)
+
         return thetas_s, vel_s, acc_s, dP_N_vec, u, real_homes
 
     def apollo_run_one_iteration_with_feedback(self, dt, T, u, thetas_des, P=0.07, I=0.0, D=0.0, joint_home_config=None, repetitions=1, it=0, go2position=False):
