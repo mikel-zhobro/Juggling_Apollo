@@ -332,10 +332,11 @@ class ApolloInterface:
                 dP_N_vec[r,i] = obs_np[:,3].reshape(7, 1)
                 # calculate feedback
                 error = thetas_des[i] - thetas_s[r,i]
-                error_D = (error - error_P)/dt
+                # error_D = (error - error_P)/dt
                 error_P = error
-                error_I += error_P*dt
-                feedback = P*error_P + D*error_D + I*error_I
+                # error_I += error_P*dt
+                feedback = np.array(P).reshape(-1, 1)*error_P #+ D*error_D + I*error_I
+                # feedback = P*error_P #+ D*error_D + I*error_I
             if r == repetitions-1:
                 break
             real_homes[r] = thetas_s[r,-1]
