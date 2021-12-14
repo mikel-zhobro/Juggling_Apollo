@@ -23,6 +23,9 @@ class DynamicSystem:
     # FreqDomain
     self.Hu = None  # C(sI - A)^-1 B
     self.Hd = None  # C(sI - A)^-1 Bd
+    
+    # Feedback Sys
+    self.B_feedback = None
 
     if freq_domain:
       try:
@@ -43,6 +46,10 @@ class DynamicSystem:
   def Ad_impact(self):
     assert self._Ad_impact is not None, "Impact dynamics are not implemented."
     return self._Ad_impact
+
+  @property
+  def with_feedback(self):
+    return self.B_feedback is not None
 
   def initTransferFunction(self, **kwargs):
     assert False, "The frequence domain TransferFunction is not implemented for this dynamical system."
@@ -129,28 +136,6 @@ class BallAndPlateDynSys(DynamicSystem):
     return Ad, Bd, Cd, S, c
 
 
-class ApolloDynSys(DynamicSystem):
-  def __init__(self, dt, x0, alpha_=alpha):
-    self.alpha = alpha_
-    DynamicSystem.__init__(self, dt=dt, x0=x0)
-
-  def initDynSys(self, dt):
-    self.Ad, self.Bd, self.Cd, self.S, self.c = self.getSystemMarixesVelocityControl(dt)
-
-  def getSystemMarixesVelocityControl(self, dt):
-    # x_k = Ad*x_k-1 + Bd*u_k-1 + S*d_k + c
-    # y_k = Cd*x_k
-    Ad = np.array([1.0, dt*(1-self.alpha*dt/2),
-                   0.0, 1-dt*self.alpha], dtype='float').reshape(2,2)
-    Bd = np.array([self.alpha*dt**2/2,
-                   dt*self.alpha], dtype='float').reshape(2,1)
-    Cd = np.array([1.0, 0.0], dtype='float').reshape(1,2)
-    S = np.array([1.0, 0.0], dtype='float').reshape(2,1)
-    c = np.array([0.0, 0.0], dtype='float').reshape(2,1)
-
-    return Ad, Bd, Cd, S, c
-
-
 class ApolloDynSysIdeal(DynamicSystem):
   def __init__(self, dt, x0):
     DynamicSystem.__init__(self, dt, x0=x0)
@@ -170,7 +155,7 @@ class ApolloDynSysIdeal(DynamicSystem):
     return Ad, Bd, Cd, S, c
 
 
-class ApolloDynSys2(DynamicSystem):
+class ApolloDynSys(DynamicSystem):
   def __init__(self, dt, x0, alpha_=alpha, freq_domain=False):
     self.alpha = alpha_
     DynamicSystem.__init__(self, dt, x0=x0, freq_domain=freq_domain)
@@ -207,8 +192,58 @@ class ApolloDynSys2(DynamicSystem):
 
     self.Hu = lambda s: self.alpha /(s*(s+self.alpha))
     self.Hd = lambda s: 1.0 /(s*(s+self.alpha))
-    
+ 
 class ApolloDynSysWithFeedback(DynamicSystem): #TODO: update Lifted Space to allow delay
+  def __init__(self, dt, x0, alpha_=alpha, K=None, freq_domain=False):
+    self.alpha = alpha_
+    self.K = self.alpha /4. if K is None else K
+    DynamicSystem.__init__(self, dt, x0=x0, freq_domain=freq_domain)
+
+  def initDynSys(self, dt):
+    self.Ad, self.Bd, self.Cd, self.S, self.c = self.getSystemMarixesVelocityControl(dt)
+
+  def getSystemMarixesVelocityControl(self, dt):
+    # State is: [yk, yk-1, dk-1, uk-1]
+    # x_k = A*x_k-1 + B*u_k-1 + Bd*d_k + Bn*n_k + c
+    # y_k = C*x_k
+    adt = self.alpha*dt
+    adtdt_2 = adt*dt /2.0
+
+    a   = 1. + self.K*adtdt_2
+    b   = dt - adtdt_2
+    c   = 1 - adt
+    d   = self.K*adt
+    
+    bu = adtdt_2/self.K
+    bd = self.alpha**-1 * bu
+
+    A = np.array([a, b,
+                  c, d], dtype='float').reshape(2,2)
+
+    B =  self.K* np.array([adtdt_2, adt], dtype='float').reshape(2,1)
+    Bd = np.array([0.5*dt, 1.], dtype='float').reshape(2,1)
+
+    C = np.array([1., 0.], dtype='float').reshape(1,2)
+    c = np.array([0., 0.], dtype='float').reshape(2,1)
+    Bn = np.array([1.0], dtype='float').reshape(1,1)
+
+    self.B_feedback = B / self.K
+    return A, B, C, Bd, c
+
+  def initTransferFunction(self):
+    # x[k+1] = A*x[k] + B*u[k] + S*d[k]
+    # y = C*x
+    # |
+    # X(z) = C(zI -A)^-1*B * U(z) + C(zI -A)^-1*Bd * D(z) <-- z transform
+    # |
+    # X(kw) = cu_k * U(kw) +  cd_k D(kw)  <-- discrete fourier transformation
+    self.Hu         = lambda s: self.alpha / (s**2 + self.alpha*s + self.alpha*self.K)
+    self.Hd         = lambda s: 1.0/self.alpha / (s**2 + self.alpha*s + self.alpha*self.K)
+    self.H_feedback = lambda s: self.K*self.alpha / (s**2 + self.alpha*s + self.alpha*self.K)
+  
+  
+  
+class ApolloDynSysWithFeedback2(DynamicSystem): #TODO: update Lifted Space to allow delay
   def __init__(self, dt, x0, alpha_=alpha, K=None, freq_domain=False):
     self.alpha = alpha_
     self.K = 2**-2 * self.alpha if K is None else K
@@ -241,6 +276,7 @@ class ApolloDynSysWithFeedback(DynamicSystem): #TODO: update Lifted Space to all
     Bn = np.array([1.0], dtype='float').reshape(1,1)
     c = np.array([0., 0., 0., 0.], dtype='float').reshape(4,1)
 
+    self.B_feedback = self.K*B
     return A, B, C, Bd, c
 
   def initTransferFunction(self):
@@ -251,3 +287,4 @@ class ApolloDynSysWithFeedback(DynamicSystem): #TODO: update Lifted Space to all
     # |
     # X(kw) = cu_k * U(kw) +  cd_k D(kw)  <-- discrete fourier transformation
     pass
+  

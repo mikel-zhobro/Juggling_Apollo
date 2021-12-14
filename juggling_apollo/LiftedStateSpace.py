@@ -11,9 +11,10 @@ class LiftedStateSpace:
     # Time domain
     self.timeDomain = False
     self.x0  = np.array(sys.x0).reshape(-1, 1)
-    self.GF  = None      # G * F  <- u
-    self.GK  = None      # G * k  <- d
-    self.Gd0 = None      # G * d0 <- x0
+    self.GF  = None          # G * F  <- u
+    self.GK  = None          # G * k  <- d
+    self.Gd0 = None          # G * d0 <- x0
+    self.GF_feedback = None  # G * F_feedback <- y_des
 
     # Freq Domain(u, d here are fourier coefficients)
     self.freqDomain = freq_domain
@@ -38,6 +39,8 @@ class LiftedStateSpace:
     self.Gd0 = 0.0
     self.GF = np.diag([self.sys.Hu(complex(0.0,k*w0)) for k in range(1, self.N+1)])  # SISO only
     self.GK = np.diag([self.sys.Hd(complex(0.0,k*w0)) for k in range(1, self.N+1)])
+    if self.sys.with_feedback:
+      self.GF_feedback = np.diag([self.sys.H_feedback(complex(0.0,k*w0)) for k in range(1, self.N+1)])
 
   def updateQuadrProgMatrixesTimeDomain(self, impact_timesteps=None, **kwargs):
     """ Updates the lifted state space matrixes G, GF, GK, Gd0
@@ -67,7 +70,7 @@ class LiftedStateSpace:
         A_power_holder[i+1] = self.get_Ad(impact_timesteps[i+1]).dot(A_power_holder[i])
 
     # Create lifted-space matrixes F, K, G, M:
-    #    x[1:] = Fu + Kdu_p + d0,
+    #    x[1:] = Fu + Kdu_p + d0 + F_feedback*ydes,
     #    y[1:] = Gx,
     # where the constant part
     #    d0 = L*x0_N-1 + M*c0_N-1
@@ -78,6 +81,12 @@ class LiftedStateSpace:
     #        ..         ..         ..
     #      AN-1..A1B0  AN-2..A1B1  .. B0N-1]
     F = np.zeros((nx*N, nu*N), dtype='float')
+    # F = [B_feedback0          0                 0             ..  0
+    #      A1B_feedback0        B_feedback1       0             ..  0
+    #      A2A1B_feedback0      A1B_feedback1     B_feedback2   ..  0
+    #        ..         ..         ..
+    #      AN-1..A1B_feedback  AN-2..A1B1  .. B0N-1]
+    F_feedback = np.zeros((nx*N, ny*N), dtype='float')
     # ---------- uncomment if dup is disturbance on dPN -----------
     # K = [S          0       0 .. 0
     #      A1S        S       0 .. 0
@@ -111,6 +120,8 @@ class LiftedStateSpace:
         M[ll*nx:(ll+1)*nx, m*nx:(m+1)*nx]       = A_power_holder[ll-m]
         F[ll*nx:(ll+1)*nx, m*nu:(m+1)*nu]       = A_power_holder[ll-m].dot(self.get_Bd(impact_timesteps[m]))  # F_lm
         K[ll*nx:(ll+1)*nx, m*ndup:(m+1)*ndup]   = A_power_holder[ll-m].dot(self.sys.S)
+        if self.sys.with_feedback:
+          F_feedback[ll*nx:(ll+1)*nx, m*ny:(m+1)*ny] = A_power_holder[ll-m].dot(self.sys.B_feedback)  # F_lm
 
     # Create d0 = L*x0_N-1 + M*c0_N-1
     c_vec = np.vstack([self.get_c(impact) for impact in impact_timesteps])
@@ -120,6 +131,8 @@ class LiftedStateSpace:
     self.GF  = G.dot(F)
     self.GK  = G.dot(K)
     self.Gd0 = G.dot(d0)
+    if self.sys.with_feedback:
+      self.GF_feedback = G.dot(F_feedback)
 
   def get_Ad(self, impact):
     return self.sys.Ad_impact if impact else self.sys.Ad
