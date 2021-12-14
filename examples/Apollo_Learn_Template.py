@@ -8,7 +8,7 @@ from juggling_apollo.settings import dt
 from juggling_apollo.ILC import ILC
 from Planners.MinJerk import plotMJ, get_minjerk_trajectory
 from Planners.JugglingPlanner import calc
-from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal, ApolloDynSys2
+from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal
 from apollo_interface.Apollo_It import ApolloInterface, plot_simulation
 from kinematics.ApolloKinematics import ApolloArmKinematics
 from kinematics import utilities
@@ -38,7 +38,7 @@ n_ds  = [1e-2]*7    # initial disturbance covariance
 # n_ds  = [6e-2]*7
 ep_s  = [1e-3]*7    # covariance of noise on the disturbance
 alpha = np.ones((7,)) * 18.0; alpha[3:] = 90.0; alpha[0:] = 33.0
-syss  = [ApolloDynSys2(dt, x0=np.zeros((2,1)), alpha_=a, freq_domain=FREQ_DOMAIN) for a in alpha]
+syss  = [ApolloDynSys(dt, x0=np.zeros((2,1)), alpha_=a, freq_domain=FREQ_DOMAIN) for a in alpha]
 
 # Cartesian Error propogation params
 # rArmKinematics_nn:  kinematics without noise  (used to calculate measurments, plays the wrole of a localization system)
