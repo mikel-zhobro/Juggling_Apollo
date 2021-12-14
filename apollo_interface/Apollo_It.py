@@ -283,7 +283,7 @@ class ApolloInterface:
 
         return thetas_s, vel_s, acc_s, dP_N_vec, u, real_homes
 
-    def apollo_run_one_iteration_with_feedback(self, dt, T, u, thetas_des, P=0.07, I=0.0, D=0.0, joint_home_config=None, repetitions=1, it=0, go2position=False):
+    def apollo_run_one_iteration_with_feedback(self, dt, T, u, thetas_des, P=0.07, joint_home_config=None, repetitions=1, it=0, go2position=False):
         """ Runs the system for the time interval 0->T
 
         Args:
@@ -314,12 +314,9 @@ class ApolloInterface:
         dP_N_vec = np.zeros((repetitions, N0, n_joints, 1))
 
         # Action Loop
-        error_P = np.zeros((7,1))
-        error_I = np.zeros((7,1))
-        error_D = np.zeros((7,1))
         delta_it = int(1000*dt)
+        feedback = np.array(P).reshape(-1, 1)*(thetas_des[1] - real_homes[0])
         for r in range(repetitions):
-            feedback = np.zeros((7,1))
             for i in range(N0):
                 # one step simulation
                 if go2position:
@@ -333,12 +330,7 @@ class ApolloInterface:
                 # collect helpers
                 dP_N_vec[r,i] = obs_np[:,3].reshape(7, 1)
                 # calculate feedback
-                error = thetas_des[i] - thetas_s[r,i]
-                # error_D = (error - error_P)/dt
-                error_P = error
-                # error_I += error_P*dt
-                feedback = np.array(P).reshape(-1, 1)*error_P #+ D*error_D + I*error_I
-                # feedback = P*error_P #+ D*error_D + I*error_I
+                feedback = np.array(P).reshape(-1, 1)*(thetas_des[(i+1)%N0] - thetas_s[r,i])
             if r == repetitions-1:
                 break
             real_homes[r] = thetas_s[r,-1]
