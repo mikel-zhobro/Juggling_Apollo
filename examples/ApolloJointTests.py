@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from juggling_apollo.settings import dt
 from apollo_interface.Apollo_It import ApolloInterface
 from kinematics.ApolloKinematics import ApolloArmKinematics
-from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal, ApolloDynSys2
+from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal
 from juggling_apollo.LiftedStateSpace import LiftedStateSpace
 
 
@@ -117,7 +117,7 @@ joints_aq_vec = np.zeros([N_trials, N_1+1, N_joints, 1], dtype='float')
 
 def simulate_vel(v_des, alpha=10.0):
   N = v_des.size
-  st = ApolloDynSys2(dt, alpha_=alpha)
+  st = ApolloDynSys(dt, alpha_=alpha)
   # st.Cd = np.array([0.0, 1.0]).reshape(1,2)
   sys = LiftedStateSpace(st, [0.0, 0.0, 0.0])
   sys.updateQuadrProgMatrixes([None]*N)

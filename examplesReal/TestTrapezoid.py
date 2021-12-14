@@ -5,7 +5,7 @@ import __add_path__
 from juggling_apollo.utils import plt
 from juggling_apollo.settings import dt
 from juggling_apollo.ILC import ILC
-from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal, ApolloDynSys2
+from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal
 from apollo_interface.Apollo_It import ApolloInterface
 from kinematics.ApolloKinematics import ApolloArmKinematics
 from utils import plot_A, save, print_info, plot_info
@@ -82,7 +82,7 @@ ep_s = [1e-4]*7
 alpha = 16.0
 my_ilcs = [
   # ILC(sys=ApolloDynSys(dt, alpha_=alpha), kf_dpn_params=kf_params(n_ms[i], ep_s[i], n_ds[i]), x_0=[q_start[i, 0], 0.0])    # include the initial state in the dynamics of the system
-  ILC(sys=ApolloDynSys2(dt, alpha_=alpha), kf_dpn_params=kf_params(n_ms[i], ep_s[i], n_ds[i]), x_0=[0.0, 0.0])                # make sure to make up for the initial state during learning
+  ILC(sys=ApolloDynSys(dt, alpha_=alpha), kf_dpn_params=kf_params(n_ms[i], ep_s[i], n_ds[i]), x_0=[0.0, 0.0])                # make sure to make up for the initial state during learning
   for i in range(N_joints)]
 
 # C. LEARN BY ITERATING

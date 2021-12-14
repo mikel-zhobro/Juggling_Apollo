@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import __add_path__
 from juggling_apollo.settings import dt
 from juggling_apollo.ILC import ILC
-from juggling_apollo.DynamicSystem import ApolloDynSys2
+from juggling_apollo.DynamicSystem import ApolloDynSys
 from Planners import SiteSwapPlanner
 from apollo_interface.Apollo_It import ApolloInterface
 from kinematics.ApolloKinematics import ApolloArmKinematics
@@ -45,7 +45,7 @@ n_ms  = ld.n_ms
 n_ds  = ld.n_ds
 ep_s  = ld.ep_s
 alpha = ld.alpha
-syss  = [ApolloDynSys2(dt, x0=np.zeros((2,1)), alpha_=a, freq_domain=FREQ_DOMAIN) for a in alpha]
+syss  = [ApolloDynSys(dt, x0=np.zeros((2,1)), alpha_=a, freq_domain=FREQ_DOMAIN) for a in alpha]
 
 # Cartesian Error propogation params
 # rArmKinematics_nn:  kinematics without noise  (used to calculate measurments, plays the wrole of a localization system)
