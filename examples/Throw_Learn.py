@@ -21,7 +21,7 @@ print("juggling_apollo")
 ########################################################################################################
 ########################################################################################################
 FREQ_DOMAIN=False
-NF=18
+NF=6
 
 SAVING = True
 UB = 6.5
@@ -45,7 +45,7 @@ n_ds  = [1e-3]*N_joints               # initial disturbance covariance
 ep_s  = [1e-3]*N_joints               # covariance of noise on the disturbance
 alpha = np.ones((N_joints,)) * 18.0
 alpha[-3:] = 17.
-syss  = [ApolloDynSys2(dt, x0=np.zeros((2,1)), alpha_=a, freq_domain=FREQ_DOMAIN) for a in alpha]
+syss  = [ApolloDynSys(dt, x0=np.zeros((2,1)), alpha_=a, freq_domain=FREQ_DOMAIN) for a in alpha]
 
 # Cartesian Error propogation params
 damp            = 1e-12

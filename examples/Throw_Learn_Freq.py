@@ -6,12 +6,13 @@ import matplotlib.pyplot as plt
 import __add_path__
 from juggling_apollo.settings import dt
 from juggling_apollo.ILC import ILC
-from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal, ApolloDynSys2, ApolloDynSysWithFeedback
+from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal, ApolloDynSys, ApolloDynSysWithFeedback
 from apollo_interface.Apollo_It import ApolloInterface
 from kinematics.ApolloKinematics import ApolloArmKinematics
 from kinematics import utilities
 from Planners import SiteSwapPlanner, OneBallThrowPlanner
 from utils import plot_A, save, save_all, colors, line_types, print_info, plot_info
+from Planners.utils import set_axes_equal
 
 np.set_printoptions(precision=4, suppress=True)
 
@@ -20,6 +21,8 @@ print("juggling_apollo")
 ########################################################################################################
 ########################################################################################################
 ########################################################################################################
+FEEDBACK=True
+
 FREQ_DOMAIN=True
 NF=15
 
@@ -45,7 +48,10 @@ n_ds  = [1e-4]*N_joints               # initial disturbance covariance
 ep_s  = [1e-4]*N_joints               # covariance of noise on the disturbance
 alpha = np.ones((N_joints,)) * 18.0
 alpha[:] = 17.
-syss  = [ApolloDynSys2(dt, x0=np.zeros((2,1)), alpha_=a, freq_domain=FREQ_DOMAIN) for a in alpha]
+if FEEDBACK:
+  syss  = [ApolloDynSysWithFeedback(dt, x0=np.zeros((2,1)), alpha_=a, K=a/4., freq_domain=FREQ_DOMAIN) for a in alpha]
+else:
+  syss  = [ApolloDynSys(dt, x0=np.zeros((2,1)), alpha_=a, freq_domain=FREQ_DOMAIN) for a in alpha]
 
 # Cartesian Error propogation params
 damp            = 1e-12
@@ -150,12 +156,33 @@ for j in range(ILC_it):
     plot_A([u_ff])
     plt.show()
   # Main Simulation
-  q_traj, q_v_traj, q_a_traj, F_N_vec, _, q0 = rArmInterface.apollo_run_one_iteration_with_feedback(dt=dt, T=T_FULL, u=u_ff, thetas_des=q_traj_des_i, joint_home_config=q_start_i, repetitions=2 if FREQ_DOMAIN else 1, it=j)
+  if FEEDBACK:
+    TTT=1
+    q_traj, q_v_traj, q_a_traj, F_N_vec, _, q0 = rArmInterface.apollo_run_one_iteration_with_feedback(dt=dt, T=T_FULL, u=u_ff, thetas_des=q_traj_des_i, P=alpha/4., joint_home_config=q_start_i, repetitions=4 if FREQ_DOMAIN else 5, it=j)
+  else:
+    TTT=0
+    q_traj, q_v_traj, q_a_traj, F_N_vec, _, q0 = rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL, u=u_ff, joint_home_config=q_start_i, repetitions=2 if FREQ_DOMAIN else 1, it=j)
+
+   
+  if False:
+    cartesian_traj_i = rArmKinematics_nn.seqFK(q_traj[-1])
+    from mpl_toolkits.mplot3d import axes3d, Axes3D  # noqa: F401
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(*T_traj[0, 0:3, -1], label="START_des")
+    ax.scatter(*cartesian_traj_i[0, 0:3, -1], label="START_performed")
+    ax.plot3D(T_traj[:, 0, -1], T_traj[:, 1, -1], T_traj[:, 2, -1], 'red', label="desired")
+    ax.plot3D(cartesian_traj_i[:, 0, -1], cartesian_traj_i[:, 1, -1], cartesian_traj_i[:, 2, -1], 'gray',  label="performed")
+    set_axes_equal(ax)
+    plt.legend()
+    plt.show()
+    
+
   q_extra, qv_extra, q_des_extra, qv_des_extra = rArmInterface.measure_extras(dt, 2.3)
-  q_traj   = np.average(  q_traj[0:], axis=0)
-  q_v_traj = np.average(q_v_traj[0:], axis=0)
-  q_a_traj = np.average(q_a_traj[0:], axis=0)
-  F_N_vec  = np.average( F_N_vec[0:], axis=0)
+  q_traj   = np.average(  q_traj[TTT:3], axis=0)
+  q_v_traj = np.average(q_v_traj[TTT:3], axis=0)
+  q_a_traj = np.average(q_a_traj[TTT:3], axis=0)
+  F_N_vec  = np.average( F_N_vec[TTT:3], axis=0)
 
   delta_y_meas = q_traj - q_traj[0]  #  np.average(q0[0,], axis=0) #np.average(q0[0:], axis=0, weights=[3,2,1,1]) # calc delta of executed traj
   q_traj = q_start_i + delta_y_meas   # rebase executed traj as if it would start from the exact home position
