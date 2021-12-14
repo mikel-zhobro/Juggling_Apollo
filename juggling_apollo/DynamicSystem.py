@@ -218,23 +218,28 @@ class ApolloDynSysWithFeedback(DynamicSystem): #TODO: update Lifted Space to all
     self.Ad, self.Bd, self.Cd, self.S, self.c = self.getSystemMarixesVelocityControl(dt)
 
   def getSystemMarixesVelocityControl(self, dt):
+    # State is: [yk, yk-1, dk-1, uk-1]
     # x_k = A*x_k-1 + B*u_k-1 + Bd*d_k + Bn*n_k + c
     # y_k = C*x_k
     adt = self.alpha*dt
     tmp = 0.5*adt*dt
     a =  self.K*tmp + adt - 2.0 # 2.0 - self.alpha*dt + tmp*self.K
     b =  self.K*tmp - adt + 1.0
+    
+    bu = tmp/self.K
+    bd = self.alpha**-1 * bu
 
-    A = np.array([-a, -b,
-                  1., 0.], dtype='float').reshape(2,2)
+    A = np.array([-a, -b, bd, bu,
+                  1., 0., 0., 0.,
+                  0., 0., 0., 0.,
+                  0., 0., 0., 0.], dtype='float').reshape(4,4)
 
-    B = tmp/self.K* np.array([1., 1.,
-                              0., 0.], dtype='float').reshape(2,2)
+    B =  np.array([bu, 0., 0., 1.], dtype='float').reshape(4,1)
+    Bd = np.array([bu, 0., 1., 0.], dtype='float').reshape(4,1)
 
-    C = np.array([1.0, 0.0], dtype='float').reshape(1,2)
-    Bd = self.alpha**-1 * B
-    Bn = np.array([0.0, 1.0], dtype='float').reshape(2,1)
-    c = np.array([0.0, 0.0], dtype='float').reshape(2,1)
+    C = np.array([1., 0., 0., 0.], dtype='float').reshape(1,4)
+    Bn = np.array([1.0], dtype='float').reshape(1,1)
+    c = np.array([0., 0., 0., 0.], dtype='float').reshape(4,1)
 
     return A, B, C, Bd, c
 
