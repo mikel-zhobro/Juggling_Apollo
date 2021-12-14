@@ -17,38 +17,29 @@ class ILC:
     self.firstTime = True
     
     # Time domain
-    self.uff_t = None
     self.dt = sys.dt
     self.Nt = y_des.size
     self.T = utils.time_from_step(self.Nt, self.dt)  # periode
-    self.y_des_t = y_des.reshape(-1,1)
     
     # Freq domain
-    self.uff_f   = None
-    self.Nf      = None
-    self.y_des_f = None
-    
     if freq_domain:
       assert Nf is not None and Nf < int(0.5*self.Nt), "Make sure that Nf{} is small enough{} to satisfy the Nyquist criterium.".format(Nf, int(0.5*self.Nt))
-      self.Nf = Nf
-      self.y_des_f = fourier_series_coeff(y_des, self.N).reshape(-1,1)
-
+    self.Nf      = Nf
+    
     # components of ilc
+    self.y_des = None
     self._u_ff = None
     self.lss              = LiftedStateSpace(sys=sys, T=self.T, N=self.N, freq_domain=freq_domain, **lss_params)
     self.kf_dpn           = KalmanFilter(lss=self.lss, freqDomain=freq_domain, **kf_dpn_params)  # dpn estimator
     self.quad_input_optim = OptimLss(self.lss, **optim_params)
 
     # size of the trajectoty
+    self.update_y_des(y_des)
     self.resetILC()
 
     assert kf_dpn_params['d0'].size == self.N, "Size of disturbance ({}) and that of N ({}) don't match.".format(kf_dpn_params['d0'].size, self.N)
   def resetILC(self, d=None, P=None):
     self.kf_dpn.resetKF(d, P) # reset KFs
-
-  @property
-  def y_des(self):
-    return self.y_des_t if self.timeDomain else self.y_des_f
 
   @property
   def N(self):
@@ -64,9 +55,13 @@ class ILC:
 
   def update_y_des(self, y_des):
     assert y_des.size == self.Nt, "Make sure the new y_des has the same size as the input ILC was initialized with."
-    self.y_des_t = y_des.reshape(-1,1)
-    if not self.timeDomain:
-      self.y_des_f = fourier_series_coeff(y_des, self.N).reshape(-1,1)
+    if self.timeDomain:
+      self.y_des = y_des.copy().reshape(-1,1)
+    else:
+      self.y_des = fourier_series_coeff(y_des, self.N).reshape(-1,1)
+
+    if self.lss.sys.with_feedback:
+      self.y_des -= self.lss.GF_feedback.dot(self.y_des)
 
   def transf_uff(self, uff):
     """ Transforms uff to the right format for robot usage.
