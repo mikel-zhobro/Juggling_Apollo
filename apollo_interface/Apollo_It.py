@@ -106,7 +106,7 @@ def go_to_posture(posture, nb_iterations, bursting, override=False):
 
     # creating command stacks
     for joint, position in posture.iteritems():
-        apollo.add_position_command(joint, float(position), target_iteration, override)
+        apollo.add_position_command(joint, float(position), target_iteration, True)
 
     # sending stack to robot and waiting for the desired number of iterations
     if not bursting:  # if blocking:
@@ -279,8 +279,8 @@ class ApolloInterface:
                 # collect helpers
                 dP_N_vec[r,i] = obs_np[:,3].reshape(7, 1)
             real_homes[r] = thetas_s[r,0]
-        obs = self.go_to_speed_array(np.zeros((7,1)), 1000, globs.bursting)
-
+        # obs = self.go_to_speed_array(np.zeros((7,1)), 1000, globs.bursting)
+        # obs = self.go_to_posture_array(thetas_s[-1,-1], 1000, globs.bursting)
         return thetas_s, vel_s, acc_s, dP_N_vec, u, real_homes
 
     def apollo_run_one_iteration_with_feedback(self, dt, T, u, thetas_des, P=0.07, joint_home_config=None, repetitions=1, it=0, go2position=False):
@@ -380,8 +380,7 @@ class ApolloInterface:
         return obs_np
 
     def go_to_home_position(self, home_pose=None, it_time=4000):
-        eps = 3e-3 # 2e-3  # <2mm
-        # eps = 2e-3
+        eps = 3.  # degree
         if home_pose is None:
             home_pose = np.zeros((7,1))
 
@@ -407,10 +406,10 @@ class ApolloInterface:
             error = np.array(home_pose).squeeze()-obs[:,0].squeeze()
 
             # for i in range(int(5./dt)): # try for 5 sec
-            i = 0
-            while True:
-                if all(np.abs(error) <= eps):
-                    break
+            i = 0; k = 0
+            while True and k < 2000:
+                if all((180.0/np.pi)*np.abs(error) <= eps):
+                    k +=1
                 if i==0:
                     obs = self.go_to_posture_array(home_pose, it_time, globs.bursting)
                 i += 1
@@ -421,10 +420,9 @@ class ApolloInterface:
 
                 controller_Input = error_P*P + error_I*I + error_D*D
                 obs = self.go_to_speed_array(controller_Input, int(dt*1000), globs.bursting)
-
         obs = self.go_to_speed_array(np.zeros_like(home_pose), it_time/4, globs.bursting)
-        print("{}. HOME with error: {} mm".format(i, 1000.0*np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze())))
-        print(np.array(home_pose).squeeze()- obs[:,0].squeeze())
+        print("{}. HOME with error: {} deg".format(i, (180.0 / np.pi)*np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze())))
+        print(180.0 / np.pi*(np.array(home_pose).squeeze()- obs[:,0].squeeze()))
         return obs[:,0:2].reshape(7, 2)
 
     # def get_TCP_pose(self):
