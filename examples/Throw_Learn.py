@@ -117,7 +117,7 @@ my_ilcs = [
 T_FULL = N*dt - 0.002
 N_1 = N-1
 # Data collection
-q_traj_des_vec        = np.zeros([ILC_it, N_1, N_joints, 1], dtype='float')
+q_traj_des_vec        = np.zeros([ILC_it, N, N_joints, 1], dtype='float')
 # a. Measurments
 joints_q_vec          = np.zeros([ILC_it, N_1, N_joints, 1], dtype='float')
 joints_vq_vec         = np.zeros([ILC_it, N_1, N_joints, 1], dtype='float')
@@ -185,7 +185,7 @@ for j in range(ILC_it):
   # b. ILC
   u_ff_vec[j]           = u_ff
   disturbanc_vec[j]     = np.squeeze([ilc.d for ilc in my_ilcs]).T  # learned joint space disturbances
-  q_traj_des_vec[j]     = q_traj_des_i[1:]
+  q_traj_des_vec[j]     = q_traj_des_i
   # c. Errors
   d_xyz_vec[j]          = d_xyz   # actual cartesian errors
   joints_d_vec[j]       = delta_q_traj_des_i-delta_y_meas         # actual joint space error

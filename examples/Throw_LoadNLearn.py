@@ -86,8 +86,9 @@ rArmKinematics_nn = ApolloArmKinematics(r_arm=True)               ## kinematics 
 # q_traj_des, T_traj = OneBallThrowPlanner.plan(dt, T_home, IK=rArmKinematics.IK, J=rArmKinematics.J, seqFK=rArmKinematics.seqFK, verbose=True)
 
 T_traj = ld.T_traj
-q_traj_des = np.concatenate((ld.q_traj_des_vec[-1], ld.q_traj_des_vec[0:1,0]))
-print(len(T_traj), len(q_traj_des))
+# q_traj_des = np.concatenate((ld.q_traj_des_vec[-1], ld.q_traj_des_vec[0:1,0]))  # only needed for old backups
+q_traj_des = ld.q_traj_des_vec
+
 N = len(q_traj_des)
 q_start = q_traj_des[0]
 T_home = T_traj[0]
