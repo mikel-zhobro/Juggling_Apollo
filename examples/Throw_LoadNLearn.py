@@ -36,10 +36,11 @@ UB = 6.5
 CARTESIAN_ERROR = False
 NOISE=0.0
 
-ILC_it = 22                                # number of ILC iteration
+ILC_it = 42                                # number of ILC iteration
 end_repeat = 0  if not FREQ_DOMAIN else 0 # repeat the last position value this many time
 
 FILENAME= "/home/apollo/Desktop/Investigation/2021_12_14/21_25_12/one_throw_joint_[0, 1, 2, 3, 4, 5, 6]_alpha_[ 17.  17.  17.  17.  17.  17.  17.]_eps_0.001_time_domain_cart_err_off.data"
+FILENAME="/home/apollo/Desktop/Investigation/2021_12_15/14_42_24/one_throw_joint_[0, 1, 2, 3, 4, 5, 6]_alpha_[ 17.  17.  17.  17.  17.  17.  17.]_eps_0.001_time_domain_cart_err_off.data"
 ld = load(FILENAME)
 
 
@@ -287,4 +288,4 @@ if SAVING:
 
 # Run Simulation with several repetition
 # rArmInterface.apollo_run_one_iteration2(dt=dt, T=end_repeat*dt, u=u_ff[:end_repeat], joint_home_config=q_start_i, repetitions=1, it=j)
-# rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL-end_repeat*dt, u=u_ff[end_repeat:], repetitions=5, it=j)
+rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL-end_repeat*dt, u=u_ff[end_repeat:], repetitions=3, it=j)
