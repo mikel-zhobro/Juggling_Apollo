@@ -158,7 +158,7 @@ def save_all(filename, **kwargs):
     f.write(filename + "\n")
   # Save plots
   plot_info(1, ld.learnable_joints,
-            joints_q_vec=ld.joints_q_vec, q_traj_des=ld.q_traj_des_vec[-1],
+            joints_q_vec=ld.joints_q_vec, q_traj_des=ld.q_traj_des_vec[-1,1:],
             u_ff_vec=ld.u_ff_vec, q_v_traj=ld.joints_vq_vec[-1,],
             joint_torque_vec=ld.joint_torque_vec, cartesian_error_norms =ld.cartesian_error_norms,
             disturbanc_vec=ld.disturbanc_vec, d_xyz=ld.d_xyz_vec[-1], joint_error_norms=ld.joint_error_norms,
