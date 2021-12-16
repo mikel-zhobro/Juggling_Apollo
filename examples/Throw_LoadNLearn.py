@@ -13,14 +13,6 @@ from kinematics import utilities
 from utils import plot_A, save, load, save_all, colors, line_types, print_info, plot_info
 
 
-
-
-
-
-
-
-np.set_printoptions(precision=4, suppress=True)
-
 np.set_printoptions(precision=4, suppress=True)
 # PARAMS
 print("juggling_apollo")
@@ -36,11 +28,12 @@ UB = 6.5
 CARTESIAN_ERROR = False
 NOISE=0.0
 
-ILC_it = 42                                # number of ILC iteration
+ILC_it = 1                                # number of ILC iteration
 end_repeat = 0  if not FREQ_DOMAIN else 0 # repeat the last position value this many time
 
 FILENAME= "/home/apollo/Desktop/Investigation/2021_12_14/21_25_12/one_throw_joint_[0, 1, 2, 3, 4, 5, 6]_alpha_[ 17.  17.  17.  17.  17.  17.  17.]_eps_0.001_time_domain_cart_err_off.data"
 FILENAME="/home/apollo/Desktop/Investigation/2021_12_15/14_42_24/one_throw_joint_[0, 1, 2, 3, 4, 5, 6]_alpha_[ 17.  17.  17.  17.  17.  17.  17.]_eps_0.001_time_domain_cart_err_off.data"
+FILENAME="/home/apollo/Desktop/Investigation/2021_12_16/16_07_55/one_throw_joint_[0, 1, 2, 3, 4, 5, 6]_alpha_[17. 17. 17. 17. 17. 17. 17.]_eps_0.001_time_domain_cart_err_off.data"
 ld = load(FILENAME)
 
 
@@ -57,24 +50,18 @@ alpha = ld.alpha
 syss  = [ApolloDynSys(dt, x0=np.zeros((2,1)), alpha_=a, freq_domain=FREQ_DOMAIN) for a in alpha]
 
 # Cartesian Error propogation params
-# rArmKinematics_nn:  kinematics without noise  (used to calculate measurments, plays the wrole of a localization system)
-# rArmKinematics:     kinematics with noise (used for its (wrong)IK calculations)
 damp            = 1e-12
 mu              = 0.35
-CARTESIAN_ERROR = False
+########################################################################################################
+########################################################################################################
+########################################################################################################
 
-
-
+########################################################################################################
 # 0. Create Apollo objects
 T_home = ld.T_home
 T_dhtcp_tcp = np.eye(4)
 T_dhtcp_tcp[:3,:3] = T_home[:3,:3].T
-########################################################################################################
-########################################################################################################
-########################################################################################################
 
-########################################################################################################
-# 0. Create Apollo objects
 # A) INTERFACE: create rArmInterface and go to home position
 rArmInterface = ApolloInterface(r_arm=True)
 
@@ -87,7 +74,7 @@ rArmKinematics_nn = ApolloArmKinematics(r_arm=True)               ## kinematics 
 
 T_traj = ld.T_traj
 # q_traj_des = np.concatenate((ld.q_traj_des_vec[-1], ld.q_traj_des_vec[0:1,0]))  # only needed for old backups
-q_traj_des = ld.q_traj_des_vec
+q_traj_des = ld.q_traj_des_vec[-1]
 
 N = len(q_traj_des)
 q_start = q_traj_des[0]
@@ -101,7 +88,6 @@ q_traj_des_i       = q_traj_des.copy()
 q_start_i          = q_start.copy()
 # q_start_i = q_traj_des_i[1]; #q_start_i[-1,0] = np.pi/4.
 delta_q_traj_des_i = q_traj_des_i[1:] - q_traj_des_i[1]
-
 
 # B. Initialize ILC
 Nf = NF if FREQ_DOMAIN else N-1
@@ -129,7 +115,7 @@ my_ilcs = [
 T_FULL = N*dt - 0.002
 N_1 = N-1
 # Data collection
-q_traj_des_vec        = np.zeros([ILC_it, N_1, N_joints, 1], dtype='float')
+q_traj_des_vec        = np.zeros([ILC_it, N, N_joints, 1], dtype='float')
 # a. Measurments
 joints_q_vec          = np.zeros([ILC_it, N_1, N_joints, 1], dtype='float')
 joints_vq_vec         = np.zeros([ILC_it, N_1, N_joints, 1], dtype='float')
@@ -165,7 +151,8 @@ for j in range(ILC_it):
     plot_A([u_ff])
     plt.show()
   # Main Simulation
-  q_traj, q_v_traj, q_a_traj, F_N_vec, _, q0 = rArmInterface.apollo_run_one_iteration_with_feedback(dt=dt, T=T_FULL, u=u_ff, thetas_des=q_traj_des_i, joint_home_config=q_start_i, repetitions=3 if FREQ_DOMAIN else 1, it=j)
+  # q_traj, q_v_traj, q_a_traj, F_N_vec, _, q0 = rArmInterface.apollo_run_one_iteration_with_feedback(dt=dt, T=T_FULL, u=u_ff, thetas_des=q_traj_des_i, joint_home_config=q_start_i, repetitions=3 if FREQ_DOMAIN else 1, it=j)
+  q_traj, q_v_traj, q_a_traj, F_N_vec, _, q0 = rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL, u=u_ff, joint_home_config=q_start_i, repetitions=3 if FREQ_DOMAIN else 1, it=j)
   # q_extra, qv_extra, q_des_extra, qv_des_extra = rArmInterface.measure_extras(dt, 2.3)
   q_traj   = np.average(  q_traj[0:], axis=0)
   q_v_traj = np.average(q_v_traj[0:], axis=0)
@@ -173,18 +160,20 @@ for j in range(ILC_it):
   F_N_vec  = np.average( F_N_vec[0:], axis=0)
 
   delta_y_meas = q_traj - q_traj[0]  #  np.average(q0[0,], axis=0) #np.average(q0[0:], axis=0, weights=[3,2,1,1]) # calc delta of executed traj
-  q_traj = q_start_i + delta_y_meas   # rebase executed traj as if it would start from the exact home position
+  # uncomment after trials
+  # q_traj = q_start_i + delta_y_meas   # rebase executed traj as if it would start from the exact home position
 
   # Update feed-forward signal
-  for i in learnable_joints:
-    if FREQ_DOMAIN:
-      u_ff[:,i] = my_ilcs[i].updateStep2(y_meas=delta_y_meas[:,i],  y_des=delta_q_traj_des_i[:, i],
-                                        #  lb=-UB,ub=UB
-                                        verbose=False)
-    else:
-      u_ff[:,i] = my_ilcs[i].updateStep(y_meas=delta_y_meas[:,i],  y_des=delta_q_traj_des_i[:, i],
-                                        #  lb=-UB,ub=UB
-                                        verbose=False)
+  # uncomment after trials
+  # for i in learnable_joints:
+  #   if FREQ_DOMAIN:
+  #     u_ff[:,i] = my_ilcs[i].updateStep2(y_meas=delta_y_meas[:,i],  y_des=delta_q_traj_des_i[:, i],
+  #                                       #  lb=-UB,ub=UB
+  #                                       verbose=False)
+  #   else:
+  #     u_ff[:,i] = my_ilcs[i].updateStep(y_meas=delta_y_meas[:,i],  y_des=delta_q_traj_des_i[:, i],
+  #                                       #  lb=-UB,ub=UB
+  #                                       verbose=False)
 
   # Collect Data
   cartesian_traj_i = rArmKinematics_nn.seqFK(q_traj)
@@ -200,7 +189,7 @@ for j in range(ILC_it):
   # b. ILC
   u_ff_vec[j]           = u_ff
   disturbanc_vec[j]     = np.squeeze([ilc.d for ilc in my_ilcs]).T  # learned joint space disturbances
-  q_traj_des_vec[j]     = q_traj_des_i[1:]
+  q_traj_des_vec[j]     = q_traj_des_i
   # c. Errors
   d_xyz_vec[j]          = d_xyz   # actual cartesian errors
   joints_d_vec[j]       = delta_q_traj_des_i-delta_y_meas         # actual joint space error
@@ -233,14 +222,15 @@ for j in range(ILC_it):
 
   print_info(j, learnable_joints, joints_d_vec, d_xyz)
 
-  if False and j%every_N==0:
+  if True and j%every_N==0:
     plot_info(dt, learnable_joints, joints_q_vec, q_traj_des_i[1:],
-              u_ff_vec, q_v_traj,
+              # u_ff_vec, q_v_traj,  # uncomment after trials
+              joints_vq_vec, q_v_traj,
               joint_torque_vec,
             #  disturbanc_vec,
             #  d_xyz,
               joint_error_norms, cartesian_error_norms,
-              v=True, p=True, dp=False, e_xyz=False, e=True, torque=False, N=j+1)
+              v=True, p=True, dp=False, e_xyz=False, e=False, torque=False, N=j+1)
     plt.show()
 
   if False and j%every_N==0:  # How desired  trajectory changes
@@ -288,5 +278,8 @@ if SAVING:
 
 
 # Run Simulation with several repetition
-# rArmInterface.apollo_run_one_iteration2(dt=dt, T=end_repeat*dt, u=u_ff[:end_repeat], joint_home_config=q_start_i, repetitions=1, it=j)
-rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL-end_repeat*dt, u=u_ff[end_repeat:], repetitions=3, it=j)
+if end_repeat!=0:
+  rArmInterface.apollo_run_one_iteration2(dt=dt, T=end_repeat*dt, u=u_ff[:end_repeat], joint_home_config=q_start_i, repetitions=1, it=j)
+  rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL-end_repeat*dt, u=u_ff[end_repeat:], repetitions=5, it=j)
+else:
+  rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL, u=u_ff, joint_home_config=q_start_i, repetitions=5, it=j)
