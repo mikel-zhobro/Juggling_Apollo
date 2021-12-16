@@ -177,22 +177,13 @@ class ApolloDynSys(DynamicSystem):
     return Ad, Bd, Cd, S, c
 
   def initTransferFunction(self):
-    # x_dot = A*x + B*u + S*d
-    # y = C*x
-    # |
-    # X(s) = C(sI -A)^-1*B * U(s) + C(sI -A)^-1*S * D(s)
-    A = np.array([0.0,  1.0,
-                  0.0,  -self.alpha], dtype='float').reshape(2,2)
-    B = np.array([0.0,  self.alpha], dtype='float').reshape(2,1)
-    C = np.array([1.0, 0.0], dtype='float').reshape(1,2)
+    # X(s) = Hu(s) * U(s) + Hd(s) * S * D(s)
     self.S = np.array([0.0, 1.0], dtype='float').reshape(2,1)
-
-    # self.Hu = lambda s: C.dot(np.linalg.pinv(s*np.eye(2) - A )).dot(B).squeeze()
-    # self.Hd = lambda s: C.dot(np.linalg.pinv(s*np.eye(2) - A )).dot(self.S).squeeze()
 
     self.Hu = lambda s: self.alpha /(s*(s+self.alpha))
     self.Hd = lambda s: 1.0 /(s*(s+self.alpha))
- 
+
+
 class ApolloDynSysWithFeedback(DynamicSystem): #TODO: update Lifted Space to allow delay
   def __init__(self, dt, x0, alpha_=alpha, K=None, freq_domain=False):
     self.alpha = alpha_
@@ -209,16 +200,8 @@ class ApolloDynSysWithFeedback(DynamicSystem): #TODO: update Lifted Space to all
     adt = self.alpha*dt
     adtdt_2 = adt*dt /2.0
 
-    a   = 1. + self.K*adtdt_2
-    b   = dt - adtdt_2
-    c   = 1 - adt
-    d   = self.K*adt
-    
-    bu = adtdt_2/self.K
-    bd = self.alpha**-1 * bu
-
-    A = np.array([a, b,
-                  c, d], dtype='float').reshape(2,2)
+    A = np.array([1. + self.K*adtdt_2, dt - adtdt_2,
+                  self.K*adt, 1. - adt], dtype='float').reshape(2,2)
 
     B =  self.K* np.array([adtdt_2, adt], dtype='float').reshape(2,1)
     Bd = np.array([0.5*dt, 1.], dtype='float').reshape(2,1)
@@ -227,7 +210,7 @@ class ApolloDynSysWithFeedback(DynamicSystem): #TODO: update Lifted Space to all
     c = np.array([0., 0.], dtype='float').reshape(2,1)
     Bn = np.array([1.0], dtype='float').reshape(1,1)
 
-    self.B_feedback = B / self.K
+    self.B_feedback = -B / self.K
     return A, B, C, Bd, c
 
   def initTransferFunction(self):
@@ -238,7 +221,7 @@ class ApolloDynSysWithFeedback(DynamicSystem): #TODO: update Lifted Space to all
     # |
     # X(kw) = cu_k * U(kw) +  cd_k D(kw)  <-- discrete fourier transformation
     self.Hu         = lambda s: self.alpha / (s**2 + self.alpha*s + self.alpha*self.K)
-    self.Hd         = lambda s: 1.0/self.alpha / (s**2 + self.alpha*s + self.alpha*self.K)
+    self.Hd         = lambda s: 1.0 / (s**2 + self.alpha*s + self.alpha*self.K)
     self.H_feedback = lambda s: self.K*self.alpha / (s**2 + self.alpha*s + self.alpha*self.K)
   
   
