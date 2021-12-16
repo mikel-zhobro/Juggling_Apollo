@@ -32,11 +32,12 @@ N_step = 150; N_start = (N_1-N_step)//2
 
 
 step_value = -1.0
-try_out_joints = [0,1,2,3,4,5,6]
+try_out_joints = [0,1,2,3,4,5,6, 7]
 for i in try_out_joints:
   u_ff = np.zeros((N_1,7,1))
   if i==7:
     u_ff[N_start:N_start+N_step,:,0] = -step_value
+    u_ff[N_start:N_start+N_step,1,0] *= -1.
   else:
     u_ff[N_start:N_start+N_step,i,0] = -step_value if i !=1 else step_value
 
