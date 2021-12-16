@@ -22,8 +22,8 @@ def plan(dt, T_home, IK, J, seqFK, h=0.75, throw_height=0.35, swing_size=0.46, s
 
     tf = 2.0*math.sqrt(2.0*(h-throw_height)/g)  # time of flight
     t1 = 0.8                        # throw time
-    t2 = 2*t1               # catch time
-    t3 = t2 + 0.8*tf                 # catch time
+    t2 = 2*t1                       # catch time
+    t3 = t2 + 0.8*tf                # home time
     ts = [0., t1, t2,  t3]
 
     # Cartesian positions
@@ -110,10 +110,10 @@ def plan(dt, T_home, IK, J, seqFK, h=0.75, throw_height=0.35, swing_size=0.46, s
         ax = fig.add_subplot(111, projection='3d')
         ax.plot3D(T_traj[:,0, -1], T_traj[:,1, -1], T_traj[:,2, -1], 'gray')
         ax.scatter(*T_traj[0, 0:3, -1], label="start")
-        ax.scatter(*T_traj[int(t1/dt), 0:3, -1], label="throw")
+        ax.scatter(*T_traj[int(t1/dt), 0:3, -1], label="back")
         # ax.scatter(*T_traj[int(t2/dt), 0:3, -1], label="stop")
-        ax.scatter(*T_traj[int(t2/dt), 0:3, -1], label="catch")
-        # ax.scatter(*T_traj[int(t4/dt), 0:3, -1], label="home")
+        ax.scatter(*T_traj[int(t2/dt), 0:3, -1], label="throw")
+        ax.scatter(*T_traj[int(t3/dt), 0:3, -1], label="home")
         ax.set_xlabel('X axis')
         ax.set_ylabel('Y axis')
         ax.set_zlabel('Z axis')
