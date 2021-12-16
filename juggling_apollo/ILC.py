@@ -10,22 +10,22 @@ class ILC:
   def __init__(self, sys, y_des, freq_domain=False, Nf=None, lss_params={}, optim_params={}, kf_dpn_params={}):
     # kwargs can be {impact_timesteps: [True/False]*N} for timedomain
     # and must be {T:Float} for freqdomain
-    
+
     # N: traj length if timedomain, freq traje length otherwise
-    
+
     self.timeDomain = not freq_domain
     self.firstTime = True
-    
+
     # Time domain
     self.dt = sys.dt
     self.Nt = y_des.size
     self.T = utils.time_from_step(self.Nt, self.dt)  # periode
-    
+
     # Freq domain
     if freq_domain:
       assert Nf is not None and Nf < int(0.5*self.Nt), "Make sure that Nf{} is small enough{} to satisfy the Nyquist criterium.".format(Nf, int(0.5*self.Nt))
     self.Nf      = Nf
-    
+
     # components of ilc
     self.y_des = None
     self._u_ff = None
@@ -94,7 +94,7 @@ class ILC:
     return self.transf_uff(self._u_ff)
 
   def updateStep(self, y_meas, y_des=None, verbose=False, lb=None, ub=None):
-    """ Updates learned feedforward input and disturbance according to (self._u_ff, y_meas) tuple. 
+    """ Updates learned feedforward input and disturbance according to (self._u_ff, y_meas) tuple.
 
     Args:
         y_meas ([np.array(Nt, 1)]): measured output for the previously calculated u_ff
@@ -124,7 +124,7 @@ class ILC:
 
 
   def updateStep2(self, y_meas, y_des=None, verbose=False, lb=None, ub=None):
-      """ Updates learned feedforward input and disturbance according to (self._u_ff, y_meas) tuple. 
+      """ Updates learned feedforward input and disturbance according to (self._u_ff, y_meas) tuple.
 
       Args:
           y_meas ([np.array(Nt, 1)]): measured output for the previously calculated u_ff
@@ -148,7 +148,8 @@ class ILC:
 
       # update uff
       # self._u_ff -= 0.163 * (np.linalg.pinv(self.lss.GF).dot(self.transf_y_meas(y_meas)) - self._u_ff)
-      self._u_ff += 0.363 * (np.linalg.pinv(self.lss.GF).dot(self.y_des-self.transf_y_meas(y_meas)))
+
+      self._u_ff += 0.363 *np.linspace(1.0, 0.2, self._u_ff.size).reshape(self._u_ff.shape)* (np.linalg.pinv(self.lss.GF).dot(self.y_des-self.transf_y_meas(y_meas)))
 
       return self.transf_uff(self._u_ff)
 
