@@ -85,7 +85,7 @@ def plot_info(dt, learnable_joints=list(range(7)),
     if fname is not None:
       fig = plt.gcf()
       fig.set_size_inches((25.5, 8), forward=False)
-      plt.savefig(fname+ "_" +typ, bbox_inches='tight')
+      plt.savefig(fname+ "_" +typ + '.pdf', bbox_inches='tight')
 
   if joints_q_vec is not None and q_traj_des is not None and p:
     line_list = [180./np.pi*q_traj_des] + list(180./np.pi*joints_q_vec[:N:M])
@@ -138,15 +138,17 @@ def plot_info(dt, learnable_joints=list(range(7)),
     plt.show()
 
 
-def save_all(filename, **kwargs):
+def save_all(filename, special=None, **kwargs):
   "Backups the data for reproduction, creates plots and saves plots."
   directory="/home/apollo/Desktop/Investigation/{}/".format(time.strftime("%Y_%m_%d"))
   if not os.path.exists(directory):
       os.makedirs(directory)
 
-  dir_exp =directory+"{}/".format(time.strftime("%H_%M_%S"))
+  dir_exp =directory+"{}/".format(time.strftime("%H_%M_%S") + ("_"+special if special is not None else ""))
   if not os.path.exists(dir_exp):
       os.makedirs(dir_exp)
+
+
 
   ld = DotDict(kwargs)
   filename = dir_exp + filename +'.data'
@@ -162,4 +164,4 @@ def save_all(filename, **kwargs):
             u_ff_vec=ld.u_ff_vec, q_v_traj=ld.joints_vq_vec[-1,],
             joint_torque_vec=ld.joint_torque_vec, cartesian_error_norms =ld.cartesian_error_norms,
             disturbanc_vec=ld.disturbanc_vec, d_xyz=ld.d_xyz_vec[-1], joint_error_norms=ld.joint_error_norms,
-            v=True, p=True, dp=True, e_xyz=True, e=True, torque=True, M=3,fname=dir_exp)
+            v=True, p=True, dp=True, e_xyz=True, e=True, torque=True, M=1,fname=dir_exp)
