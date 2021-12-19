@@ -28,12 +28,12 @@ UB = 6.5
 CARTESIAN_ERROR = False
 NOISE=0.0
 
-ILC_it = 1                                # number of ILC iteration
+ILC_it = 15                                # number of ILC iteration
 end_repeat = 0  if not FREQ_DOMAIN else 0 # repeat the last position value this many time
 
 FILENAME= "/home/apollo/Desktop/Investigation/2021_12_14/21_25_12/one_throw_joint_[0, 1, 2, 3, 4, 5, 6]_alpha_[ 17.  17.  17.  17.  17.  17.  17.]_eps_0.001_time_domain_cart_err_off.data"
 FILENAME="/home/apollo/Desktop/Investigation/2021_12_15/14_42_24/one_throw_joint_[0, 1, 2, 3, 4, 5, 6]_alpha_[ 17.  17.  17.  17.  17.  17.  17.]_eps_0.001_time_domain_cart_err_off.data"
-FILENAME="/home/apollo/Desktop/Investigation/2021_12_16/16_07_55/one_throw_joint_[0, 1, 2, 3, 4, 5, 6]_alpha_[17. 17. 17. 17. 17. 17. 17.]_eps_0.001_time_domain_cart_err_off.data"
+FILENAME="/home/apollo/Desktop/Investigation/2021_12_16/17_18_05/one_throw_joint_[0, 1, 2, 3, 4, 5, 6]_alpha_[ 17.  17.  17.  17.  17.  17.  17.]_eps_0.001_time_domain_cart_err_off.data"
 ld = load(FILENAME)
 
 
@@ -109,8 +109,6 @@ my_ilcs = [
   for i in range(N_joints)]
 
 
-
-
 # C. LEARN BY ITERATING
 T_FULL = N*dt - 0.002
 N_1 = N-1
@@ -129,9 +127,6 @@ cartesian_error_norms = np.zeros([ILC_it, 6, 1], dtype='float')  # (x,y,z,nx,ny,
 joint_error_norms     = np.zeros([ILC_it, N_joints, 1], dtype='float')
 joints_d_vec          = np.zeros([ILC_it, N_1, N_joints, 1], dtype='float')
 d_xyz_vec             = np.zeros([ILC_it, N, 3], dtype='float')
-
-
-
 
 
 
@@ -160,20 +155,18 @@ for j in range(ILC_it):
   F_N_vec  = np.average( F_N_vec[0:], axis=0)
 
   delta_y_meas = q_traj - q_traj[0]  #  np.average(q0[0,], axis=0) #np.average(q0[0:], axis=0, weights=[3,2,1,1]) # calc delta of executed traj
-  # uncomment after trials
-  # q_traj = q_start_i + delta_y_meas   # rebase executed traj as if it would start from the exact home position
+  q_traj = q_start_i + delta_y_meas   # rebase executed traj as if it would start from the exact home position
 
   # Update feed-forward signal
-  # uncomment after trials
-  # for i in learnable_joints:
-  #   if FREQ_DOMAIN:
-  #     u_ff[:,i] = my_ilcs[i].updateStep2(y_meas=delta_y_meas[:,i],  y_des=delta_q_traj_des_i[:, i],
-  #                                       #  lb=-UB,ub=UB
-  #                                       verbose=False)
-  #   else:
-  #     u_ff[:,i] = my_ilcs[i].updateStep(y_meas=delta_y_meas[:,i],  y_des=delta_q_traj_des_i[:, i],
-  #                                       #  lb=-UB,ub=UB
-  #                                       verbose=False)
+  for i in learnable_joints:
+    if FREQ_DOMAIN:
+      u_ff[:,i] = my_ilcs[i].updateStep2(y_meas=delta_y_meas[:,i],  y_des=delta_q_traj_des_i[:, i],
+                                        #  lb=-UB,ub=UB
+                                        verbose=False)
+    else:
+      u_ff[:,i] = my_ilcs[i].updateStep(y_meas=delta_y_meas[:,i],  y_des=delta_q_traj_des_i[:, i],
+                                        #  lb=-UB,ub=UB
+                                        verbose=False)
 
   # Collect Data
   cartesian_traj_i = rArmKinematics_nn.seqFK(q_traj)
@@ -222,10 +215,9 @@ for j in range(ILC_it):
 
   print_info(j, learnable_joints, joints_d_vec, d_xyz)
 
-  if True and j%every_N==0:
+  if False and j%every_N==0:
     plot_info(dt, learnable_joints, joints_q_vec, q_traj_des_i[1:],
-              # u_ff_vec, q_v_traj,  # uncomment after trials
-              joints_vq_vec, q_v_traj,
+              u_ff_vec, q_v_traj,  # uncomment after trials
               joint_torque_vec,
             #  disturbanc_vec,
             #  d_xyz,
@@ -261,13 +253,13 @@ if SAVING:
   freq = 'freq_domain' if FREQ_DOMAIN else "time_domain"
   cartesian_err = 'cart_err_on' if CARTESIAN_ERROR else "cart_err_off"
   filename = "one_throw_joint_{}_alpha_{}_eps_{}_{}_{}".format(learnable_joints, alpha, ep_s[0], freq, cartesian_err)
-  save_all(filename,
+  save_all(filename, special='REPEATABILITY_TEST',
        dt=dt,
        q_start=q_start_i, T_home=T_home,                                                 # Home
        T_traj=T_traj, q_traj_des_vec=q_traj_des_vec,                                     # Desired Trajectories
        joints_q_vec=joints_q_vec, joints_vq_vec=joints_vq_vec,                           # Joint Informations
        joints_aq_vec=joints_aq_vec, joint_torque_vec=joint_torque_vec,                   #        =|=
-       disturbanc_vec=disturbanc_vec, u_ff_vec=u_ff_vec,                                 # Learned Trajectories (uff and disturbance)
+       disturbanc_vec=disturbanc_vec, u_ff_vec=joints_vq_vec,                                 # Learned Trajectories (uff and disturbance)
        d_xyz_vec=d_xyz_vec, joints_d_vec=joints_d_vec,                                   # Progress Measurments
        joint_error_norms=joint_error_norms, cartesian_error_norms=cartesian_error_norms,
     #    pattern=pattern, h=h, r_dwell=r_dwell, throw_height=throw_height,                 # SiteSwap Params
@@ -278,8 +270,9 @@ if SAVING:
 
 
 # Run Simulation with several repetition
-if end_repeat!=0:
-  rArmInterface.apollo_run_one_iteration2(dt=dt, T=end_repeat*dt, u=u_ff[:end_repeat], joint_home_config=q_start_i, repetitions=1, it=j)
-  rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL-end_repeat*dt, u=u_ff[end_repeat:], repetitions=5, it=j)
-else:
-  rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL, u=u_ff, joint_home_config=q_start_i, repetitions=5, it=j)
+if False:
+  if end_repeat!=0:
+    rArmInterface.apollo_run_one_iteration2(dt=dt, T=end_repeat*dt, u=u_ff[:end_repeat], joint_home_config=q_start_i, repetitions=1, it=j)
+    rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL-end_repeat*dt, u=u_ff[end_repeat:], repetitions=5, it=j)
+  else:
+    rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL, u=u_ff, joint_home_config=q_start_i, repetitions=5, it=j)

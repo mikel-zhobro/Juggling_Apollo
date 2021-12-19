@@ -172,8 +172,7 @@ class ApolloInterface:
         return obs_np, des_np
 
     def read(self, nb_iteration=None, des=False):
-        """[summary]
-
+        """
         Args:
             des (bool): whether to return the desired states
             nb_iteration (int): If not None, waits nb_iteration before reading.
@@ -232,7 +231,6 @@ class ApolloInterface:
             return thetas_s, vel_s, acc_s, dP_N_vec, u
         else:
             return thetas_s[1:], vel_s[1:], acc_s[1:],dP_N_vec[1:], u
-
 
     def apollo_run_one_iteration2(self, dt, T, u, joint_home_config=None, repetitions=1, it=0, go2position=False):
         """ Runs the system for the time interval 0->T
@@ -422,21 +420,8 @@ class ApolloInterface:
                 obs = self.go_to_speed_array(controller_Input, int(dt*1000), globs.bursting)
         obs = self.go_to_speed_array(np.zeros_like(home_pose), it_time/4, globs.bursting)
         print("{}. HOME with error: {} deg".format(i, (180.0 / np.pi)*np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze())))
-        print(180.0 / np.pi*(np.array(home_pose).squeeze()- obs[:,0].squeeze()))
+        print((180.0 / np.pi)*(np.array(home_pose).squeeze()- obs[:,0].squeeze()))
         return obs[:,0:2].reshape(7, 2)
-
-    # def get_TCP_pose(self):
-    #     observation = self.read()
-    #     cartesian_states = observation.get_cartesian()
-    #     if self.r_arm:
-    #         hand = cartesian_states.hands[0]
-    #     else:
-    #         hand = cartesian_states.hands[1]
-
-    #     return np.array(hand.position).reshape(-1,1), Rotation.from_quat(hand.orientation).as_dcm()
-
-
-
 
 def plot_simulation(dt, u, thetas_s, vel_s, acc_s, dP_N_vec=None, thetas_s_des=None, title=None, vertical_lines=None, horizontal_lines=None):
   # Everything are column vectors
