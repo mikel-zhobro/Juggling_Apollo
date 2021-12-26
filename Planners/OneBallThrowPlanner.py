@@ -35,7 +35,7 @@ def plan(dt, T_home, IK, J, seqFK, h=0.75, throw_height=0.35, swing_size=0.46, s
     xs = [x2, x0, x1, x2]
 
     # Cartesian velocities
-    alpha = 0.3
+    alpha = 0.
     ca = np.cos(alpha)
     sa = np.sin(alpha)
     v_throw = 0.5*g*tf # in z direction
@@ -51,19 +51,19 @@ def plan(dt, T_home, IK, J, seqFK, h=0.75, throw_height=0.35, swing_size=0.46, s
     Tmp = T_home.copy()
     R = Tmp[:3,:3]
     for i in range(len(q_s)):
-        if i ==1:
-            alpha = -0.2
-            ca = np.cos(alpha)
-            sa = np.sin(alpha)
-            rx = -np.array([-sa, 0, ca]).reshape(3,1)
-            # rx = -vs[i]/np.linalg.norm(vs[1])
-            ry = T_home[:3,1:2]
-            # ry = np.cross(rz, rx, axis=0)
-            rz = np.cross(rx, ry, axis=0)
-            # rx = -np.cross(rz, T_home[:3,1:2], axis=0)
-            R = np.hstack((rx, ry, rz))
-        else:
-            R = T_home[:3,:3]
+        # if i ==1:
+        #     alpha = -0.2
+        #     ca = np.cos(alpha)
+        #     sa = np.sin(alpha)
+        #     rx = -np.array([-sa, 0, ca]).reshape(3,1)
+        #     # rx = -vs[i]/np.linalg.norm(vs[1])
+        #     ry = T_home[:3,1:2]
+        #     # ry = np.cross(rz, rx, axis=0)
+        #     rz = np.cross(rx, ry, axis=0)
+        #     # rx = -np.cross(rz, T_home[:3,1:2], axis=0)
+        #     R = np.hstack((rx, ry, rz))
+        # else:
+        #     R = T_home[:3,:3]
         Tmp[:3,:3] = R
         Tmp[:3,3:4] = T_home[:3, 3:4] + xs[i]
         print(Tmp)
