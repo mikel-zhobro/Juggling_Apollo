@@ -2,7 +2,7 @@ import path
 import numpy as np
 from fk_pin_local import PinRobot
 from DH import DH_revolut
-from AnalyticalIK import IK_anallytical, IK_heuristic1, IK_heuristic2
+from AnalyticalIK import IK_anallytical
 from utilities import R_joints, L_joints, JOINTS_LIMITS, pR2T
 from tqdm import tqdm
 
@@ -25,10 +25,13 @@ offsets = [0.0, 0.0, th3_offset, 0.0, 0.0, 0.0, 0.0]
 
 # Create Robots
 dh_rob = DH_revolut()
-pin_rob = PinRobot(r_arm=r_arm)
-
 for a, alpha, d, theta, name, offset in zip(a_s, alpha_s, d_s, theta_s, joints2Use, offsets):
     dh_rob.add_joint(a, alpha, d, theta, JOINTS_LIMITS[name], name, offset)
+
+try:
+    pin_rob = PinRobot(r_arm=r_arm)
+except:
+    pin_rob = dh_rob
 
 
 
@@ -37,7 +40,7 @@ def check_FK():
     for _ in tqdm(range(10000)):
         home_pose = np.array([ j.limit_range.sample() for j in dh_rob.joints ]).reshape(7,1)
         T_DH = dh_rob.FK(home_pose)
-        T_pin = pin_rob.FK(home_pose).homogeneous
+        T_pin = pin_rob.FK(home_pose)
         nrr = np.linalg.norm(T_DH - T_pin)
         if nrr >4e-4:
             print('ERR', nrr)
@@ -48,16 +51,17 @@ def check_FK():
 
 def check_IK():
     # Create poses with pinocchio FK and calculate the input with dh_IK
+    # TODO: WARN: it projects points that are too far to the limits of its working space.
     GCs = [(i, ii, iii) for i in [-1.0, 1.0] for ii in [-1.0, 1.0] for iii in [-1.0, 1.0]]
     for _ in tqdm(range(1000)):
         home_pose = np.array([ j.limit_range.sample() for j in dh_rob.joints ]).reshape(7,1)
-        T_pin = pin_rob.FK(home_pose).homogeneous
+        T_pin = pin_rob.FK(home_pose)
 
         for GC2, GC4, GC6 in GCs:
             solu, _ = IK_anallytical(p07_d=T_pin[:3,3:4], R07_d=T_pin[:3,:3], DH_model=dh_rob, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False)
             for f in np.arange(-1.0, 1.0, 0.2):
                 s = solu(f*np.pi)
-                nrr = np.linalg.norm(pin_rob.FK(s).homogeneous - T_pin)
+                nrr = np.linalg.norm(dh_rob.FK(s) - T_pin)
                 if nrr >4e-4:
                     print('ERR', nrr)
                     print("GCs", GC2, GC4, GC6)

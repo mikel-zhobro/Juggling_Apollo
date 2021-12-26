@@ -28,7 +28,7 @@ class PinRobot():
                                              # Only used as internal state(still all functions should be called with certain joint_state as input)
 
         # Use "BASE" instead of 'universe' as base coordinate frame (Set the BASE Frame)
-        self.SE3_base_origin = self.FK_f2f(pin.neutral(self.model), BASE, WORLD)
+        self.SE3_base_origin = self.FK_f2f(pin.neutral(self.model), BASE, WORLD, homog=False)
 
     def limit_joints(self, Q):
         for i, name in enumerate(self.joints_list):
@@ -38,15 +38,16 @@ class PinRobot():
     def frames(self):
         pass
 
-    def FK(self, q, frameName=TCP):
+    def FK(self, q, frameName=TCP, homog=True):
         """
         returns the SE3_base_frame(R,p) of frameName in base coordinates
         """
         frameId = self.model.getFrameId(frameName)
         pin.forwardKinematics(self.model, self.data, q.reshape(7,1))
-        return self.SE3_base_origin * pin.updateFramePlacement(self.model, self.data, frameId) # updates data and returns T_base_frame
+        ret = self.SE3_base_origin * pin.updateFramePlacement(self.model, self.data, frameId)
+        return ret.homogeneous if homog else ret  # updates data and returns T_base_frame
 
-    def FK_f2f(self, q, baseName=BASE, frameName=TCP):
+    def FK_f2f(self, q, baseName=BASE, frameName=TCP, homog=True):
         """
         returns the SE3_baseName_frameName(R,p) of frameName in baseName coordinates
         """
@@ -55,7 +56,7 @@ class PinRobot():
         pin.forwardKinematics(self.model, self.data, q)
         T_origin_base = pin.updateFramePlacement(self.model, self.data, baseId)
         T_origin_frame = pin.updateFramePlacement(self.model, self.data, frameId)
-        return T_origin_base.inverse() * T_origin_frame # returns T_baseName_frameName
+        return (T_origin_base.inverse() * T_origin_frame).homogeneous if homog else T_origin_base.inverse() * T_origin_frame
 
     def J(self, q, frameName=TCP):
         """
@@ -158,12 +159,12 @@ if __name__ == "__main__":
 
     home_pose = np.array([0.0, -0.1, -np.pi/6, 0.0, 0.0, np.pi/2, 0.0]).reshape(-1,1)
     home_pose = np.array([0.0, -0.1, 0.0, 0.0, 0.0, 0.0, 0.0]).reshape(-1,1)
-    home_pose = np.array([0.0, -0.0, 0.0, 0.0, 0.0, 0.0, 0.0]).reshape(-1,1)  
+    home_pose = np.array([0.0, -0.0, 0.0, 0.0, 0.0, 0.0, 0.0]).reshape(-1,1)
 
 
     def print_FK(base, frame):
         print(base, frame) # base -> frame
-        print(pin_rob.FK_f2f(home_pose, baseName=base, frameName=frame).homogeneous)
+        print(pin_rob.FK_f2f(home_pose, baseName=base, frameName=frame))
 
     # Find DH params
     if False:
