@@ -102,8 +102,8 @@ class MinJerkTraj(Traj):
     Traj.__init__(self)
 
     self.tt = tt
-    self.xx = np.array(xx).T
-    self.vv = np.array(vv).T
+    self.xx = xx
+    self.vv = vv
 
     self.catch_throw = MinJerk.get_min_jerk_xyz(dt, tt[0], tt[1],
                                                 self.xx[0], self.xx[1],
@@ -236,14 +236,16 @@ class CatchThrow():
     self.v_t[2] = 0.5 * g * self.t_fly - throw_height/self.t_fly
 
   def initCTTraj(self, dt, ttt, ct_next, last):
-    tt = [self.t_catch, self.t_throw, self.t_catch2]
-    xx = [[self.P[0], self.p_t[0], ct_next.P[0]],
-          [self.P[1], self.p_t[1], ct_next.P[1]],
-          [self.P[2], self.p_t[2], ct_next.P[2]]]
-    vv = [[ self.ct_c.v_t[0]*0.2, self.v_t[0],  ct_next.ct_c.v_t[0]*0.2],
-          [ self.ct_c.v_t[1]*0.2, self.v_t[1],  ct_next.ct_c.v_t[1]*0.2],
-          [-self.ct_c.v_t[2]*0.2, self.v_t[2], -ct_next.ct_c.v_t[2]*0.2],
-          ]
+    tt = np.array([self.t_catch, self.t_throw, self.t_catch2])
+    xx = np.array([[self.P[0],    self.P[1],    self.P[2]],
+                   [self.p_t[0],  self.p_t[1],  self.p_t[2]],
+                   [ct_next.P[0], ct_next.P[1], ct_next.P[2]]])
+
+    rat = 0.2
+    vv = np.array([[ self.ct_c.v_t[0]*rat, self.ct_c.v_t[1]*rat,     ct_next.ct_c.v_t[0]*rat],
+                   [ self.v_t[0],          self.v_t[1],              self.v_t[2] ],
+                   [-self.ct_c.v_t[2]*rat, ct_next.ct_c.v_t[1]*rat, -ct_next.ct_c.v_t[2]*rat],
+          ])
     self.ballTraj = BallTraj(self.t_fly, self.p_t, self.v_t)
     self.traj = MinJerkTraj(dt, tt, xx ,vv)
     return self.traj.initMJTraj(ttt, last=last)
@@ -255,8 +257,8 @@ class CatchThrow():
     ax.scatter(x, y, color='k')
     ax.annotate(str((self.n_c, self.n_t)), (x, y), (x-0.2, y-0.5))
     # Plot catch and throw at this catch-throw point
-    color = None
-    # color = 'b'
+    # color = None
+    color = 'k'
     # if (actual_beat) %3 ==0:
     #   color = 'r'
     # elif (actual_beat) %3 ==1:
@@ -345,6 +347,22 @@ class JugglingHand(Traj):
     for ct in self.ct_period:
       ct.plotCTTrajectory(ax, self.ttt, self.h)
 
+  def getTimesPositionsVelocities(self):
+    """ Puts together the plan of the hand.
+        It can then be used in different trajectory planning algorithms such as Minjerk in cartesian or joint space.
+    Returns:
+        (tts, xxs, vvs): time-points(N, ) and their corresponding positions and velocities that the hand should achieve
+                         all of size (N, 3) where N is the nr of time points.
+    """
+    tts = np.zeros((self.N*3,  ))
+    xxs = np.zeros((self.N*3, 3))
+    vvs = np.zeros((self.N*3, 3))
+    for i, ct in enumerate(self.ct_period):
+      j = i*3
+      tts[j:j+3] = ct.traj.tt
+      xxs[j:j+3] = ct.traj.xx
+      vvs[j:j+3] = ct.traj.vv
+    return tts, xxs, vvs
 
 class JugglingPlan():
   def __init__(self, pattern, hands, hand_positions, tB, r_dwell, swing_size):
@@ -585,7 +603,8 @@ if __name__ == "__main__":
   dt = 0.004
   jp = JugglingPlanner()
   # jp.plan(1, pattern=(3,3,3), rep=1).plot()
-  jp.plan(dt, 2, pattern=(3,3,3), slower=5, rep=1).plotTimeDiagram()
+  p = jp.plan(dt, 2, pattern=(3,3,3), slower=5, rep=1)
+  p.plotTimeDiagram()
   # jp.plan(4, pattern=(3,), rep=1).plot()
   jp.plan(dt, 3, pattern=(4,), slower=5, rep=1).plot()
   # N_Whole0, x0, v0, a0, j0, thetas = p.hands[0].get(True)  # get plan for hand0
@@ -594,3 +613,4 @@ if __name__ == "__main__":
   # plt.plot(a0[:,2])
   # plt.show()
   # p.plot()
+  # print(p.hands[0].getTimesPositionsVelocities())
