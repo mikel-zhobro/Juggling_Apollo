@@ -7,7 +7,7 @@ import __add_path__
 from juggling_apollo.settings import dt
 from juggling_apollo.ILC import ILC
 from Planners import SiteSwapPlanner
-from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal, ApolloDynSys2
+from juggling_apollo.DynamicSystem import ApolloDynSys
 from apollo_interface.Apollo_It import ApolloInterface
 from kinematics.ApolloKinematics import ApolloArmKinematics
 from kinematics import utilities
@@ -20,7 +20,7 @@ print("juggling_apollo")
 ########################################################################################################
 ########################################################################################################
 ########################################################################################################
-FREQ_DOMAIN=True
+FREQ_DOMAIN=False
 NF=18
 
 SAVING = True
@@ -34,7 +34,7 @@ end_repeat = 0  if not FREQ_DOMAIN else 0 # repeat the last position value this 
 
 # Learnable Joints
 N_joints = 7
-learnable_joints = [0,1,2,3,5]
+learnable_joints = [0,1,2,3,4,5,6]
 non_learnable_joints = list(set(range(N_joints)) - set(learnable_joints))
 
 # ILC Params
@@ -44,7 +44,7 @@ n_ds  = [1e-2]*N_joints               # initial disturbance covariance
 ep_s  = [1e-3]*N_joints               # covariance of noise on the disturbance
 alpha = np.ones((N_joints,)) * 18.0
 #alpha[3:] = 90.0
-syss  = [ApolloDynSys2(dt, x0=np.zeros((2,1)), alpha_=a, freq_domain=FREQ_DOMAIN) for a in alpha]
+syss  = [ApolloDynSys(dt, x0=np.zeros((2,1)), alpha_=a, freq_domain=FREQ_DOMAIN) for a in alpha]
 
 # Cartesian Error propogation params
 damp            = 1e-12
@@ -52,9 +52,9 @@ mu              = 0.35
 
 # Home Configuration
 T_home = np.array([[0.0, -1.0, 0.0,  0.32],  # uppword orientation(cup is up)
-                   [0.0,  0.0, 1.0,  0.81],
+                   [0.0,  0.0, 1.0,  0.71],
                    [-1.0, 0.0, 0.0, -0.49],
-                   [0.0,  0.0, 0.0,  0.0 ]], dtype='float')
+                   [0.0,  0.0, 0.0,  1.0 ]], dtype='float')
 
 T_dhtcp_tcp = np.eye(4)
 T_dhtcp_tcp[:3,:3] = T_home[:3,:3].T
@@ -150,6 +150,40 @@ every_N = 5
 u_ff   = np.zeros([N-1, N_joints, 1], dtype='float')
 for i in learnable_joints:
   u_ff[:,i] = my_ilcs[i].init_uff_from_lin_model()
+
+
+### PLOTING
+if False:
+  # Calc velocities
+  W = np.eye(7)
+  W[3:,3:] *= 1.
+  W[-1,-1] = 200.
+
+  H = np.zeros((10,10))
+  H[:7,:7] = W
+  b = np.zeros((10,1))
+  qv_s = np.zeros((len(v0),7,1))
+  v0 [:, [0,1]] = v0 [:, [1,0]]
+  for i, (v, q) in enumerate(zip(v0, q_traj_des)):
+    Ji = rArmKinematics.J(q)[:3,:]
+    H[7:,:7] = -Ji
+    H[:7,7:] = Ji.T
+    # qv_s[i] = np.linalg.pinv(Ji).dot(vs[i])
+    b[7:] = -v.reshape(3,1)
+    qv_s[i] = np.linalg.inv(H).dot(b)[:7]
+
+  A = 180./np.pi
+  plot_A([A*q_traj_des])
+  plt.suptitle('Joint angle trajectories')
+  plt.savefig('Joint_Angle_Traj_cartesian.pdf')
+
+  plot_A([A*u_ff])
+  plt.suptitle('Joint angle velocity trajectories')
+  plt.savefig('Joint_Angle_Vel_Traj_cartesian.pdf')
+  plt.show()
+
+
+
 
 for j in range(ILC_it):
   # Limit Input
