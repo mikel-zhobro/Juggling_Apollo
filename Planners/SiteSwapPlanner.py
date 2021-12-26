@@ -10,10 +10,8 @@ def rollavg_cumsum_edges(a,n):
     'numpy.cumsum, edge handling'
     n = n if n%2==1 else n+1
     N = len(a)
-    # cumsum_vec = np.cumsum(np.insert(np.pad(a,(n-1,n-1),'constant'), 0, 0)) 
     cumsum_vec = np.cumsum(np.insert(np.pad(a,((n-1,n-1),(0,0)),'wrap'), 0, 0, 0), axis=0)
-    
-    d = np.hstack((np.arange(n//2+1,n),np.ones(N-n)*n,np.arange(n,n//2,-1))).reshape(-1,1)  
+    d = np.hstack((np.arange(n//2+1,n),np.ones(N-n)*n,np.arange(n,n//2,-1))).reshape(-1,1)
     return (cumsum_vec[n+n//2:-n//2+1] - cumsum_vec[n//2:-n-n//2]) / d
 
 def gcd(a, b):
@@ -30,7 +28,7 @@ def lcm(a,b):
     "Calculate the lowest common multiple of two integers a and b"
     return a*b//gcd(a,b)
 
-def plotConnection(ax, actual_beat, catch_beat, y0, y1, same_hand):
+def plotConnection(ax, actual_beat, catch_beat, y0, y1, same_hand, color='k'):
   y0, y1 = float(y0), float(y1)
   actual_beat, catch_beat = float(actual_beat), float(catch_beat)
   x = np.linspace(actual_beat, catch_beat)  # make sure it is cuted properly
@@ -43,7 +41,7 @@ def plotConnection(ax, actual_beat, catch_beat, y0, y1, same_hand):
     a = (y1-y0)/(catch_beat - actual_beat)
     b = y0 - a*actual_beat
     y = a*x + b # straight line starting at actual_beat and ending at actual_beat+nt with y=1
-  ax.plot(x, y, color='k')
+  ax.plot(x, y, color=color)
 
 
 class Traj():
@@ -77,7 +75,7 @@ class Traj():
       else:
         _z[:,2] = np.clip(_z[:,2], 0.8, np.inf)
       _z /= np.linalg.norm(_z, axis=1, keepdims=True)
-      
+
       _y = -np.cross(vvv_smoothed, aaa_smoothed)
       _y /= np.linalg.norm(_y, axis=1, keepdims=True)
       _x = np.cross(_y, _z)
@@ -254,11 +252,17 @@ class CatchThrow():
     actual_beat = self.beat_nr + period*self.T
     x , y = actual_beat, self.h.h
     # Plot point and annonate
-    ax.scatter(x, y)
+    ax.scatter(x, y, color='k')
     ax.annotate(str((self.n_c, self.n_t)), (x, y), (x-0.2, y-0.5))
     # Plot catch and throw at this catch-throw point
-    plotConnection(ax, actual_beat-self.n_c, actual_beat, self.h_c.h, self.h.h, self.h_c.h==self.h.h)
-    plotConnection(ax, actual_beat, actual_beat+self.n_t, self.h.h, self.h_t.h, self.h.h==self.h_t.h)
+    color = None
+    # color = 'b'
+    # if (actual_beat) %3 ==0:
+    #   color = 'r'
+    # elif (actual_beat) %3 ==1:
+    #   color = 'g'
+    plotConnection(ax, actual_beat-self.n_c, actual_beat, self.h_c.h, self.h.h, self.h_c.h==self.h.h, color=color)
+    plotConnection(ax, actual_beat, actual_beat+self.n_t, self.h.h, self.h_t.h, self.h.h==self.h_t.h, color=color)
 
   def plotCTTrajectory(self, ax, ttt, h_i, period=0):
     ax.scatter(*self.p_t, color='k')
@@ -365,7 +369,7 @@ class JugglingPlan():
 
   def getFlightTimes(self):
     return [[ ct.t_fly for ct in h.ct_period] for h in self.hands]
-  
+
   def getBallNPlatte(self):
     return [[ (ct.traj, ct.ballTraj) for ct in h.ct_period] for h in self.hands]
 
@@ -581,7 +585,7 @@ if __name__ == "__main__":
   dt = 0.004
   jp = JugglingPlanner()
   # jp.plan(1, pattern=(3,3,3), rep=1).plot()
-  jp.plan(dt, 2, pattern=(3,), slower=5, rep=1).plot()
+  jp.plan(dt, 2, pattern=(3,3,3), slower=5, rep=1).plotTimeDiagram()
   # jp.plan(4, pattern=(3,), rep=1).plot()
   jp.plan(dt, 3, pattern=(4,), slower=5, rep=1).plot()
   # N_Whole0, x0, v0, a0, j0, thetas = p.hands[0].get(True)  # get plan for hand0
