@@ -9,42 +9,49 @@ import matplotlib.pyplot as plt
 
 from utils import plot_intervals, steps_from_time, plot_lines_coord
 
+##### Helper Functions for multi-interval multi-dimensional minjerk
 
-def get_multi_interval_minjerk_xyz(dt, tt, xx, uu, smooth_acc=False, i_a_end=None, only_pos=True):
-  """Computes a multi-interval minjerk trajectory in 3 dimension(xyz)
+### 1.Straight forward approach
+def get_multi_interval_minjerk_xyz(dt, tt, xx, uu, smooth_acc=False, smooth_start=False, i_a_end=None, only_pos=True):
+  """ Generates a multi-interval multi-dimensional minjerk trajectory
 
   Args:
-      dt ([list]): [dim x nr_intervals]
-      tt ([list]): [dim x nr_intervals]
-      xx ([list]): [dim x nr_intervals]
-      uu ([list]): [dim x nr_intervals]
+      dt ([np.array]): (nr_intervals, Dim)
+      tt ([np.array]): (nr_intervals, Dim)
+      xx ([np.array]): (nr_intervals, Dim)
+      uu ([np.array]): (nr_intervals, Dim)
       smooth_acc (bool, optional): Whether the acceleartion between intervals should be smooth.
       i_a_end ([type], optional): If not None shows the number of the interval, whose end-acceleration should be used for the last interval.
 
   Returns:
-      [lists]: xx returns only a list of position trajectories(not velocities and acceleration)
+      xxx, vvv, aaa, jjj: np.arrays of size (nr_intervals, Dim)
   """
+  N = xx.shape[1]
   if only_pos:
-    xxx = [get_multi_interval_minjerk_1D(dt, tt, xx[i], uu[i], smooth_acc=smooth_acc, i_a_end=i_a_end, only_x=True) for i in range(len(xx))]
+    xxx = np.array([get_multi_interval_minjerk_1D(dt, tt, xx[:,i], uu[:,i],
+                                                  smooth_acc=smooth_acc, smooth_start=smooth_start,
+                                                  i_a_end=i_a_end, only_x=True)
+                    for i in range(N)]).T
     return xxx
   else:
-    xxx = [None] * len(xx)
-    vvv = [None] * len(xx)
-    aaa = [None] * len(xx)
-    jjj = [None] * len(xx)
-    for i in range(len(xx)):
-      xxx[i],vvv[i],aaa[i],jjj[i] = get_multi_interval_minjerk_1D(dt, tt, xx[i], uu[i], smooth_acc=smooth_acc, i_a_end=i_a_end, only_x=False)
-    return xxx, vvv, aaa, jjj
+    xxx = [None] * N
+    vvv = [None] * N
+    aaa = [None] * N
+    jjj = [None] * N
+    for i in range(N):
+      xxx[i],vvv[i],aaa[i],jjj[i] = get_multi_interval_minjerk_1D(dt, tt, xx[:,i], uu[:,i],
+                                                                  smooth_acc=smooth_acc, smooth_start=smooth_start,
+                                                                  i_a_end=i_a_end, only_x=False)
+    return np.array(xxx).T, np.array(vvv).T, np.array(aaa).T, np.array(jjj).T
 
-
-def get_multi_interval_minjerk_1D(dt, tt, xx, uu, smooth_acc=False, i_a_end=None, only_x=False, extra_at_end=None):
-  """Computes a multi-interval minjerk trajectory in 1 dimension
+def get_multi_interval_minjerk_1D(dt, tt, xx, uu, smooth_acc=False, smooth_start=False, i_a_end=None, only_x=False, extra_at_end=None):
+  """Generates a multi-interval minjerk trajectory in 1 dimension
 
   Args:
-      dt ([list]): [double] x nr_intervals
-      tt ([list]): [double] x nr_intervals
-      xx ([list]): [double] x nr_intervals
-      uu ([list]): [double] x nr_intervals
+      dt ([float]):
+      tt ([np.array]): (nr_intervals, )
+      xx ([np.array]): (nr_intervals, )
+      uu ([np.array]): (nr_intervals, )
       smooth_acc (bool, optional): Whether the acceleartion between intervals should be smooth.
       i_a_end ([type], optional): If not None shows the number of the interval, whose start-acceleration should be used for the last interval.
       extra_at_end([type], optional): If not None shows the number of times the last value of position should be repeated
@@ -65,7 +72,7 @@ def get_multi_interval_minjerk_1D(dt, tt, xx, uu, smooth_acc=False, i_a_end=None
   t_last = tt[0]  # last end-time
   x_last = xx[0]
   u_last = uu[0]
-  a_last = None
+  a_last = None if not smooth_start else 0.0
   a_ende = None
   a_end = None
   n_last = 0  # last end-index
@@ -108,31 +115,96 @@ def get_multi_interval_minjerk_1D(dt, tt, xx, uu, smooth_acc=False, i_a_end=None
     return x_ret, v_ret, a_ret, j_ret
 
 
-def get_min_jerk_xyz(dt, ta, tb, x_ta, x_tb, u_ta, u_tb, a_ta=[None]*3, a_tb=[None]*3, lambdas=False):
-  xx = get_min_jerk_trajectory(dt, ta, tb, x_ta[0], x_tb[0], u_ta[0], u_tb[0], a_ta=a_ta[0], a_tb=a_tb[0], lambdas=lambdas)
-  yy = get_min_jerk_trajectory(dt, ta, tb, x_ta[1], x_tb[1], u_ta[1], u_tb[1], a_ta=a_ta[1], a_tb=a_tb[1], lambdas=lambdas)
-  zz = get_min_jerk_trajectory(dt, ta, tb, x_ta[2], x_tb[2], u_ta[2], u_tb[2], a_ta=a_ta[2], a_tb=a_tb[2], lambdas=lambdas)
+### 2.Functional approach
+def get_multi_interval_multi_dim_minjerk(dt, tt, xx, uu, smooth_acc=False, smooth_start=False, i_a_end=None, only_pos=True, lambdas=False):
+  """ Generates a multi-interval multi-dimensional minjerk trajectory
+      The advantage of this function is that it is able to return conditional functions which can then be evaluated
+      at arbitrary times or time intervals.
+
+    Args:
+      dt ([list]): float
+      tt ([np.array]): (nr_intervals,)
+      xx ([np.array]): (nr_intervals, Dim)
+      uu ([np.array]): (nr_intervals, Dim)
+      lambdas (bool, optional): Whether to return lambdas . Defaults to False.
+
+      [np.array]: (4, N_times, Dims) where 4 are position, velocity, acceleration and jerk
+      or
+      [lambda]:  tmp(t) -> np.array(4, N_times, Dims) where 4 are x(t), v(t), a(t) and j(t)
+
+  """
+  D = xx.shape[1]
+  N = len(tt)  # nr of minjerk intervals
+  xxs = np.array([None]* N)  # (N, )
+
+  a_last = [None if not smooth_start else 0.0]*D
+  a_ende = [None]*D
+  a_end = None
+  for i, (tb, xb, ub) in enumerate(zip(tt[1:], xx[1:], uu[1:])):
+    xxs[i] = get_multi_dim_minjerk(dt, tt[i], tb, xx[i], xb, uu[i], ub, a_ta=a_last, a_tb=a_ende, lambdas=True)
+    # smooth_acc
+    a_last = xxs[i](tb)[2].squeeze() if smooth_acc else [None]*D
+    # i_a_end
+    if i_a_end is not None and i == i_a_end:
+      a_end = xxs[i](tt[i])[2].squeeze()
+    if i == N-3:
+      a_ende = a_end
+
   def tmp(t):
-    x, vx, ax, jx = xx(t)
-    y, vy, ay, jy = yy(t)
-    z, vz, az, jz = zz(t)
-    xxx = np.vstack((x,y,z)).T
-    vvv = np.vstack((vx,vy,vz)).T
-    aaa = np.vstack((ax,ay,az)).T
-    jjj = np.vstack((jx,jy,jz)).T
-    return xxx, vvv, aaa, jjj
+    t = np.asarray(t).reshape(-1,1)
+    ret = np.zeros((4, len(t), D))
+
+    for i, _t in enumerate(tt[1:]):
+      mask = (tt[i] <= t) & ( (t <= _t) if i==len(tt)-2 else (t < _t))
+      ret[:, mask.nonzero()[0], :] = xxs[i](t[mask])
+    return ret
+
   if lambdas:
     return tmp
   else:
-    xxx = np.vstack((xx[0],yy[0],zz[0])).T
-    vvv = np.vstack((xx[1],yy[1],zz[1])).T
-    aaa = np.vstack((xx[2],yy[2],zz[2])).T
-    jjj = np.vstack((xx[3],yy[3],zz[3])).T
-    return xxx, vvv, aaa, jjj
+    ttt = np.linspace(tt[0], tt[-1], 1 + int((tt[-1]-tt[0])/dt))
+    return tmp(ttt)
 
+def get_multi_dim_minjerk(dt, ta, tb, x_ta, x_tb, u_ta, u_tb, a_ta=None, a_tb=None, lambdas=False):
+  """Generates a multi-dimensional minjerk trajectory
+
+  Args:
+      dt ([float]):
+      ta, tb ([float]): start and end time
+      x_ta, x_tb ([np.array]): (Dim, ), start and end position
+      u_ta, u_tb ([np.array]): (Dim, ), start and end velocity
+      a_ta, a_tb ([np.array]): (Dim, ), start and end acceleration. Defaults to None.
+      lambdas (bool, optional): Whether to return lambdas . Defaults to False.
+
+  Returns:
+      [np.array]: (4, N_times, Dims) where 4 are position, velocity, acceleration and jerk
+      or
+      [lambda]:  tmp(t) -> np.array(4, N_times, Dims) where 4 are x(t), v(t), a(t) and j(t)
+  """
+  a_ta = [None] * len(x_ta) if a_ta is None else a_ta
+  a_tb = [None] * len(x_ta) if a_tb is None else a_tb
+  xxs = [get_min_jerk_trajectory(dt, ta, tb, x_ta[i], x_tb[i], u_ta[i], u_tb[i], a_ta=a_ta[i], a_tb=a_tb[i], lambdas=True)
+         for i in range(len(x_ta))]
+
+  def tmp(t):
+    t = np.asarray(t).reshape(-1,1)
+    ret = np.zeros((4, len(t), len(xxs)))
+    for i, xx in enumerate(xxs):
+      ret[:, :, i:i+1] = xx(t)
+    return ret
+
+  if lambdas:
+    return tmp
+  else:
+    ttt = np.linspace(ta, tb, 1 + int((tb-ta)/dt))
+    return tmp(ttt)
+
+
+
+##### Main Functions
 
 def get_min_jerk_trajectory(dt, ta, tb, x_ta, x_tb, u_ta, u_tb, a_ta=None, a_tb=None, lambdas=False):
-  """Computes a minjerk trajectory with set or free start and end conditions.
+  """Generates a minjerk trajectory with set or free start and end conditions.
 
   Args:
       dt ([float]): timestep
@@ -248,6 +320,9 @@ def free_start_acceleration(T, x0, xT, u0, uT, aT=None):
   return c1, c2, c3, c4, c5, c6
 
 
+
+##### Plotting functions
+
 def plotMinJerkTraj(x, v, a, j, dt, title, intervals=None, colors=None, tt=None, xx=None, uu=None):
   """Plots the x,v,a,j trajectories together with possible intervals and colors
 
@@ -294,7 +369,7 @@ def plotMinJerkTraj(x, v, a, j, dt, title, intervals=None, colors=None, tt=None,
       for t in tt:
         ax.axvline(t, linestyle='--')
   fig.suptitle(title)
-  plt.show(block = True)
+  plt.show(block = False)
 
 
 def plotMJ(dt, tt, xx, uu, smooth_acc=False, xvaj = None, i_a_end=0):
@@ -315,14 +390,37 @@ if __name__ == "__main__":
   import matplotlib.pyplot as plt
   dt = 0.004
   smooth_acc = True
+  smooth_start = True
+  i_a_end = -1
   tt=[ 0.0,    0.2,         0.6,             0.8,              1.0 ]
-  xx=[[0.0,    0.2,        -0.1,             0.3,              1.0 ],
-      [0.0,    0.6,         0.0,             0.2,              0.0 ]]
+  xx=np.array([[0.0,    0.2,        -0.1,             0.3,              1.0 ],
+               [0.0,    0.6,         0.0,             0.2,              0.0 ]]).T
 
-  uu=[[0.0,    3.4,    -0.2,          1.1,         0.0],
-      [0.0,    2.2,    0.0,           2.0,         0.0]]
+  uu=np.array([[0.0,    3.4,    -0.2,          1.1,         0.0],
+               [0.0,    2.2,    0.0,           2.0,         0.0]]).T
 
-  xxx, vvv, aaa, jjj = get_multi_interval_minjerk_xyz(dt, tt, xx, uu, smooth_acc, only_pos=False)
+  # 1. straight forward
+  xxx, vvv, aaa, jjj = get_multi_interval_minjerk_xyz(dt, tt, xx, uu, smooth_acc, smooth_start, only_pos=False, i_a_end=i_a_end)
 
-  plotMinJerkTraj(xxx[0], vvv[0], aaa[0], jjj[0], dt, "Free acceleartion")
+  # 2. functional approach values
+  xxx1, vvv1, aaa1, jjj1 = get_multi_interval_multi_dim_minjerk(dt, tt, xx, uu, smooth_acc, smooth_start, i_a_end=i_a_end)
+
+  # 3. functional approach lambdas
+  ttt = np.linspace(tt[0], tt[-1], 1 + int((tt[-1]-tt[0])/dt))
+  func = get_multi_interval_multi_dim_minjerk(dt, tt, xx, uu, smooth_acc, smooth_start, i_a_end=i_a_end, lambdas=True)
+  xxx2, vvv2, aaa2, jjj2 =  func(ttt)
+
+  print(np.linalg.norm(xxx2 -xxx1)/xxx1.size)
+  print(np.linalg.norm(xxx -xxx1)/xxx.size)
+  print(np.linalg.norm(vvv -vvv1)/vvv.size)
+  print(np.linalg.norm(aaa -aaa1)/vvv.size)
+  print(np.linalg.norm(jjj -jjj1)/vvv.size)
+
+
+  plt.plot(ttt, aaa[:,0], 'b')
+  plt.plot(ttt, aaa1[:,0], 'r')
+  plt.title('Differences: straight forward vs functional approach')
+  plotMinJerkTraj(xxx[:,0], vvv[:,0], aaa[:,0], jjj[:,0], dt, "straight forward approach")
+  plotMinJerkTraj(xxx1[:,0], vvv1[:,0], aaa1[:,0], jjj1[:,0], dt, "functional approach values")
+  plotMinJerkTraj(xxx1[:,0], vvv2[:,0], aaa2[:,0], jjj2[:,0], dt, "functional approach lambdas")
   plt.show()
