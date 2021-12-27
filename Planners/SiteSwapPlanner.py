@@ -130,20 +130,8 @@ class MinJerkTraj(Traj):
     self.tt = tt
     self.xx = xx
     self.vv = vv
-
-
     self.ctc_traj_lambda =MinJerk.get_multi_interval_multi_dim_minjerk(dt, tt, self.xx, self.vv, smooth_acc=True, i_a_end=0, lambdas=True)
-    self.catch_throw = MinJerk.get_multi_dim_minjerk(dt, tt[0], tt[1],
-                                                self.xx[0], self.xx[1],
-                                                self.vv[0], self.vv[1],
-                                                a_ta=np.zeros(3),
-                                                lambdas=True)
-    a1 = self.catch_throw(tt[1])[2]
-    self.throw_catch2 = MinJerk.get_multi_dim_minjerk(dt, tt[1], tt[2],
-                                                 self.xx[1], self.xx[2],
-                                                 self.vv[1], self.vv[2],
-                                                 a_ta=a1.squeeze()*0., a_tb=np.zeros(3),
-                                                 lambdas=True)
+
 
   def initMJTraj(self, ttt, last=False):
     # Mask out only concerning time steps
