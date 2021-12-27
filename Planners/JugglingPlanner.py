@@ -1,5 +1,5 @@
 from utils import flyTime2HeightAndVelocity
-from MinJerk import plotMinJerkTraj, get_multi_minjerk_trajectory
+from MinJerk import plotMinJerkTraj, get_multi_interval_minjerk_1D
 
 
 def calc(tau, dwell_ration, E, slower=1.0):
@@ -27,7 +27,7 @@ def traj_nb_2_na_1(T_throw, T_hand, ub_catch, ub_throw, T_empty, z_catch, x_0, d
   tt = [t0, t1, t2, t4, t5]
   xx = [x0, x1, x2, x4, x5]
   uu = [u0, u1, u2, u4, u5]
-  x, v, a, j = get_multi_minjerk_trajectory(dt, tt=tt, xx=xx, uu=uu, smooth_acc=smooth_acc)
+  x, v, a, j = get_multi_interval_minjerk_1D(dt, tt=tt, xx=xx, uu=uu, smooth_acc=smooth_acc)
 
   if plot:
     print(

@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from utils import plot_intervals, steps_from_time, plot_lines_coord
 
 
-def get_multi_minjerk_xyz(dt, tt, xx, uu, smooth_acc=False, i_a_end=None, only_pos=True):
+def get_multi_interval_minjerk_xyz(dt, tt, xx, uu, smooth_acc=False, i_a_end=None, only_pos=True):
   """Computes a multi-interval minjerk trajectory in 3 dimension(xyz)
 
   Args:
@@ -25,7 +25,7 @@ def get_multi_minjerk_xyz(dt, tt, xx, uu, smooth_acc=False, i_a_end=None, only_p
       [lists]: xx returns only a list of position trajectories(not velocities and acceleration)
   """
   if only_pos:
-    xxx = [get_multi_minjerk_trajectory(dt, tt, xx[i], uu[i], smooth_acc=smooth_acc, i_a_end=i_a_end, only_x=True) for i in range(len(xx))]
+    xxx = [get_multi_interval_minjerk_1D(dt, tt, xx[i], uu[i], smooth_acc=smooth_acc, i_a_end=i_a_end, only_x=True) for i in range(len(xx))]
     return xxx
   else:
     xxx = [None] * len(xx)
@@ -33,11 +33,11 @@ def get_multi_minjerk_xyz(dt, tt, xx, uu, smooth_acc=False, i_a_end=None, only_p
     aaa = [None] * len(xx)
     jjj = [None] * len(xx)
     for i in range(len(xx)):
-      xxx[i],vvv[i],aaa[i],jjj[i] = get_multi_minjerk_trajectory(dt, tt, xx[i], uu[i], smooth_acc=smooth_acc, i_a_end=i_a_end, only_x=False)
+      xxx[i],vvv[i],aaa[i],jjj[i] = get_multi_interval_minjerk_1D(dt, tt, xx[i], uu[i], smooth_acc=smooth_acc, i_a_end=i_a_end, only_x=False)
     return xxx, vvv, aaa, jjj
 
 
-def get_multi_minjerk_trajectory(dt, tt, xx, uu, smooth_acc=False, i_a_end=None, only_x=False, extra_at_end=None):
+def get_multi_interval_minjerk_1D(dt, tt, xx, uu, smooth_acc=False, i_a_end=None, only_x=False, extra_at_end=None):
   """Computes a multi-interval minjerk trajectory in 1 dimension
 
   Args:
@@ -305,7 +305,7 @@ def plotMJ(dt, tt, xx, uu, smooth_acc=False, xvaj = None, i_a_end=0):
       )
   title = "Min-Jerk trajectory with " +  ("" if smooth_acc else "non") +"-smoothed acceleration."
   if xvaj is None:
-    x, v, a, j = get_multi_minjerk_trajectory(dt, tt=tt, xx=xx, uu=uu, smooth_acc=smooth_acc, i_a_end=i_a_end)
+    x, v, a, j = get_multi_interval_minjerk_1D(dt, tt=tt, xx=xx, uu=uu, smooth_acc=smooth_acc, i_a_end=i_a_end)
   else:
     x, v, a, j = xvaj
   plotMinJerkTraj(x, v, a, j, dt, title, tt=tt[0:4], xx=xx[0:4], uu=uu[0:4])
@@ -322,7 +322,7 @@ if __name__ == "__main__":
   uu=[[0.0,    3.4,    -0.2,          1.1,         0.0],
       [0.0,    2.2,    0.0,           2.0,         0.0]]
 
-  xxx, vvv, aaa, jjj = get_multi_minjerk_xyz(dt, tt, xx, uu, smooth_acc, only_pos=False)
+  xxx, vvv, aaa, jjj = get_multi_interval_minjerk_xyz(dt, tt, xx, uu, smooth_acc, only_pos=False)
 
   plotMinJerkTraj(xxx[0], vvv[0], aaa[0], jjj[0], dt, "Free acceleartion")
   plt.show()

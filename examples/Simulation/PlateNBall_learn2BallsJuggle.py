@@ -7,7 +7,7 @@ from juggling_apollo.Simulation import Simulation, plot_simulation
 from juggling_apollo.settings import dt, ABS, g
 from juggling_apollo.ILC import ILC
 from Planners.JugglingPlanner import calc
-from Planners.MinJerk import plotMJ, get_multi_minjerk_trajectory
+from Planners.MinJerk import plotMJ, get_multi_interval_minjerk_1D
 from juggling_apollo.DynamicSystem import BallAndPlateDynSys as DynamicSystem
 
 
@@ -86,7 +86,7 @@ uu=[x0[2],    ub_throw,    ub_catch,           ub_throw,         ub_catch]
 if False:
   plotMJ(dt, tt, xx, uu, smooth_acc)
 
-y_des, velo, accel, jerk = get_multi_minjerk_trajectory(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=xx, uu=uu)
+y_des, velo, accel, jerk = get_multi_interval_minjerk_1D(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=xx, uu=uu)
 
 
 
@@ -120,7 +120,7 @@ for j in range(ILC_it):
   # Learn feed-forward signal
   uu[1] = ub_throw  # update
   uu[3] = ub_throw2  # update
-  y_des, velo, accel, jerk = get_multi_minjerk_trajectory(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=xx, uu=uu)
+  y_des, velo, accel, jerk = get_multi_interval_minjerk_1D(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=xx, uu=uu)
   u_ff = my_ilc.updateStep(y_des=y_des[1:], y_meas=y_meas)
 
   # Main Simulation
