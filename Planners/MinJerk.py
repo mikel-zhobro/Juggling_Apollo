@@ -323,7 +323,7 @@ def free_start_acceleration(T, x0, xT, u0, uT, aT=None):
 
 ##### Plotting functions
 
-def plotMinJerkTraj(x, v, a, j, dt, title, intervals=None, colors=None, tt=None, xx=None, uu=None):
+def plotMinJerkTraj(x, v, a, j, dt, title, intervals=None, colors=None, tt=None, xx=None, uu=None, block=True):
   """Plots the x,v,a,j trajectories together with possible intervals and colors
 
   Args:
@@ -369,7 +369,7 @@ def plotMinJerkTraj(x, v, a, j, dt, title, intervals=None, colors=None, tt=None,
       for t in tt:
         ax.axvline(t, linestyle='--')
   fig.suptitle(title)
-  plt.show(block = False)
+  plt.show(block = block)
 
 
 def plotMJ(dt, tt, xx, uu, smooth_acc=False, xvaj = None, i_a_end=0):
@@ -420,7 +420,7 @@ if __name__ == "__main__":
   plt.plot(ttt, aaa[:,0], 'b')
   plt.plot(ttt, aaa1[:,0], 'r')
   plt.title('Differences: straight forward vs functional approach')
-  plotMinJerkTraj(xxx[:,0], vvv[:,0], aaa[:,0], jjj[:,0], dt, "straight forward approach")
-  plotMinJerkTraj(xxx1[:,0], vvv1[:,0], aaa1[:,0], jjj1[:,0], dt, "functional approach values")
-  plotMinJerkTraj(xxx1[:,0], vvv2[:,0], aaa2[:,0], jjj2[:,0], dt, "functional approach lambdas")
+  plotMinJerkTraj(xxx[:,0], vvv[:,0], aaa[:,0], jjj[:,0], dt, "straight forward approach", block=False)
+  plotMinJerkTraj(xxx1[:,0], vvv1[:,0], aaa1[:,0], jjj1[:,0], dt, "functional approach values", block=False)
+  plotMinJerkTraj(xxx1[:,0], vvv2[:,0], aaa2[:,0], jjj2[:,0], dt, "functional approach lambdas", block=False)
   plt.show()
