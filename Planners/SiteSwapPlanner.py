@@ -44,6 +44,32 @@ def plotConnection(ax, actual_beat, catch_beat, y0, y1, same_hand, color='k'):
   ax.plot(x, y, color=color)
 
 
+class BallTraj():
+  def __init__(self, t_t, p_t, v_t):
+    """Creates the ideal ball trajectory for the given fly_time throw velocity and throw position.
+
+    Args:
+        t_t (float): fly time of the ball
+        p_t (np.array(3,)): throw position
+        v_t (np.array(3,)): throw velocity
+    """
+    self.t_t, self.p_t, self.v_t = t_t, p_t, v_t
+    self.ttt = np.linspace(0, self.t_t, 50).reshape(-1,1)
+    self.aaa = np.zeros((50, 3)); self.aaa[:,-1] = -g
+    self.vvv = self.v_t + self.aaa*self.ttt
+    self.xxx = p_t + self.ttt*v_t + 0.5*self.aaa*self.ttt**2
+
+  def plotBallTraj(self, ax, col):
+    # plot path
+    ax.plot3D(self.xxx[:,0], self.xxx[:,1], self.xxx[:,2], color=col, linestyle='--')
+
+    # plot arrows
+    ts = [0, 25, -1]
+    ax.quiver(self.xxx[ts,0], self.xxx[ts,1], self.xxx[ts,2],  # position of arrow
+              self.vvv[ts,0], self.vvv[ts,1], self.vvv[ts,2],  # direction of arrow
+              length=0.08, normalize=True, color=col)
+
+
 class Traj():
   def __init__(self):
     self.N_Whole = None                     # nr of timesteps in trajectory
@@ -96,8 +122,8 @@ class MinJerkTraj(Traj):
 
     Args:
         tt ([type]): time points for mj, of length 3 ( catch, throw, catch2)
-        xx ([type]): positions mj trajectory should go through at the given time points
-        vv ([type]): velocities mj trajectory should have at the given time points
+        xx ([3, 3]): positions mj trajectory should go through at the given time points (where catch, throw, catch2 are rows)
+        vv ([type]): velocities mj trajectory should have at the given time points (velocities at each point are the rows)
     """
     Traj.__init__(self)
 
@@ -105,13 +131,15 @@ class MinJerkTraj(Traj):
     self.xx = xx
     self.vv = vv
 
-    self.catch_throw = MinJerk.get_min_jerk_xyz(dt, tt[0], tt[1],
+
+    self.ctc_traj_lambda =MinJerk.get_multi_interval_multi_dim_minjerk(dt, tt, self.xx, self.vv, smooth_acc=True, i_a_end=0, lambdas=True)
+    self.catch_throw = MinJerk.get_multi_dim_minjerk(dt, tt[0], tt[1],
                                                 self.xx[0], self.xx[1],
                                                 self.vv[0], self.vv[1],
                                                 a_ta=np.zeros(3),
                                                 lambdas=True)
     a1 = self.catch_throw(tt[1])[2]
-    self.throw_catch2 = MinJerk.get_min_jerk_xyz(dt, tt[1], tt[2],
+    self.throw_catch2 = MinJerk.get_multi_dim_minjerk(dt, tt[1], tt[2],
                                                  self.xx[1], self.xx[2],
                                                  self.vv[1], self.vv[2],
                                                  a_ta=a1.squeeze()*0., a_tb=np.zeros(3),
@@ -119,13 +147,10 @@ class MinJerkTraj(Traj):
 
   def initMJTraj(self, ttt, last=False):
     # Mask out only concerning time steps
-    ttt_ = ttt[(self.tt[0] <= ttt) & ( (ttt <= self.tt[2]) if last else  (ttt < self.tt[2]))]
-    mask = ttt_ <= self.tt[1]
-    # MJ traj for the throw part
-    x0, v0, a0, j0 = self.catch_throw(ttt_[mask])
-    # MJ traj for the catch part
-    x1, v1, a1, j1 = self.throw_catch2(ttt_[np.invert(mask)])
-    self.init_traj(ttt_, np.vstack((x0, x1)), np.vstack((v0, v1)), np.vstack((a0, a1)), np.vstack((j0, j1)), set_thetas=True, v_throw=self.vv[1])
+    ttt_ = ttt[(self.tt[0] <= ttt) & ( (ttt <= self.tt[2]) if last else (ttt < self.tt[2]))]
+    x, v, a, j = self.ctc_traj_lambda(ttt_)
+    self.init_traj(ttt_, x, v, a, j, set_thetas=True, v_throw=self.vv[1])
+
     return self.get()
 
   def plotMJTraj(self, ax, ttt, i, h_i):
@@ -155,33 +180,6 @@ class MinJerkTraj(Traj):
     return a[0].get_color()
 
 
-class BallTraj(Traj):
-  def __init__(self, t_t, p_t, v_t):
-    """Creates the ideal ball trajectory for the given fly_time throw velocity and throw position.
-
-    Args:
-        t_t (float): fly time of the ball
-        p_t (np.array(3,)): throw position
-        v_t (np.array(3,)): throw velocity
-    """
-    Traj.__init__(self)
-    self.t_t, self.p_t, self.v_t = t_t, p_t, v_t
-    self.ttt = np.linspace(0, self.t_t, 50).reshape(-1,1)
-    self.aaa = np.zeros((50, 3)); self.aaa[:,-1] = -g
-    self.vvv = self.v_t + self.aaa*self.ttt
-    self.xxx = p_t + self.ttt*v_t + 0.5*self.aaa*self.ttt**2
-
-  def plotBallTraj(self, ax, col):
-    # plot path
-    ax.plot3D(self.xxx[:,0], self.xxx[:,1], self.xxx[:,2], color=col, linestyle='--')
-
-    # plot arrows
-    ts = [0, 25, -1]
-    ax.quiver(self.xxx[ts,0], self.xxx[ts,1], self.xxx[ts,2],  # position of arrow
-              self.vvv[ts,0], self.vvv[ts,1], self.vvv[ts,2],  # direction of arrow
-              length=0.08, normalize=True, color=col)
-
-
 class CatchThrow():
   def __init__(self, i, h, beat_nr, n_c, n_t):
     # We catch at self.h.position.
@@ -193,6 +191,7 @@ class CatchThrow():
     self.n_t = n_t              # length of throw we are throwing in nr of beats
     self.ct_c = None            # ct where catch comes from
     self.ct_t = None            # ct where throw goes to
+    self.ct_next = None         # ct where next catch takes place
 
     self.t_catch = None         # time we catch at this ct(corresponds to the beatnr)
     self.t_throw = None         # time of throw (t_throw = t_catch + t_dwell)
@@ -205,11 +204,12 @@ class CatchThrow():
     self.traj = None            # the catch-throw-catch trajectory
     self.ballTraj = None        # ball trajectory, only for visualisation
 
-  def addCatchThrowCTs(self, ct_c, ct_t):
-    self.ct_c = ct_c            # ct where catch comes from
-    self.ct_t = ct_t            # ct where throw goes to
+  def addCatchThrowNextCTs(self, ct_c, ct_t, ct_next):
+    self.ct_c    = ct_c            # ct where catch comes from
+    self.ct_t    = ct_t            # ct where throw goes to
+    self.ct_next = ct_next         # ct where the next catch takes place
 
-  def initCTThrow(self, t_dwell, tB, swingSize, throw_height=0.1):
+  def initCTThrow(self, t_dwell, tB, swingSize, throw_height):
     self.tB = tB
     # we assume catch and throw points lie all at z=0
     self.t_fly = self.n_t * tB - t_dwell
@@ -235,19 +235,20 @@ class CatchThrow():
     self.v_t[1] = (self.ct_t.P[1] - self.p_t[1]) / self.t_fly
     self.v_t[2] = 0.5 * g * self.t_fly - throw_height/self.t_fly
 
-  def initCTTraj(self, dt, ttt, ct_next, last):
-    tt = np.array([self.t_catch, self.t_throw, self.t_catch2])
-    xx = np.array([[self.P[0],    self.P[1],    self.P[2]],
-                   [self.p_t[0],  self.p_t[1],  self.p_t[2]],
-                   [ct_next.P[0], ct_next.P[1], ct_next.P[2]]])
-
+  def initCTTraj(self, dt, ttt, last):
+    # Init plan points
     rat = 0.2
-    vv = np.array([[ self.ct_c.v_t[0]*rat, self.ct_c.v_t[1]*rat,     ct_next.ct_c.v_t[0]*rat],
-                   [ self.v_t[0],          self.v_t[1],              self.v_t[2] ],
-                   [-self.ct_c.v_t[2]*rat, ct_next.ct_c.v_t[1]*rat, -ct_next.ct_c.v_t[2]*rat],
-          ])
+    tt = np.array([self.t_catch,       self.t_throw,      self.t_catch2])
+    xx = np.array([[self.P[0],         self.P[1],         self.P[2]],          # catch position
+                   [self.p_t[0],       self.p_t[1],       self.p_t[2]],        # throw position
+                   [self.ct_next.P[0], self.ct_next.P[1], self.ct_next.P[2]]]) # next ct of this hand
+
+    vv = np.array([[self.ct_c.v_t[0]*rat,         self.ct_c.v_t[1]*rat,         -self.ct_c.v_t[2]*rat],
+                   [self.v_t[0],                  self.v_t[1],                   self.v_t[2]],
+                   [self.ct_next.ct_c.v_t[0]*rat, self.ct_next.ct_c.v_t[1]*rat, -self.ct_next.ct_c.v_t[2]*rat]])
+
     self.ballTraj = BallTraj(self.t_fly, self.p_t, self.v_t)
-    self.traj = MinJerkTraj(dt, tt, xx ,vv)
+    self.traj = MinJerkTraj(dt, tt, xx, vv)
     return self.traj.initMJTraj(ttt, last=last)
 
   def plotCTTimeDiagram(self, ax, period=0):
@@ -323,7 +324,7 @@ class JugglingHand(Traj):
     jjj = np.zeros((self.N_Whole, 3))
     N0 = 0
     for i, ct in enumerate(self.ct_period):
-     N, xx, vv, aa, jj = ct.initCTTraj(dt, self.ttt, ct_next=self.ct_period[(i+1)%self.N], last=i==self.N-1)
+     N, xx, vv, aa, jj = ct.initCTTraj(dt, self.ttt, last=i==self.N-1)
      xxx[N0:N0+N]  = xx
      vvv[N0:N0+N]  = vv
      aaa[N0:N0+N]  = aa
@@ -581,7 +582,7 @@ class JugglingPlanner():
       for i, ct in enumerate(ct_period_per_hand[:, h]):
         # add catch_ct and throw_ct to each ct
         h_c, h_t, ct_c_i, ct_t_i = ct[-4:]
-        cts[h][i].addCatchThrowCTs(cts[h_c][ct_c_i], cts[h_t][ct_t_i])
+        cts[h][i].addCatchThrowNextCTs(cts[h_c][ct_c_i], cts[h_t][ct_t_i], cts[h][(i+1)%N])
         # add ct to corresponding hand
         hands[h].addCT(i, cts[h][i])
     return hands
@@ -604,9 +605,9 @@ if __name__ == "__main__":
   jp = JugglingPlanner()
   # jp.plan(1, pattern=(3,3,3), rep=1).plot()
   p = jp.plan(dt, 2, pattern=(3,3,3), slower=5, rep=1)
-  p.plotTimeDiagram()
+  p.plot()
   # jp.plan(4, pattern=(3,), rep=1).plot()
-  jp.plan(dt, 3, pattern=(4,), slower=5, rep=1).plot()
+  jp.plan(dt, 4, pattern=(5,), slower=5, rep=1).plot()
   # N_Whole0, x0, v0, a0, j0, thetas = p.hands[0].get(True)  # get plan for hand0
   # plt.plot(a0[:,0])
   # plt.plot(a0[:,1])
