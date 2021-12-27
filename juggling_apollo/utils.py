@@ -40,7 +40,7 @@ def steps_from_time(T, dt):
         int: Number of timesteps in T
     """
     # assert T % dt < 1e-8
-    return int(T//dt) + 1  # np.arange(0,T+dt,dt)
+    return int(T/dt) + 1  # np.arange(0,T+dt,dt)
 
 def rtime(T, dt):
     """ Method to find nr of timesteps
