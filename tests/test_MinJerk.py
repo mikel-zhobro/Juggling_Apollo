@@ -1,7 +1,7 @@
 import path_setter
 import numpy as np
 from juggling_apollo.utils import plan_ball_trajectory, steps_from_time, plt
-from juggling_apollo.MinJerk import get_min_jerk_trajectory, plotMinJerkTraj, get_minjerk_trajectory
+from juggling_apollo.MinJerk import get_min_jerk_trajectory, plotMinJerkTraj, get_multi_minjerk_trajectory
 from juggling_apollo.settings import dt, g
 
 
@@ -74,7 +74,7 @@ def test3():
   x0 = x_0[0]; x1 = 0;     x2 = 0
   u0 = x_0[2]; u1 = ub_0;  u2 = -ub_0/6
 
-  x, v, a, j = get_minjerk_trajectory(dt, smooth_acc=True,
+  x, v, a, j = get_multi_minjerk_trajectory(dt, smooth_acc=True,
                                       tt=(t0, t1, t2),
                                       xx=(x0, x1, x2),
                                       uu=(u0, u1, u2))

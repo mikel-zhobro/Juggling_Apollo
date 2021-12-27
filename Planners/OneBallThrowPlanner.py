@@ -87,7 +87,7 @@ def plan(dt, T_home, IK, J, seqFK, h=0.75, throw_height=0.35, swing_size=0.46, s
         b[7:] = -vs[i]
         qv_s[i] = np.linalg.inv(H).dot(b)[:7]
 
-    q_traj, qv_traj, qa_traj, qj_traj = MinJerk.get_minjerk_xyz(dt, ts, q_s.transpose(1,0,2), qv_s.transpose(1,0,2), smooth_acc=False, only_pos=False, i_a_end=0)
+    q_traj, qv_traj, qa_traj, qj_traj = MinJerk.get_multi_minjerk_xyz(dt, ts, q_s.transpose(1,0,2), qv_s.transpose(1,0,2), smooth_acc=False, only_pos=False, i_a_end=0)
     q_traj, qv_traj, qa_traj, qj_traj = np.asarray(q_traj).T, np.asarray(qv_traj).T, np.asarray(qa_traj).T, np.asarray(qj_traj).T
 
     q_traj = q_traj.reshape(-1,7,1)
