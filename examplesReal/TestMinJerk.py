@@ -7,7 +7,7 @@ from juggling_apollo.utils import steps_from_time, plt
 from Planners.JugglingPlanner import calc
 from juggling_apollo.settings import dt
 from juggling_apollo.ILC import ILC
-from Planners.MinJerk import plotMJ, get_multi_minjerk_trajectory
+from Planners.MinJerk import plotMJ, get_multi_interval_minjerk_1D
 from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal
 from apollo_interface.Apollo_It import ApolloInterface, plot_simulation
 from kinematics.ApolloKinematics import ApolloArmKinematics
@@ -68,13 +68,13 @@ tt=[0.0,      T_throw_first,     T_throw_first+T_empty,   T_FULL  ]
 zz=[0.0,      0.0,               z_catch,                 0.0     ]
 uu=[0.0,      ub_throw/12.0,     ub_catch/12.0,           0.0     ]
 
-z_des, velo, accel, jerk = get_multi_minjerk_trajectory(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=zz, uu=uu, extra_at_end=end_repeat+1)  # Min jerk trajectories (out of the loop since trajectory doesn't change)
+z_des, velo, accel, jerk = get_multi_interval_minjerk_1D(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=zz, uu=uu, extra_at_end=end_repeat+1)  # Min jerk trajectories (out of the loop since trajectory doesn't change)
 
 tt=[0.0,      T_throw_first,     T_throw_first+T_empty,   T_FULL  ]
 yy=[0.0,      z_catch/4.0,       z_catch/2.0,             0.0     ]
 uu=[0.0,      ub_throw/12.0,     ub_catch/12.0,           0.0     ]
 
-y_des, velo2, accel2, jerk2 = get_multi_minjerk_trajectory(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=yy, uu=uu, extra_at_end=end_repeat+1)  # Min jerk trajectories (out of the loop since trajectory doesn't change)
+y_des, velo2, accel2, jerk2 = get_multi_interval_minjerk_1D(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=yy, uu=uu, extra_at_end=end_repeat+1)  # Min jerk trajectories (out of the loop since trajectory doesn't change)
 
 
 if False:

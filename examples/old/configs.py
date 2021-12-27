@@ -45,8 +45,8 @@ def get_minjerk_config(dt, end_repeat, plot=False):
     uuyy=[0.0,      ub_throw/12.0,     ub_catch/12.0,           0.0     ]
     uuzz=[0.0,      ub_throw/12.0,     ub_catch/12.0,           0.0     ]
 
-    z_des, velo, accel, jerk = MinJerk.get_multi_minjerk_trajectory(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=zz, uu=uuzz, extra_at_end=end_repeat+1)  # Min jerk trajectories (out of the loop since trajectory doesn't change)
-    y_des, velo2, accel2, jerk2 = MinJerk.get_multi_minjerk_trajectory(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=yy, uu=uuyy, extra_at_end=end_repeat+1)  # Min jerk trajectories (out of the loop since trajectory doesn't change)
+    z_des, velo, accel, jerk = MinJerk.get_multi_interval_minjerk_1D(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=zz, uu=uuzz, extra_at_end=end_repeat+1)  # Min jerk trajectories (out of the loop since trajectory doesn't change)
+    y_des, velo2, accel2, jerk2 = MinJerk.get_multi_interval_minjerk_1D(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=yy, uu=uuyy, extra_at_end=end_repeat+1)  # Min jerk trajectories (out of the loop since trajectory doesn't change)
 
 
     # Cartesian -> JointSpace                   <------------------------------------------------------------------------------------------ Min Jerk Trajectory (CARTESIAN AND JOINT SPACE)
