@@ -39,87 +39,36 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
         * Offset the joint range accordingly
         * Offset the solution accordingly
     """
-    plot_params = [None]*7
     d_bs = DH_model.joint(0).d; l0bs = vec([0,   0,     d_bs])
     d_se = DH_model.joint(2).d; l3se = vec([0,  -d_se,  0])
     d_ew = DH_model.joint(4).d; l4ew = vec([0,   0,     d_ew])
     d_wt = DH_model.joint(6).d; l7wt = vec([0,   0,     d_wt])
 
+    # Transform goal in dh base frame
     p07_d, R07_d = DH_model.get_goal_in_dh_base_frame(p07_d, R07_d)
+
     # Shoulder to Wrist axis
     x0sw = p07_d - l0bs - R07_d.dot(l7wt)  # p26
 
-    # Elbow joint
-    c_th4 = clip_c((np.linalg.norm(x0sw)**2 - d_se**2 - d_ew**2) / (2*d_se*d_ew))
-    th4 = GC4*acos(c_th4)
-    # reference plane
-    R34 = DH_model.get_i_R_j(3,4, [th4])
+    # 1. Elbow joint (finds th4 to set the wrist position)
+    R34, th4, fset_4, plot_params_4 = IK_elbow(DH_model, x0sw, GC4, verbose)
 
-    # Theta1 and Theta2 reference
-    th1_ref = 0.0 if( abs(p07_d[0,0])<1e-6 and abs(p07_d[1,0])<1e-6 ) else atan2(-x0sw[1, 0], -x0sw[0, 0])
-    small_psi  = acos(clip_c((np.linalg.norm(x0sw)**2 + d_se**2 - d_ew**2) / (2*d_se*np.linalg.norm(x0sw)))) # angle betweren SW and SE(see page. 6 2Paper)
-    th2_ref = atan2(-x0sw[2, 0], sqrt(x0sw[0, 0]**2 + x0sw[1, 0]**2)) - GC4*small_psi
+    # 2. Shoulder joint (finds th1, th2, th3 as function of psi to set the orientation of the shoulder)
+    As, Bs, Cs, th1, th2, th3, fset_1_3, plot_params_1_3 = IK_shoulder(DH_model, p07_d, x0sw, d_se, d_ew, GC2, GC4, verbose)
 
-    R03_ref = DH_model.get_i_R_j(0, 3, [th1_ref, th2_ref, -DH_model.joint(2).theta-DH_model.joint(2).offset])
-
-    if verbose:
-        print('Theta1', th1_ref)
-        print('Theta2', th2_ref)
-        print('Theta4:', th4)
-
-
-    u0sw = x0sw/np.linalg.norm(x0sw)
-    u0sw = u0sw/np.linalg.norm(u0sw)
-    u0sw_skew = skew(u0sw)
-
-    # Shoulder R03(psi) = As*sin(psi) + Bs*cos(psi) + C_s
-    As = u0sw_skew.dot(R03_ref)
-    Bs = -np.matmul(u0sw_skew.dot(u0sw_skew), R03_ref)
-    Cs = R03_ref - Bs
-    # Wrist R47(psi) = Aw*sin(psi) + Bw*cos(psi) + C_w
-    Aw = np.matmul(R34.T, As.T.dot(R07_d))
-    Bw = np.matmul(R34.T, Bs.T.dot(R07_d))
-    Cw = np.matmul(R34.T, Cs.T.dot(R07_d))
-
-    # Params
-    S1 = GC2 * np.array([ As[1,1],  Bs[1,1],  Cs[1,1],  As[0,1],   Bs[0,1],  Cs[0,1]]).reshape(6,1)
-    S2 =       np.array([ As[2,1],  Bs[2,1],  Cs[2,1]]).reshape(3,1)
-    S3 = GC2 * np.array([ As[2,0],  Bs[2,0],  Cs[2,0],  As[2,2],   Bs[2,2],  Cs[2,2]]).reshape(6,1)
-    W5 = GC6 * np.array([ Aw[0,2],  Bw[0,2],  Cw[0,2], -Aw[1,2],  -Bw[1,2], -Cw[1,2]]).reshape(6,1)
-    W6 =       np.array([ Aw[2,2],  Bw[2,2],  Cw[2,2]]).reshape(3,1)
-    W7 = GC6 * np.array([-Aw[2,0], -Bw[2,0], -Cw[2,0], -Aw[2,1],  -Bw[2,1], -Cw[2,1]]).reshape(6,1)
+    # 3. Wrist joint (finds th5, th6, th7 as function of psi to set the orientation of the wrist(== orientation of the tcp))
+    th5, th6, th7, fset_5_7, plot_params_5_7 = IK_wrist(DH_model, R07_d, R34, As, Bs, Cs, GC6, verbose)
 
     # Feasible set satisfying the limits
-    feasible_sets = [None]*7
-    feasible_sets[0], plot_params[0] = tangent_type(*S1, joint=DH_model.joint(0), verbose=verbose)
-    feasible_sets[1], plot_params[1] =    sine_type(*S2, joint=DH_model.joint(1), GC=GC2, verbose=verbose)
-    feasible_sets[2], plot_params[2] = tangent_type(*S3, joint=DH_model.joint(2), verbose=verbose)
-    # feasible_sets[3], plot_params[3] = ContinuousSet(-np.pi, np.pi, False, True), ContinuousSet(-np.pi, np.pi, False, True) if th4 in DH_model.joint(3).limit_range else ContinuousSet(), ContinuousSet()
-    feasible_sets[3]  = ContinuousSet(-np.pi, np.pi, False, True) if th4 in DH_model.joint(3).limit_range else ContinuousSet()
-    plot_params[3] = feasible_sets[3] if verbose else None
-    feasible_sets[4], plot_params[4] = tangent_type(*W5, joint=DH_model.joint(4), verbose=verbose)
-    feasible_sets[5], plot_params[5] =  cosine_type(*W6, joint=DH_model.joint(5), GC=GC6, verbose=verbose)
-    feasible_sets[6], plot_params[6] = tangent_type(*W7, joint=DH_model.joint(6), verbose=verbose)
+    feasible_sets = fset_1_3 + fset_4 + fset_5_7
+
     psi_feasible_set = ContinuousSet(-np.pi, np.pi)
     for kkk in considered_joints:
-    # for fs in feasible_sets:
         fs = feasible_sets[kkk]
         psi_feasible_set -= fs
         if verbose:
             print('fs', fs)
             print("feas" ,psi_feasible_set)
-
-    # Lambda functions that deliver solutions for each joint given arm-angle psi
-    v = lambda psi: np.array([sin(psi), cos(psi), 1.0]).reshape(1,3)
-    th1 = lambda psi: atan2(v(psi).dot(S1[0:3]), v(psi).dot(S1[3:]))
-    if GC2>0.0:
-        th2 = ( lambda psi: GC2* asin(clip_c( v(psi).dot(S2))) )
-    else:
-        th2 = lambda psi: ( np.pi - asin(clip_c( v(psi).dot(S2))) ) if asin(clip_c( v(psi).dot(S2))) > 0.0 else ( -np.pi - asin(clip_c( v(psi).dot(S2))) )
-    th3 = lambda psi: atan2(v(psi).dot(S3[0:3]), v(psi).dot(S3[3:])) - th3_offset
-    th5 = lambda psi: atan2(v(psi).dot(W5[0:3]), v(psi).dot(W5[3:]))
-    th6 = lambda psi: GC6*acos(clip_c( v(psi).dot(W6) ))
-    th7 = lambda psi: atan2(v(psi).dot(W7[0:3]), v(psi).dot(W7[3:]))
 
     if p06 is not None:
         p06_ref = DH_model.get_i_T_j(0, 6, [th1(0.0), th2(0.0), th3(0.0), th4, th5(0.0), th6(0.0), th7(0.0)])[:3, 3]
@@ -129,11 +78,102 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
         assert np.linalg.norm(p07-p07_ref) < 1e-6
 
     if verbose:
+        plot_params = plot_params_1_3 + plot_params_4 + plot_params_5_7
         plt_analIK(plot_params, psi_feasible_set)
 
-    # print(psi_feasible_set)
-
     return (lambda psi: np.array([ th1(psi), th2(psi), th3(psi), th4, th5(psi), th6(psi), th7(psi)]).reshape(-1,1), psi_feasible_set)
+
+def IK_elbow(DH_model, x0sw, GC4, verbose):
+    """ Solves 2DOF IK given the th3_ref and th4_ref in order to set the wrist position.
+
+    Args:
+        DH_model:
+        x0sw ([np.array]): shoulder to wrist axis (3,1)
+        GC4 (+-1): whether elbo is inside or outside
+
+    Returns:
+        R34, th4, fset_4, plot_params_4
+    """
+    c_th4 = clip_c((np.linalg.norm(x0sw)**2 - d_se**2 - d_ew**2) / (2*d_se*d_ew))
+    th4 = GC4*acos(c_th4)
+    R34 = DH_model.get_i_R_j(3,4, [th4])  # reference plane
+    fset_4 = [ContinuousSet(-np.pi, np.pi, False, True) if th4 in DH_model.joint(3).limit_range else ContinuousSet()]
+    plot_params_4 = [fset_4[3] if verbose else None]
+    if verbose:
+        print('Theta4:', th4)
+    return R34, th4, fset_4, plot_params_4
+
+
+def IK_shoulder(DH_model, p07_d, x0sw, d_se, d_ew, GC2, GC4, verbose):
+    # Theta1 and Theta2 reference
+    th1_ref = 0.0 if( abs(p07_d[0,0])<1e-6 and abs(p07_d[1,0])<1e-6 ) else atan2(-x0sw[1, 0], -x0sw[0, 0])
+    small_psi  = acos(clip_c((np.linalg.norm(x0sw)**2 + d_se**2 - d_ew**2) / (2*d_se*np.linalg.norm(x0sw)))) # angle betweren SW and SE(see page. 6 2Paper)
+    th2_ref = atan2(-x0sw[2, 0], sqrt(x0sw[0, 0]**2 + x0sw[1, 0]**2)) - GC4*small_psi
+
+    if verbose:
+        print('Theta1', th1_ref)
+        print('Theta2', th2_ref)
+
+    R03_ref = DH_model.get_i_R_j(0, 3, [th1_ref, th2_ref, -DH_model.joint(2).theta-DH_model.joint(2).offset])
+
+    # Rotation axis to rotation matrix
+    u0sw = x0sw/np.linalg.norm(x0sw)
+    u0sw = u0sw/np.linalg.norm(u0sw)
+    u0sw_skew = skew(u0sw)
+
+    # Shoulder R03(psi) = As*sin(psi) + Bs*cos(psi) + C_s
+    As = u0sw_skew.dot(R03_ref)
+    Bs = -np.matmul(u0sw_skew.dot(u0sw_skew), R03_ref)
+    Cs = R03_ref - Bs
+
+    # Params
+    S1 = GC2 * np.array([ As[1,1],  Bs[1,1],  Cs[1,1],  As[0,1],   Bs[0,1],  Cs[0,1]]).reshape(6,1)
+    S2 =       np.array([ As[2,1],  Bs[2,1],  Cs[2,1]]).reshape(3,1)
+    S3 = GC2 * np.array([ As[2,0],  Bs[2,0],  Cs[2,0],  As[2,2],   Bs[2,2],  Cs[2,2]]).reshape(6,1)
+
+    # Feasible set satisfying the limits
+    feasible_sets = [None]*3; plot_params = [None]*3
+    feasible_sets[0], plot_params[0] = tangent_type(*S1, joint=DH_model.joint(0), verbose=verbose)
+    feasible_sets[1], plot_params[1] =    sine_type(*S2, joint=DH_model.joint(1), GC=GC2, verbose=verbose)
+    feasible_sets[2], plot_params[2] = tangent_type(*S3, joint=DH_model.joint(2), verbose=verbose)
+
+    # Lambda functions that deliver solutions for each joint given arm-angle psi
+    v = lambda psi: np.array([sin(psi), cos(psi), 1.0]).reshape(1,3)
+    th1 = lambda psi: atan2(v(psi).dot(S1[0:3]), v(psi).dot(S1[3:]))
+    if GC2>0.0:
+        th2 = ( lambda psi: GC2* asin(clip_c( v(psi).dot(S2))) )
+    else:
+        th2 = lambda psi: ( np.pi - asin(clip_c( v(psi).dot(S2))) ) if asin(clip_c( v(psi).dot(S2))) > 0.0 else ( -np.pi - asin(clip_c( v(psi).dot(S2))) )
+    th3 = lambda psi: atan2(v(psi).dot(S3[0:3]), v(psi).dot(S3[3:])) - th3_offset
+
+    return As, Bs, Cs, th1, th2, th3, feasible_sets, plot_params
+
+
+def IK_wrist(DH_model, R07_d, R34, As, Bs, Cs, GC6, verbose):
+    # Wrist R47(psi) = Aw*sin(psi) + Bw*cos(psi) + C_w
+    Aw = np.matmul(R34.T, As.T.dot(R07_d))
+    Bw = np.matmul(R34.T, Bs.T.dot(R07_d))
+    Cw = np.matmul(R34.T, Cs.T.dot(R07_d))
+
+    # Params
+    W5 = GC6 * np.array([ Aw[0,2],  Bw[0,2],  Cw[0,2], -Aw[1,2],  -Bw[1,2], -Cw[1,2]]).reshape(6,1)
+    W6 =       np.array([ Aw[2,2],  Bw[2,2],  Cw[2,2]]).reshape(3,1)
+    W7 = GC6 * np.array([-Aw[2,0], -Bw[2,0], -Cw[2,0], -Aw[2,1],  -Bw[2,1], -Cw[2,1]]).reshape(6,1)
+
+    # Feasible set satisfying the limits
+    f_set = [None]*3; plot_params = [None]*3
+    f_set[0], plot_params[0] = tangent_type(*W5, joint=DH_model.joint(4), verbose=verbose)
+    f_set[1], plot_params[1] =  cosine_type(*W6, joint=DH_model.joint(5), GC=GC6, verbose=verbose)
+    f_set[2], plot_params[2] = tangent_type(*W7, joint=DH_model.joint(6), verbose=verbose)
+
+    # Lambda functions that deliver solutions for each joint given arm-angle psi
+    v = lambda psi: np.array([sin(psi), cos(psi), 1.0]).reshape(1,3)
+    th5 = lambda psi: atan2(v(psi).dot(W5[0:3]), v(psi).dot(W5[3:]))
+    th6 = lambda psi: GC6*acos(clip_c( v(psi).dot(W6) ))
+    th7 = lambda psi: atan2(v(psi).dot(W7[0:3]), v(psi).dot(W7[3:]))
+
+
+    return th5, th6, th7, f_set, plot_params
 
 
 def cosine_type(a, b, c, joint, GC=1.0, verbose=False, sine_type=False):
@@ -161,14 +201,14 @@ def cosine_type(a, b, c, joint, GC=1.0, verbose=False, sine_type=False):
         # The idea is to split the cyclic profile in sub-intervals of monotonic profile
         if verbose:
             print('2 Stationary points(cyclic): ss>0')
-        psi_min = 2*atan( (-b - sqrt(ss)) / (a) )
-        psi_max = 2*atan( (-b + sqrt(ss)) / (a) )
+        psi_min = 2*atan( (-b - sqrt(ss)) / (a + 1e-10))
+        psi_max = 2*atan( (-b + sqrt(ss)) / (a + 1e-10))
         stat_psi = [psi_min, psi_max]
 
     else:  # discontinuous profile (2 possibilities)
         if verbose:
             print('Singularity: ss={}'.format(ss))
-        psi_singular = 2 * atan(-b/a) # should not be avoided
+        # psi_singular = 2 * atan(-b/(a + 1e-10)) # should not be avoided
 
 
     def find_root(theta, lower_lim):
