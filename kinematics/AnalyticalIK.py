@@ -52,8 +52,7 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
     # Elbow joint
     c_th4 = clip_c((np.linalg.norm(x0sw)**2 - d_se**2 - d_ew**2) / (2*d_se*d_ew))
     th4 = GC4*acos(c_th4)
-
-    # Shoulder joints (reference plane)
+    # reference plane
     R34 = DH_model.get_i_R_j(3,4, [th4])
 
     # Theta1 and Theta2 reference
@@ -73,11 +72,11 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
     u0sw = u0sw/np.linalg.norm(u0sw)
     u0sw_skew = skew(u0sw)
 
-    # Shoulder
+    # Shoulder R03(psi) = As*sin(psi) + Bs*cos(psi) + C_s
     As = u0sw_skew.dot(R03_ref)
     Bs = -np.matmul(u0sw_skew.dot(u0sw_skew), R03_ref)
     Cs = R03_ref - Bs
-    # Wrist
+    # Wrist R47(psi) = Aw*sin(psi) + Bw*cos(psi) + C_w
     Aw = np.matmul(R34.T, As.T.dot(R07_d))
     Bw = np.matmul(R34.T, Bs.T.dot(R07_d))
     Cw = np.matmul(R34.T, Cs.T.dot(R07_d))
