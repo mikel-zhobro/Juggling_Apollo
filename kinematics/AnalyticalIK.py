@@ -77,6 +77,7 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
 
     return (lambda psi: np.array([ th1(psi), th2(psi), th3(psi), th4, th5(psi), th6(psi), th7(psi)]).reshape(-1,1), psi_feasible_set)
 
+
 def IK_elbow_shoulder(DH_model, p0w_d, GC2, GC4, verbose):
     """ Computes shoulder-elbow joint angles to realize a certain wrist position.
     Args:
@@ -105,6 +106,7 @@ def IK_elbow_shoulder(DH_model, p0w_d, GC2, GC4, verbose):
     As, Bs, Cs, th1, th2, th3, fset_1_3, plot_params_1_3 = IK_shoulder(DH_model, x0sw, d_se, d_ew, GC2, GC4, verbose)
 
     return th1, th2, th3, th4, As, Bs, Cs, fset_1_3+fset_4, plot_params_1_3+plot_params_4
+
 
 def IK_elbow(DH_model, x0sw, GC4, verbose):
     """ Computes the elbo angle to realize a certain shoulder-wrist length.
