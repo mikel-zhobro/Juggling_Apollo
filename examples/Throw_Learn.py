@@ -55,11 +55,11 @@ mu              = 0.35
 T_home = np.array([[0.0, -1.0, 0.0,  0.32],  # uppword orientation(cup is up)
                    [0.0,  0.0, 1.0,  0.41],
                    [-1.0, 0.0, 0.0, -0.69],
-                   [0.0,  0.0, 0.0,  0.0 ]], dtype='float')
+                   [0.0,  0.0, 0.0,  1.0 ]], dtype='float')
 T_home = np.array([[0.0, -1.0, 0.0,  0.47],  # uppword orientation(cup is up)
                    [0.0,  0.0, 1.0,  0.52],
-                   [-1.0, 0.0, 0.0, -0.8],
-                   [0.0,  0.0, 0.0,  0.0 ]], dtype='float')
+                   [-1.0, 0.0, 0.0, -0.7],
+                   [0.0,  0.0, 0.0,  1.0 ]], dtype='float')
 T_dhtcp_tcp = np.eye(4)
 T_dhtcp_tcp[:3,:3] = T_home[:3,:3].T
 ########################################################################################################
@@ -76,7 +76,9 @@ rArmKinematics    = ApolloArmKinematics(r_arm=True, noise=NOISE)  ## kinematics 
 rArmKinematics_nn = ApolloArmKinematics(r_arm=True)               ## kinematics without noise  (used to calculate measurments, plays the wrole of a localization system)
 
 # C) PLANNINGs
-q_traj_des, T_traj = OneBallThrowPlanner.plan(dt, T_home, IK=rArmKinematics.IK, J=rArmKinematics.J, seqFK=rArmKinematics.seqFK, verbose=False)
+qh = rArmKinematics.IK(T_home)
+print(qh)
+q_traj_des, T_traj = OneBallThrowPlanner.plan2(dt, T_home, kinematics=rArmKinematics, verbose=True)
 
 
 N = len(q_traj_des)
