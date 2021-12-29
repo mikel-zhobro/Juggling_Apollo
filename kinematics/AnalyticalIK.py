@@ -31,8 +31,8 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
         IEEE TRANSACTIONS ON ROBOTICS, VOL. 24, NO. 5, OCTOBER 2008
 
     Args:
-        o_p_goal ([R^3]): the goal position in base frame [3x1]
-        o_R_goal ([SO3]): the goal orientation in origin frame [3x3]
+        p07_d ([R^3]): the goal position in world frame [3x1]
+        R07_d ([SO3]): the goal orientation in world frame [3x3]
 
     Considering the limits for each joints is considered in the analytical solution.
     - One exception is the 3rd joint of apollo which has an offset of pi/6 (has to be rotated with pi/6 in order to match the real one).
@@ -78,6 +78,14 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
     return (lambda psi: np.array([ th1(psi), th2(psi), th3(psi), th4, th5(psi), th6(psi), th7(psi)]).reshape(-1,1), psi_feasible_set)
 
 def IK_elbow_shoulder(DH_model, p0w_d, GC2, GC4, verbose):
+    """ Computes shoulder-elbow joint angles to realize a certain wrist position.
+    Args:
+        p0w_d ([np.array]): desired wrist world position
+        GC2, GC4 ([+-1]): branch of solution
+
+    Returns:
+        th1, th2, th3, th4, As, Bs, Cs, fset_1_4, plot_params_1_4
+    """
     d_bs = DH_model.joint(0).d; l0bs = vec([0,   0,     d_bs])
     d_se = DH_model.joint(2).d; l3se = vec([0,  -d_se,  0])
     d_ew = DH_model.joint(4).d; l4ew = vec([0,   0,     d_ew])
@@ -99,10 +107,9 @@ def IK_elbow_shoulder(DH_model, p0w_d, GC2, GC4, verbose):
     return th1, th2, th3, th4, As, Bs, Cs, fset_1_3+fset_4, plot_params_1_3+plot_params_4
 
 def IK_elbow(DH_model, x0sw, GC4, verbose):
-    """ Solves 2DOF IK given the th3_ref and th4_ref in order to set the wrist position.
+    """ Computes the elbo angle to realize a certain shoulder-wrist length.
 
     Args:
-        DH_model:
         x0sw ([np.array]): shoulder to wrist axis (3,1)
         GC4 (+-1): whether elbo is inside or outside
 
@@ -119,6 +126,17 @@ def IK_elbow(DH_model, x0sw, GC4, verbose):
 
 
 def IK_shoulder(DH_model, x0sw, d_se, d_ew, GC2, GC4, verbose):
+    """Solves 2DOF IK for th1_ref, th2_ref given the th3_ref=0 and th4_ref=th4(from above) in order to set the wrist position.
+       Then returns th1 th2 th3 as functions of psi, which describe the rotation of elbow around sholder-wrist axis with psi.
+
+    Args:
+        x0sw ([np.array]): shoulder-wrist vector in world frame (3,1)
+        d_se, d_ew ([float]): shoulder-elbow and elbow-wrist joint lengths
+        GC2, GC4: branch of solutions
+
+    Returns:
+        As, Bs, Cs, th1, th2, th3, feasible_sets, plot_params
+    """
     # Theta1 and Theta2 reference
     # th1_ref = 0.0 if( abs(p07_d[0,0])<1e-6 and abs(p07_d[1,0])<1e-6 ) else atan2(-x0sw[1, 0], -x0sw[0, 0])
     th1_ref = 0.0 if( abs(x0sw[0, 0])<1e-6 and abs(x0sw[1, 0])<1e-6 ) else atan2(-x0sw[1, 0], -x0sw[0, 0])
