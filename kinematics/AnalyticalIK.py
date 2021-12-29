@@ -39,33 +39,22 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
         * Offset the joint range accordingly
         * Offset the solution accordingly
     """
-    d_bs = DH_model.joint(0).d; l0bs = vec([0,   0,     d_bs])
-    d_se = DH_model.joint(2).d; l3se = vec([0,  -d_se,  0])
-    d_ew = DH_model.joint(4).d; l4ew = vec([0,   0,     d_ew])
-    d_wt = DH_model.joint(6).d; l7wt = vec([0,   0,     d_wt])
-
     # Transform goal in dh base frame
     p07_d, R07_d = DH_model.get_goal_in_dh_base_frame(p07_d, R07_d)
 
-    # Make sure position is within the reachable space
-    dst1 = d_se + d_ew + d_wt
-    dst2 = np.linalg.norm(p07_d-l0bs)
-    assert dst1  >= dst2, 'Unreachable position {} >= {}'.format(dst1, dst2)
+    # Prepare desired wrist position
+    d_wt = DH_model.joint(6).d; l7wt = vec([0,   0,  d_wt])
+    p0w_d = p07_d - R07_d.dot(l7wt)
 
-    # Shoulder to Wrist axis
-    x0sw = p07_d - l0bs - R07_d.dot(l7wt)  # p26
+    # 1. Shoulder and elbo joints (set the wrist position)
+    th1, th2, th3, th4, As, Bs, Cs, fset_1_4, plot_params_1_4 = IK_elbow_shoulder(DH_model, p0w_d, GC2, GC4, verbose)
 
-    # 1. Elbow joint (finds th4 to set the wrist position)
-    R34, th4, fset_4, plot_params_4 = IK_elbow(DH_model, x0sw, GC4, verbose)
-
-    # 2. Shoulder joint (finds th1, th2, th3 as function of psi to set the orientation of the shoulder)
-    As, Bs, Cs, th1, th2, th3, fset_1_3, plot_params_1_3 = IK_shoulder(DH_model, p07_d, x0sw, d_se, d_ew, GC2, GC4, verbose)
-
-    # 3. Wrist joint (finds th5, th6, th7 as function of psi to set the orientation of the wrist(== orientation of the tcp))
+    # 2. Wrist joint (finds th5, th6, th7 as function of psi to set the orientation of the wrist(== orientation of the tcp))
+    R34 = DH_model.get_i_R_j(3,4, [th4])  # reference plane
     th5, th6, th7, fset_5_7, plot_params_5_7 = IK_wrist(DH_model, R07_d, R34, As, Bs, Cs, GC6, verbose)
 
     # Feasible set satisfying the limits
-    feasible_sets = fset_1_3 + fset_4 + fset_5_7
+    feasible_sets = fset_1_4 + fset_5_7
 
     psi_feasible_set = ContinuousSet(-np.pi, np.pi)
     for kkk in considered_joints:
@@ -83,10 +72,31 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
         assert np.linalg.norm(p07-p07_ref) < 1e-6
 
     if verbose:
-        plot_params = plot_params_1_3 + plot_params_4 + plot_params_5_7
+        plot_params = plot_params_1_4 + plot_params_5_7
         plt_analIK(plot_params, psi_feasible_set)
 
     return (lambda psi: np.array([ th1(psi), th2(psi), th3(psi), th4, th5(psi), th6(psi), th7(psi)]).reshape(-1,1), psi_feasible_set)
+
+def IK_elbow_shoulder(DH_model, p0w_d, GC2, GC4, verbose):
+    d_bs = DH_model.joint(0).d; l0bs = vec([0,   0,     d_bs])
+    d_se = DH_model.joint(2).d; l3se = vec([0,  -d_se,  0])
+    d_ew = DH_model.joint(4).d; l4ew = vec([0,   0,     d_ew])
+
+    # Make sure position is within the reachable space
+    dst1 = d_se + d_ew
+    dst2 = np.linalg.norm(p0w_d-l0bs)
+    assert dst1  >= dst2, 'Unreachable wrist position {} >= {}'.format(dst1, dst2)
+
+    # Shoulder to Wrist axis
+    x0sw = p0w_d - l0bs
+
+    # 1. Elbow joint (finds th4 to set the wrist position)
+    th4, fset_4, plot_params_4 = IK_elbow(DH_model, x0sw, GC4, verbose)
+
+    # 2. Shoulder joint (finds th1, th2, th3 as function of psi to set the orientation of the shoulder)
+    As, Bs, Cs, th1, th2, th3, fset_1_3, plot_params_1_3 = IK_shoulder(DH_model, x0sw, d_se, d_ew, GC2, GC4, verbose)
+
+    return th1, th2, th3, th4, As, Bs, Cs, fset_1_3+fset_4, plot_params_1_3+plot_params_4
 
 def IK_elbow(DH_model, x0sw, GC4, verbose):
     """ Solves 2DOF IK given the th3_ref and th4_ref in order to set the wrist position.
@@ -101,17 +111,17 @@ def IK_elbow(DH_model, x0sw, GC4, verbose):
     """
     c_th4 = clip_c((np.linalg.norm(x0sw)**2 - d_se**2 - d_ew**2) / (2*d_se*d_ew))
     th4 = GC4*acos(c_th4)
-    R34 = DH_model.get_i_R_j(3,4, [th4])  # reference plane
     fset_4 = [ContinuousSet(-np.pi, np.pi, False, True) if th4 in DH_model.joint(3).limit_range else ContinuousSet()]
     plot_params_4 = [fset_4[0] if verbose else None]
     if verbose:
         print('Theta4:', th4)
-    return R34, th4, fset_4, plot_params_4
+    return th4, fset_4, plot_params_4
 
 
-def IK_shoulder(DH_model, p07_d, x0sw, d_se, d_ew, GC2, GC4, verbose):
+def IK_shoulder(DH_model, x0sw, d_se, d_ew, GC2, GC4, verbose):
     # Theta1 and Theta2 reference
-    th1_ref = 0.0 if( abs(p07_d[0,0])<1e-6 and abs(p07_d[1,0])<1e-6 ) else atan2(-x0sw[1, 0], -x0sw[0, 0])
+    # th1_ref = 0.0 if( abs(p07_d[0,0])<1e-6 and abs(p07_d[1,0])<1e-6 ) else atan2(-x0sw[1, 0], -x0sw[0, 0])
+    th1_ref = 0.0 if( abs(x0sw[0, 0])<1e-6 and abs(x0sw[1, 0])<1e-6 ) else atan2(-x0sw[1, 0], -x0sw[0, 0])
     small_psi  = acos(clip_c((np.linalg.norm(x0sw)**2 + d_se**2 - d_ew**2) / (2*d_se*np.linalg.norm(x0sw)))) # angle betweren SW and SE(see page. 6 2Paper)
     th2_ref = atan2(-x0sw[2, 0], sqrt(x0sw[0, 0]**2 + x0sw[1, 0]**2)) - GC4*small_psi
 
@@ -176,7 +186,6 @@ def IK_wrist(DH_model, R07_d, R34, As, Bs, Cs, GC6, verbose):
     th5 = lambda psi: atan2(v(psi).dot(W5[0:3]), v(psi).dot(W5[3:]))
     th6 = lambda psi: GC6*acos(clip_c( v(psi).dot(W6) ))
     th7 = lambda psi: atan2(v(psi).dot(W7[0:3]), v(psi).dot(W7[3:]))
-
 
     return th5, th6, th7, f_set, plot_params
 
