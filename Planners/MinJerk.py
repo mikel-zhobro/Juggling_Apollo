@@ -157,7 +157,7 @@ def get_multi_interval_multi_dim_minjerk(dt, tt, xx, uu, smooth_acc=False, smoot
     for i, _t in enumerate(tt[1:]):
       mask = (tt[i] <= t) & ( (t <= _t) if i==len(tt)-2 else (t < _t))
       ret[:, mask.nonzero()[0], :] = xxs[i](t[mask])
-    return ret
+    return ret[:,:,:,np.newaxis]
 
   if lambdas:
     return tmp
