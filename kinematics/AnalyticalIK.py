@@ -11,15 +11,7 @@ from Sets import ContinuousSet
 np.set_printoptions(precision=4, suppress=True)
 
 # DH Params
-pi2 = np.pi/2
 th3_offset = np.pi/6
-d_bs = 0.378724; d_se = 0.4; d_ew = 0.39; d_wt = 0.186
-a_s            = [0.0] * 7
-alpha_s        = [pi2, pi2, -pi2, pi2, -pi2, pi2, 0.0]
-d_s            = [d_bs, 0.0, d_se, 0.0, d_ew, 0.0, d_wt]
-theta_s = [0.0, -pi2, pi2, 0.0, -pi2, 0.0, 0.0]
-offsets = [0.0, 0.0, th3_offset, 0.0, 0.0, 0.0, 0.0]
-
 eps_psi = 1e-4
 delta_psi = 5.0/180*np.pi
 
@@ -100,7 +92,7 @@ def IK_elbow_shoulder(DH_model, p0w_d, GC2, GC4, verbose):
     x0sw = p0w_d - l0bs
 
     # 1. Elbow joint (finds th4 to set the wrist position)
-    th4, fset_4, plot_params_4 = IK_elbow(DH_model, x0sw, GC4, verbose)
+    th4, fset_4, plot_params_4 = IK_elbow(DH_model, x0sw, d_se, d_ew, GC4, verbose)
 
     # 2. Shoulder joint (finds th1, th2, th3 as function of psi to set the orientation of the shoulder)
     As, Bs, Cs, th1, th2, th3, fset_1_3, plot_params_1_3 = IK_shoulder(DH_model, x0sw, d_se, d_ew, GC2, GC4, verbose)
@@ -108,7 +100,7 @@ def IK_elbow_shoulder(DH_model, p0w_d, GC2, GC4, verbose):
     return th1, th2, th3, th4, As, Bs, Cs, fset_1_3+fset_4, plot_params_1_3+plot_params_4
 
 
-def IK_elbow(DH_model, x0sw, GC4, verbose):
+def IK_elbow(DH_model, x0sw, d_se, d_ew, GC4, verbose):
     """ Computes the elbo angle to realize a certain shoulder-wrist length.
 
     Args:
@@ -606,6 +598,15 @@ def plt_analIK(plot_params, psi_feasible_set):
 
 if __name__ == "__main__":
     from tqdm import tqdm
+
+    pi2 = np.pi/2
+    d_bs = 0.378724; d_se = 0.4; d_ew = 0.39; d_wt = 0.186
+    a_s            = [0.0] * 7
+    alpha_s        = [pi2, pi2, -pi2, pi2, -pi2, pi2, 0.0]
+    d_s            = [d_bs, 0.0, d_se, 0.0, d_ew, 0.0, d_wt]
+    theta_s = [0.0, -pi2, pi2, 0.0, -pi2, 0.0, 0.0]
+    offsets = [0.0, 0.0, th3_offset, 0.0, 0.0, 0.0, 0.0]
+
     # Create Robot
     my_fk_dh = DH_revolut()
     for a, alpha, d, theta, name, offset in zip(a_s, alpha_s, d_s, theta_s, R_joints, offsets):
