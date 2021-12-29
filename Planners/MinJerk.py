@@ -12,7 +12,7 @@ from utils import plot_intervals, steps_from_time, plot_lines_coord
 ##### Helper Functions for multi-interval multi-dimensional minjerk
 
 ### 1.Straight forward approach
-def get_multi_interval_minjerk_xyz(dt, tt, xx, uu, smooth_acc=False, smooth_start=False, i_a_end=None, only_pos=True):
+def get_multi_interval_minjerk_xyz(dt, tt, xx, uu, smooth_acc=False, smooth_start=False, i_a_end=None, only_pos=False):
   """ Generates a multi-interval multi-dimensional minjerk trajectory
 
   Args:
@@ -389,11 +389,11 @@ def plotMJ(dt, tt, xx, uu, smooth_acc=False, xvaj = None, i_a_end=0):
 if __name__ == "__main__":
   import matplotlib.pyplot as plt
   dt = 0.004
-  smooth_acc = True
-  smooth_start = True
+  smooth_acc = False
+  smooth_start = False
   i_a_end = -1
-  tt=[ 0.0,    0.2,         0.6,             0.8,              1.0 ]
-  xx=np.array([[0.0,    0.2,        -0.1,             0.3,              1.0 ],
+  tt=[ 0.0,    0.5,         0.6,             0.8,              1.0 ]
+  xx=np.array([[0.0,    0.0,        -0.1,             0.3,              1.0 ],
                [0.0,    0.6,         0.0,             0.2,              0.0 ]]).T
 
   uu=np.array([[0.0,    3.4,    -0.2,          1.1,         0.0],

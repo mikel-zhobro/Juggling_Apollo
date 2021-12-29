@@ -242,16 +242,18 @@ class CatchThrow():
   def plotCTTimeDiagram(self, ax, period=0):
     actual_beat = self.beat_nr + period*self.T
     x , y = actual_beat, self.h.h
-    # Plot point and annonate
-    ax.scatter(x, y, color='k')
-    ax.annotate(str((self.n_c, self.n_t)), (x, y), (x-0.2, y-0.5))
-    # Plot catch and throw at this catch-throw point
     # color = None
-    color = 'k'
-    # if (actual_beat) %3 ==0:
-    #   color = 'r'
+    color = 'b'
+    if actual_beat in [2, 5]:
+      print(actual_beat)
+      color = 'r'
     # elif (actual_beat) %3 ==1:
     #   color = 'g'
+
+    # Plot point and annonate
+    ax.scatter(x, y, color=color)
+    # ax.annotate(str((self.n_c, self.n_t)), (x, y), (x-0.2, y-0.5))
+    # Plot catch and throw at this catch-throw point
     plotConnection(ax, actual_beat-self.n_c, actual_beat, self.h_c.h, self.h.h, self.h_c.h==self.h.h, color=color)
     plotConnection(ax, actual_beat, actual_beat+self.n_t, self.h.h, self.h_t.h, self.h.h==self.h_t.h, color=color)
 
@@ -592,10 +594,10 @@ if __name__ == "__main__":
   dt = 0.004
   jp = JugglingPlanner()
   # jp.plan(1, pattern=(3,3,3), rep=1).plot()
-  p = jp.plan(dt, 2, pattern=(3,3,3), slower=5, rep=1)
-  p.plot()
+  p = jp.plan(dt, 2, pattern=(3,5,3,5,3,5,3,5), slower=5, rep=1)
+  p.plotTimeDiagram()
   # jp.plan(4, pattern=(3,), rep=1).plot()
-  jp.plan(dt, 4, pattern=(5,), slower=5, rep=1).plot()
+  # jp.plan(dt, 4, pattern=(5,), slower=5, rep=1).plot()
   # N_Whole0, x0, v0, a0, j0, thetas = p.hands[0].get(True)  # get plan for hand0
   # plt.plot(a0[:,0])
   # plt.plot(a0[:,1])

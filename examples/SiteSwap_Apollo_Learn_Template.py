@@ -79,7 +79,6 @@ N, x0, v0, a0, j0, rot_traj_des = plan.hands[0].get(get_thetas=True)  # get plan
 # Transform to dh frames and do IK
 T_traj = utilities.pR2T(x0-x0[0]+T_home[:3, -1], rot_traj_des)
 T_traj = rArmKinematics.transform_in_dh_frames(T_dhtcp_tcp, T_traj)
-T_home = T_traj[0].copy()
 q_traj_des, q_start, psi_params = rArmKinematics.seqIK(T_traj, considered_joints=learnable_joints)  # [N, 7]
 # Remove trajectories we are not learning
 q_traj_des[:,non_learnable_joints] = 0
@@ -97,6 +96,7 @@ if False:
 
 # INIT ILC
 # ILC Works on differences(ie delta)
+T_home = T_traj[0].copy()
 q_traj_des_i       = q_traj_des.copy()
 q_start_i          = q_start.copy()
 # q_start_i = q_traj_des_i[1]; #q_start_i[-1,0] = np.pi/4.
