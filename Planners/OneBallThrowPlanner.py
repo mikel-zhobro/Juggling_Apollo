@@ -6,7 +6,7 @@ import MinJerk
 from utils import g, plot_A, set_axes_equal
 
 
-def plan(dt, T_home, IK, J, seqFK, h=0.75, throw_height=0.35, swing_size=0.46, slower=1.0, rep=1, verbose=False):
+def plan(dt, T_home, kinematics, h=0.65, throw_height=0.25, swing_size=0.46, slower=1.0, rep=1, verbose=False):
     """
     Args:
         dt ([type]): [description]
@@ -21,7 +21,7 @@ def plan(dt, T_home, IK, J, seqFK, h=0.75, throw_height=0.35, swing_size=0.46, s
     dt = dt/slower
 
     tf = 2.0*math.sqrt(2.0*(h-throw_height)/g)  # time of flight
-    t1 = 0.8                        # throw time
+    t1 = 1.4                        # throw time
     t2 = 2*t1                       # catch time
     t3 = t2 + 0.8*tf                # home time
     ts = [0., t1, t2,  t3]
@@ -63,7 +63,7 @@ def plan(dt, T_home, IK, J, seqFK, h=0.75, throw_height=0.35, swing_size=0.46, s
         Tmp[:3,:3] = R
         Tmp[:3,3:4] = T_home[:3, 3:4] + xs[i]
         print(Tmp)
-        q_s[i] = IK(Tmp)
+        q_s[i] = kinematics.IK(Tmp)
 
     # Joint Velocities
     W = np.eye(7)
@@ -76,7 +76,7 @@ def plan(dt, T_home, IK, J, seqFK, h=0.75, throw_height=0.35, swing_size=0.46, s
     b = np.zeros((10,1))
     qv_s = np.zeros((len(xs),7,1))
     for i in range(len(qv_s)):
-        Ji = J(q_s[i])[:3,:]
+        Ji = kinematics.J(q_s[i])[:3,:]
         H[7:,:7] = -Ji
         H[:7,7:] = Ji.T
         # qv_s[i] = np.linalg.pinv(Ji).dot(vs[i])
@@ -87,15 +87,13 @@ def plan(dt, T_home, IK, J, seqFK, h=0.75, throw_height=0.35, swing_size=0.46, s
 
     q_traj = q_traj.reshape(-1,7,1)
 
-    T_traj = seqFK(q_traj)
+    T_traj = kinematics.seqFK(q_traj)
 
     if verbose:
-        A = 180./np.pi
-        A = 1.
-        plot_A(A*q_traj.reshape(1,-1,7,1), dt=dt)
-        plt.suptitle("Angle Positions")
-        plot_A(A*qv_traj.reshape(1,-1,7,1))
-        plt.suptitle("Angle Velocities")
+        plot_A(q_traj.reshape(1,-1,7,1), dt=dt, limits=kinematics.limits)
+        plt.suptitle("Joint angles")
+        plot_A(qv_traj.reshape(1,-1,7,1), dt=dt, limits=kinematics.vlimits, index_labels=[r"$\dot{\theta}_%d$" %i for i in range(7)])
+        plt.suptitle("Joint angle velocities")
         # plot_A(180./np.pi*qa_traj.reshape(1,-1,7,1))
         # plt.suptitle("Angle Accelerations")
         # plt.show()
@@ -117,3 +115,114 @@ def plan(dt, T_home, IK, J, seqFK, h=0.75, throw_height=0.35, swing_size=0.46, s
         plt.show()
 
     return q_traj, T_traj
+
+
+
+def plan2(dt, T_home, kinematics, h=0.45, throw_height=0.15, swing_size=0.46, slower=1.0, rep=1, verbose=False):
+    """
+    Args:
+        dt ([type]): [description]
+        IK ([type]): function to calc IK
+        J ([type]): function that calc jacobi given joint state
+        h (float, optional): Height the ball should achieve
+        throw_height (float, optional): at what height we perform the throw
+        swing_size (float, optional): how much we can swing
+        slower (float, optional):
+        rep (int, optional): [description]. Defaults to 1.
+    """
+    d_bs = 0.378724; d_se = 0.4; d_ew = 0.39; d_wt = 0.186
+
+    dt = dt/slower
+
+    tf = 2.0*math.sqrt(2.0*(h-throw_height)/g)  # time of flight
+    t1 = 0.6                     # throw time
+    t2 = t1 + 0.5*tf              # home time
+    ts = [0., t1, t2]
+    print('TCatch', t2)
+
+    # Cartesian positions
+    catch_height = 0.05
+    throw_height = throw_height + catch_height
+    x0 = np.array([0., swing_size, throw_height]).reshape(3,1)   # home/catch position
+    x1 = np.array([0., swing_size, throw_height]).reshape(3,1)   # throw position
+    xs = [x0, x1, x0]
+
+    # Cartesian velocities
+    alpha = 0.
+    v_throw = 0.5*g*tf # in z direction
+    v_catch = -0.2*v_throw
+    v0 = np.zeros((3,1))
+    v1 = np.array([0.,np.sin(alpha)*v_throw, np.cos(alpha)*v_throw]).reshape(3,1)   # throw velocity
+    v2 = np.zeros((3,1))     # catch velocity
+    vs = [v0, v1, v2]
+
+    a_s = [None, None, ]
+    # Joint Positions
+    q_s = np.zeros((len(xs),7,1))
+    Tmp = T_home.copy()
+    R = Tmp[:3,:3]
+    for i in range(len(q_s)):
+        # if i ==1:
+        #     alpha = -0.2
+        #     rx = -np.array([-np.sin(alpha), 0, np.cos(alpha)]).reshape(3,1)
+        #     # rx = -vs[i]/np.linalg.norm(vs[1])
+        #     ry = T_home[:3,1:2]
+        #     # ry = np.cross(rz, rx, axis=0)
+        #     rz = np.cross(rx, ry, axis=0)
+        #     # rx = -np.cross(rz, T_home[:3,1:2], axis=0)
+        #     R = np.hstack((rx, ry, rz))
+        # else:
+        #     R = T_home[:3,:3]
+        Tmp[:3,:3] = R
+        Tmp[:3,3:4] = T_home[:3, 3:4] + xs[i]
+        # print(Tmp)
+        q_s[i] = kinematics.IK(Tmp)
+
+    # Joint Velocities
+    W = np.eye(7)
+    W[3:,3:] *= 1.
+    W[-1,-1] = 20.
+    W[-2,-2] = 24.
+    W[-3,-3] = 44.
+    W[-4,-4] = 44.
+
+    H = np.zeros((10,10))
+    H[:7,:7] = W
+    b = np.zeros((10,1))
+    qv_s = np.zeros((len(xs),7,1))
+    for i in range(len(qv_s)):
+        Ji = kinematics.J(q_s[i])[:3,:]
+        H[7:,:7] = -Ji
+        H[:7,7:] = Ji.T
+        # qv_s[i] = np.linalg.pinv(Ji).dot(vs[i])
+        b[7:] = -vs[i]
+        qv_s[i] = np.linalg.inv(H).dot(b)[:7]
+
+    q_traj, qv_traj, qa_traj, qj_traj = MinJerk.get_multi_interval_multi_dim_minjerk(dt, ts, q_s, qv_s, smooth_acc=True, only_pos=False, i_a_end=0)
+    T_traj = kinematics.seqFK(q_traj)
+
+    if verbose:
+        plot_A(q_traj.reshape(1,-1,7,1), dt=dt, limits=kinematics.limits)
+        plt.suptitle("Joint angles")
+        plot_A(qv_traj.reshape(1,-1,7,1), dt=dt, limits=kinematics.vlimits, index_labels=[r"$\dot{\theta}_%d$" %i for i in range(7)])
+        plt.suptitle("Joint angle velocities")
+        # plot_A(180./np.pi*qa_traj.reshape(1,-1,7,1))
+        # plt.suptitle("Angle Accelerations")
+        # plt.show()
+
+        from mpl_toolkits.mplot3d import axes3d, Axes3D  # noqa: F401
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.plot3D(T_traj[:,0, -1], T_traj[:,1, -1], T_traj[:,2, -1], 'gray')
+        ax.scatter(*T_traj[0, 0:3, -1], label="start")
+        ax.scatter(*T_traj[int(t1/dt), 0:3, -1], label="throw")
+        ax.set_xlabel('X axis')
+        ax.set_ylabel('Y axis')
+        ax.set_zlabel('Z axis')
+        set_axes_equal(ax)
+        plt.legend()
+        plt.show()
+
+    return q_traj, T_traj
+
+
