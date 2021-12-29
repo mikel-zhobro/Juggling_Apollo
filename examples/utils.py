@@ -15,33 +15,39 @@ def plot_A(lines_list, indexes_list=list(range(7)), labels=None, dt=1, xlabel=""
   # assert len(lines_list) == len(labels), "Please use same number of lines and labels"
   N = len(lines_list)
   M = len(indexes_list)
-  if M >= 3:
-    a = M//3 + (1 if M%3 !=0 else 0)
-    b = 3
-  else:
-    a = 1
-    b = M
+  lines_list = np.asarray(lines_list)
   timesteps = dt*np.arange(lines_list[0].shape[0])
-  fig, axs = plt.subplots(a,b, figsize=(12,8))
+  fig, axs = plt.subplots(1,M, figsize=(18, 3))
   axs = np.array(axs)
-  for iii, ix in enumerate(indexes_list):
+  for iii, ax in enumerate(axs.flat):
+    ix = indexes_list[iii]
     for i in range(N):
-      l = axs.flatten()[iii].plot(timesteps, lines_list[i][:, ix].squeeze(),
+      l = ax.plot(timesteps, lines_list[i][:, ix].squeeze(),
                               # color=colors[iii%len(colors)],
-                              linestyle=line_types[i%len(line_types)], label=r"{} {}".format(r"$\theta_{}$".format(ix) if index_labels is None else index_labels[ix], labels[i] if labels is not None else ""))
+                              linestyle=line_types[i%len(line_types)],
+                              label=r"{} {}".format(r"$\theta_{}$".format(ix+1) if index_labels is None else index_labels[ix], labels[i] if labels is not None else ''))
     if limits is not None:
-      axs.flatten()[iii].axhspan(limits[iii].a, limits[iii].b, color='gray', alpha=0.2, label='feasible set')  # color=l[0].get_color()
-      axs.flatten()[iii].set_ylim([min(-np.pi, limits[iii].a), max(np.pi, limits[iii].b)])
+      ax.axhspan(limits[iii].a, limits[iii].b, color='gray', alpha=0.2)  # color=l[0].get_color()
     if fill_between is not None:
-      axs.flatten()[iii].fill_between(timesteps, fill_between[0][:, ix].squeeze(), fill_between[1][:, ix].squeeze(), color='gray', alpha=0.2)
+      ax.fill_between(timesteps, fill_between[0][:, ix].squeeze(), fill_between[1][:, ix].squeeze(), color='gray', alpha=0.2)
 
-    axs.flatten()[iii].grid(True)
+    ymin = np.min(lines_list); ymax = np.max(lines_list); ytmp = abs(ymin - ymax)
+    ax.set_ylim([ymin-0.1*ytmp, ymax+0.1*ytmp])
+    ax.grid(True)
+    # ax.set_title('joint ' + str(ix+1))
+    ax.legend(loc='upper left')
 
   # Put legend on last axis
-  handles, labels = axs.flatten()[iii].get_legend_handles_labels()
-  axs.flatten()[-1].legend(handles, labels, loc='upper center')
+  # handles, labels = ax.get_legend_handles_labels()
+  # axs.flatten()[-1].legend(handles, labels, loc='upper center')
+  if limits is not None:
+    liness = [plt.Rectangle((0,0),1,1, color='gray', alpha=0.2)]
+    labelss = ['feasible set']
+    fig.legend(liness, labelss, loc ="lower center", mode=None)
+
   fig.text(0.5, 0.04, xlabel, ha='center')
   fig.text(0.04, 0.5, ylabel, va='center', rotation='vertical')
+  fig.tight_layout(rect=[0, 0.06, 1, 0.95])
 
 
 def save(filename, **kwargs):
