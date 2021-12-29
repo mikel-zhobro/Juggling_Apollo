@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from math import sin, cos, acos, sqrt, atan2, asin
 
 from DH import DH_revolut
-from utilities import R_joints, L_joints, JOINTS_LIMITS
+from utilities import R_joints, L_joints, JOINTS_LIMITS, JOINTS_V_LIMITS
 from utilities import invT
 from fk_pin_local import PinRobot
 from AnalyticalIK import IK_anallytical, IK_heuristic2, IK_heuristic3
@@ -39,7 +39,7 @@ class ApolloArmKinematics():
                 n_ds[i] = noise*(np.random.rand()-0.5)
         dh_rob = DH_revolut()
         for a, alpha, d, theta, name, offset, n_d in zip(a_s, alpha_s, d_s, theta_s, joints2Use, offsets, n_ds):
-            dh_rob.add_joint(a, alpha, d+n_d, theta, JOINTS_LIMITS[name], name, offset)
+            dh_rob.add_joint(a, alpha, d+n_d, theta, JOINTS_LIMITS[name], JOINTS_V_LIMITS[name], name, offset)
         return dh_rob
 
     def FK(self, q):
@@ -129,10 +129,13 @@ class ApolloArmKinematics():
             TT[i] =  Ti.dot(T_TCP_dhTCP)
         return TT.reshape(T_shape)
 
-
     @property
     def limits(self):
         return [j.limit_range for j in self.dh_rob.joints]
+
+    @property
+    def vlimits(self):
+        return [j.vlimit_range for j in self.dh_rob.joints]
 
     def plot(self, joint_trajs=None, psis=None, psi_mins=None, psi_maxs=None, dt=1, rad=False):
         if psis is None:

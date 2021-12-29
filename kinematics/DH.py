@@ -23,7 +23,7 @@ T_rbase_dhbase = np.array([  # Sets the Arm to the right base frame
 
 class DH_revolut():
     class Joint():
-        def __init__(self, a, alpha, d, theta, index, limit=(-np.pi, np.pi), name="", offset=0.0):
+        def __init__(self, a, alpha, d, theta, index, limit=(-np.pi, np.pi), vlimit=(-10., 10.), name="", offset=0.0):
             self.a = a
             self.alpha = alpha
             self.d = d
@@ -32,6 +32,7 @@ class DH_revolut():
             self.offset = offset
             self.index = index
             self.limit_range = ContinuousSet(limit[0], limit[1], False, False)
+            self.vlimit_range = ContinuousSet(vlimit[0], vlimit[1], False, False)
 
         def __repr__(self):
             return '{}. {}: a({}), b({}), d({}), theta({})'.format(self.index, self.name, self.a, self.alpha, self.d, self.theta)
@@ -43,8 +44,8 @@ class DH_revolut():
     def joint(self, i):
         return self.joints[i]
 
-    def add_joint(self, a, alpha, d, theta, limit=(-np.pi, np.pi), name="", offset=0.0):
-        self.joints.append(self.Joint(a, alpha, d, theta, self.n_joints,limit, name, offset))
+    def add_joint(self, a, alpha, d, theta, limit=(-np.pi, np.pi), vlimit=(-10., 10.), name="", offset=0.0):
+        self.joints.append(self.Joint(a, alpha, d, theta, self.n_joints, limit, vlimit, name, offset))
         self.n_joints += 1
 
     def getT(self, j, theta):
