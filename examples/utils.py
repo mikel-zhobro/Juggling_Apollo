@@ -13,23 +13,25 @@ line_types = ["-", "--", ":", '-.']
 
 def plot_A(lines_list, indexes_list=list(range(7)), labels=None, dt=1, xlabel="", ylabel="", limits=None, fill_between=None, index_labels=None):
   # assert len(lines_list) == len(labels), "Please use same number of lines and labels"
+  A = 180./np.pi
+  # A = 1.
   N = len(lines_list)
   M = len(indexes_list)
-  lines_list = np.asarray(lines_list)
+  lines_list = A*np.asarray(lines_list)
   timesteps = dt*np.arange(lines_list[0].shape[0])
   fig, axs = plt.subplots(1,M, figsize=(18, 3))
   axs = np.array(axs)
   for iii, ax in enumerate(axs.flat):
     ix = indexes_list[iii]
     for i in range(N):
-      l = ax.plot(timesteps, lines_list[i][:, ix].squeeze(),
+      l = ax.plot(timesteps,  lines_list[i][:, ix].squeeze(),
                               # color=colors[iii%len(colors)],
                               linestyle=line_types[i%len(line_types)],
                               label=r"{} {}".format(r"$\theta_{}$".format(ix+1) if index_labels is None else index_labels[ix], labels[i] if labels is not None else ''))
     if limits is not None:
-      ax.axhspan(limits[iii].a, limits[iii].b, color='gray', alpha=0.2)  # color=l[0].get_color()
+      ax.axhspan(A*limits[iii].a, A*limits[iii].b, color='gray', alpha=0.2)  # color=l[0].get_color()
     if fill_between is not None:
-      ax.fill_between(timesteps, fill_between[0][:, ix].squeeze(), fill_between[1][:, ix].squeeze(), color='gray', alpha=0.2)
+      ax.fill_between(timesteps, A*fill_between[0][:, ix].squeeze(), A*fill_between[1][:, ix].squeeze(), color='gray', alpha=0.2)
 
     ymin = np.min(lines_list); ymax = np.max(lines_list); ytmp = abs(ymin - ymax)
     ax.set_ylim([ymin-0.1*ytmp, ymax+0.1*ytmp])
