@@ -51,12 +51,14 @@ def check_FK():
 
 def check_IK():
     # Create poses with pinocchio FK and calculate the input with dh_IK
-    # TODO: WARN: it projects points that are too far to the limits of its working space.
     GCs = [(i, ii, iii) for i in [-1.0, 1.0] for ii in [-1.0, 1.0] for iii in [-1.0, 1.0]]
     for _ in tqdm(range(1000)):
         home_pose = np.array([ j.limit_range.sample() for j in dh_rob.joints ]).reshape(7,1)
         T_pin = pin_rob.FK(home_pose)
-
+        # T_pin = np.array([[0.0, -1.0, 0.0,  0.32],  # out of reachable set position
+        #                 [0.0,  0.0, 1.0,  0.71],
+        #                 [-1.0, 0.0, 0.0, -0.89],
+        #                 [0.0,  0.0, 0.0,  1.0 ]], dtype='float')
         for GC2, GC4, GC6 in GCs:
             solu, _ = IK_anallytical(p07_d=T_pin[:3,3:4], R07_d=T_pin[:3,:3], DH_model=dh_rob, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False)
             for f in np.arange(-1.0, 1.0, 0.2):
@@ -87,6 +89,6 @@ def check_get2Base():
             assert False
 
 if __name__ == "__main__":
-    check_FK()
-    check_get2Base()
+    # check_FK()
+    # check_get2Base()
     check_IK()
