@@ -47,6 +47,11 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
     # Transform goal in dh base frame
     p07_d, R07_d = DH_model.get_goal_in_dh_base_frame(p07_d, R07_d)
 
+    # Make sure position is within the reachable space
+    dst1 = d_se + d_ew + d_wt
+    dst2 = np.linalg.norm(p07_d-l0bs)
+    assert dst1  >= dst2, 'Unreachable position {} >= {}'.format(dst1, dst2)
+
     # Shoulder to Wrist axis
     x0sw = p07_d - l0bs - R07_d.dot(l7wt)  # p26
 
@@ -98,7 +103,7 @@ def IK_elbow(DH_model, x0sw, GC4, verbose):
     th4 = GC4*acos(c_th4)
     R34 = DH_model.get_i_R_j(3,4, [th4])  # reference plane
     fset_4 = [ContinuousSet(-np.pi, np.pi, False, True) if th4 in DH_model.joint(3).limit_range else ContinuousSet()]
-    plot_params_4 = [fset_4[3] if verbose else None]
+    plot_params_4 = [fset_4[0] if verbose else None]
     if verbose:
         print('Theta4:', th4)
     return R34, th4, fset_4, plot_params_4
