@@ -36,12 +36,10 @@ def plan(dt, T_home, IK, J, seqFK, h=0.75, throw_height=0.35, swing_size=0.46, s
 
     # Cartesian velocities
     alpha = 0.
-    ca = np.cos(alpha)
-    sa = np.sin(alpha)
     v_throw = 0.5*g*tf # in z direction
     v_catch = -0.2*v_throw
     v0 = np.zeros((3,1))
-    v1 = np.array([0.,sa*v_throw, ca*v_throw]).reshape(3,1)
+    v1 = np.array([0.,np.sin(alpha)*v_throw, np.cos(alpha)*v_throw]).reshape(3,1)
     v2 = np.zeros((3,1))
     vs = [v2, v0, v1, v2]
 
@@ -53,9 +51,7 @@ def plan(dt, T_home, IK, J, seqFK, h=0.75, throw_height=0.35, swing_size=0.46, s
     for i in range(len(q_s)):
         # if i ==1:
         #     alpha = -0.2
-        #     ca = np.cos(alpha)
-        #     sa = np.sin(alpha)
-        #     rx = -np.array([-sa, 0, ca]).reshape(3,1)
+        #     rx = -np.array([-np.sin(alpha), 0, np.cos(alpha)]).reshape(3,1)
         #     # rx = -vs[i]/np.linalg.norm(vs[1])
         #     ry = T_home[:3,1:2]
         #     # ry = np.cross(rz, rx, axis=0)
@@ -88,7 +84,6 @@ def plan(dt, T_home, IK, J, seqFK, h=0.75, throw_height=0.35, swing_size=0.46, s
         qv_s[i] = np.linalg.inv(H).dot(b)[:7]
 
     q_traj, qv_traj, qa_traj, qj_traj = MinJerk.get_multi_interval_minjerk_xyz(dt, ts, q_s, qv_s, smooth_acc=False, only_pos=False, i_a_end=0)
-    # q_traj, qv_traj, qa_traj, qj_traj = np.asarray(q_traj).T, np.asarray(qv_traj).T, np.asarray(qa_traj).T, np.asarray(qj_traj).T
 
     q_traj = q_traj.reshape(-1,7,1)
 

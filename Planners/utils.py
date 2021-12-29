@@ -6,7 +6,7 @@ sys.path.append(PROJECT_ROOT)
 from juggling_apollo.utils import *
 from examples.utils import plot_A
 from juggling_apollo.settings import g
-
+from kinematics import utilities
 
 def set_axes_equal(ax):
     """Set 3D plot axes to equal scale.
