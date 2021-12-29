@@ -6,7 +6,12 @@ import MinJerk
 from utils import g, plot_A, set_axes_equal
 
 
-def plan(dt, T_home, kinematics, h=0.65, throw_height=0.25, swing_size=0.46, slower=1.0, rep=1, verbose=False):
+T_home = np.array([[0.0, -1.0, 0.0,  0.3],  # uppword orientation(cup is up)
+                   [0.0,  0.0, 1.0,  0.9],
+                   [-1.0, 0.0, 0.0, -0.5],
+                   [0.0,  0.0, 0.0,  1.0 ]], dtype='float')
+
+def plan(dt, kinematics, h=0.65, throw_height=0.25, swing_size=0.46, slower=1.0, rep=1, verbose=False):
     """
     Args:
         dt ([type]): [description]
@@ -118,7 +123,7 @@ def plan(dt, T_home, kinematics, h=0.65, throw_height=0.25, swing_size=0.46, slo
 
 
 
-def plan2(dt, T_home, kinematics, h=0.45, throw_height=0.15, swing_size=0.46, slower=1.0, rep=1, verbose=False):
+def plan2(dt, kinematics, h=0.5, throw_height=0.0, swing_size=0.46, slower=1.0, rep=1, verbose=False):
     """
     Args:
         dt ([type]): [description]
@@ -135,59 +140,37 @@ def plan2(dt, T_home, kinematics, h=0.45, throw_height=0.15, swing_size=0.46, sl
     dt = dt/slower
 
     tf = 2.0*math.sqrt(2.0*(h-throw_height)/g)  # time of flight
-    t1 = 0.6                     # throw time
-    t2 = t1 + 0.5*tf              # home time
+    t1 = 0.4                     # throw time
+    t2 = t1 + 1.*tf              # home time
     ts = [0., t1, t2]
     print('TCatch', t2)
 
     # Cartesian positions
-    catch_height = 0.05
-    throw_height = throw_height + catch_height
-    x0 = np.array([0., swing_size, throw_height]).reshape(3,1)   # home/catch position
-    x1 = np.array([0., swing_size, throw_height]).reshape(3,1)   # throw position
+    x0 = np.array([0., 0., 0]).reshape(3,1)   # home/catch position
+    x1 = np.array([0., 0., 0-throw_height]).reshape(3,1)   # throw position
     xs = [x0, x1, x0]
 
     # Cartesian velocities
     alpha = 0.
     v_throw = 0.5*g*tf # in z direction
-    v_catch = -0.2*v_throw
     v0 = np.zeros((3,1))
     v1 = np.array([0.,np.sin(alpha)*v_throw, np.cos(alpha)*v_throw]).reshape(3,1)   # throw velocity
     v2 = np.zeros((3,1))     # catch velocity
     vs = [v0, v1, v2]
 
-    a_s = [None, None, ]
     # Joint Positions
     q_s = np.zeros((len(xs),7,1))
     Tmp = T_home.copy()
     R = Tmp[:3,:3]
     for i in range(len(q_s)):
-        # if i ==1:
-        #     alpha = -0.2
-        #     rx = -np.array([-np.sin(alpha), 0, np.cos(alpha)]).reshape(3,1)
-        #     # rx = -vs[i]/np.linalg.norm(vs[1])
-        #     ry = T_home[:3,1:2]
-        #     # ry = np.cross(rz, rx, axis=0)
-        #     rz = np.cross(rx, ry, axis=0)
-        #     # rx = -np.cross(rz, T_home[:3,1:2], axis=0)
-        #     R = np.hstack((rx, ry, rz))
-        # else:
-        #     R = T_home[:3,:3]
         Tmp[:3,:3] = R
         Tmp[:3,3:4] = T_home[:3, 3:4] + xs[i]
-        # print(Tmp)
         q_s[i] = kinematics.IK(Tmp)
 
     # Joint Velocities
-    W = np.eye(7)
-    W[3:,3:] *= 1.
-    W[-1,-1] = 20.
-    W[-2,-2] = 24.
-    W[-3,-3] = 44.
-    W[-4,-4] = 44.
-
-    H = np.zeros((10,10))
-    H[:7,:7] = W
+    W = np.diag([0.1, 1., 1, 44, 44, 24, 144])
+    H = np.zeros((10,10)); H[:7,:7] = W
+    
     b = np.zeros((10,1))
     qv_s = np.zeros((len(xs),7,1))
     for i in range(len(qv_s)):
@@ -195,10 +178,11 @@ def plan2(dt, T_home, kinematics, h=0.45, throw_height=0.15, swing_size=0.46, sl
         H[7:,:7] = -Ji
         H[:7,7:] = Ji.T
         # qv_s[i] = np.linalg.pinv(Ji).dot(vs[i])
+        # qv_s[i,:4] = np.linalg.pinv(Ji[:, :4]).dot(vs[i])
         b[7:] = -vs[i]
         qv_s[i] = np.linalg.inv(H).dot(b)[:7]
 
-    q_traj, qv_traj, qa_traj, qj_traj = MinJerk.get_multi_interval_multi_dim_minjerk(dt, ts, q_s, qv_s, smooth_acc=True, only_pos=False, i_a_end=0)
+    q_traj, qv_traj, qa_traj, qj_traj = MinJerk.get_multi_interval_multi_dim_minjerk(dt, ts, q_s, qv_s, smooth_acc=False, only_pos=False, i_a_end=0)
     T_traj = kinematics.seqFK(q_traj)
 
     if verbose:
