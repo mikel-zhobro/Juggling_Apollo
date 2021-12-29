@@ -56,9 +56,9 @@ T_home = np.array([[0.0, -1.0, 0.0,  0.32],  # uppword orientation(cup is up)
                    [0.0,  0.0, 1.0,  0.41],
                    [-1.0, 0.0, 0.0, -0.69],
                    [0.0,  0.0, 0.0,  1.0 ]], dtype='float')
-T_home = np.array([[0.0, -1.0, 0.0,  0.47],  # uppword orientation(cup is up)
-                   [0.0,  0.0, 1.0,  0.52],
-                   [-1.0, 0.0, 0.0, -0.7],
+T_home = np.array([[0.0, -1.0, 0.0,  0.3],  # uppword orientation(cup is up)
+                   [0.0,  0.0, 1.0,  0.9],
+                   [-1.0, 0.0, 0.0, -0.5],
                    [0.0,  0.0, 0.0,  1.0 ]], dtype='float')
 T_dhtcp_tcp = np.eye(4)
 T_dhtcp_tcp[:3,:3] = T_home[:3,:3].T
@@ -77,8 +77,7 @@ rArmKinematics_nn = ApolloArmKinematics(r_arm=True)               ## kinematics 
 
 # C) PLANNINGs
 qh = rArmKinematics.IK(T_home)
-print(qh)
-q_traj_des, T_traj = OneBallThrowPlanner.plan2(dt, T_home, kinematics=rArmKinematics, verbose=True)
+q_traj_des, T_traj = OneBallThrowPlanner.plan2(dt, kinematics=rArmKinematics, verbose=True)
 
 
 N = len(q_traj_des)
