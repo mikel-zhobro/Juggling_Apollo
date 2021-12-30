@@ -165,6 +165,11 @@ class DH_revolut():
         return TMP.dot(self.i_J_j(0, 7, q))
 
     def H(self, q, rbase_frame=False):
+        """
+            Implementation from paper: "A Systematic Approach to Computing the Manipulator Jacobian and Hessian
+                                       using the Elementary Transform Sequence"
+            Jesse Haviland, Peter Corke, Fellow, IEEE, https://arxiv.org/pdf/2010.08696.pdf
+        """
         n = self.n_joints
 
         H = np.zeros((6, n, n))
