@@ -77,22 +77,44 @@ rArmKinematics    = ApolloArmKinematics(r_arm=True, noise=NOISE)  ## kinematics 
 rArmKinematics_nn = ApolloArmKinematics(r_arm=True)               ## kinematics without noise  (used to calculate measurments, plays the wrole of a localization system)
 
 # C) PLANNINGs
-for z in np.arange(-0.4, -0.2, 0.05):
-    for y in np.arange(0.8, 1., 0.05):
-        for x in np.arange(0.3, 0.5, 0.05):
+if False:
+    for z in np.arange(-0.4, -0.2, 0.05):
+        for y in np.arange(0.8, 1., 0.05):
+            for x in np.arange(0.3, 0.5, 0.05):
 
-            T_home = np.array([[0.0, -1.0, 0.0,  x],  # uppword orientation(cup is up)
-                            [0.0,  0.0, 1.0,     y],
-                            [-1.0, 0.0, 0.0,     z],
-                            [0.0,  0.0, 0.0,  1.0 ]], dtype='float')
-            raw_input("Press Enter to continue...")
-            try:
-                qh = rArmKinematics.IK(T_home)
-                rArmInterface.go_to_home_position(qh, 100)
-                print(x,y,z)
-            except:
-                print("Not vaild home")
-                print(x,y,z)
+                T_home = np.array([[0.0, -1.0, 0.0,  x],  # uppword orientation(cup is up)
+                                [0.0,  0.0, 1.0,     y],
+                                [-1.0, 0.0, 0.0,     z],
+                                [0.0,  0.0, 0.0,  1.0 ]], dtype='float')
+                raw_input("Press Enter to continue...")
+                try:
+                    qh = rArmKinematics.IK(T_home)
+                    rArmInterface.go_to_home_position(qh, 100)
+                    print(x,y,z)
+                except:
+                    print("Not vaild home")
+                    print(x,y,z)
+
+
+# C) Rotate around shoulder-wrist axis
+if True:
+    T_home = np.array([[0.0, -1.0, 0.0,  0.3],  # uppword orientation(cup is up)
+                    [0.0,  0.0, 1.0,  0.9],
+                    [-1.0, 0.0, 0.0, -0.5],
+                    [0.0,  0.0, 0.0,  1.0 ]], dtype='float')
+    _, _, _, _, _, solu, feasible_set = rArmKinematics.IK(T_home, for_seqik=True)
+    startt = feasible_set.b; endd = feasible_set.a
+    rArmInterface.go_to_home_position(solu(feasible_set.b), 2000)
+
+    raw_input("Press Enter to continue...")
+    for i in range(4):
+        for psi in np.linspace(startt, endd, 200):
+            qh = solu(psi)
+            rArmInterface.go_to_home_position(qh, it_time=10, eps=3., wait=1, zero_speed= (psi==endd), verbose=False)
+            
+        tmp = endd
+        endd =startt
+        startt = tmp
 
 # q_traj_des, T_traj = OneBallThrowPlanner.plan2(dt, T_home, kinematics=rArmKinematics, verbose=True)
 
