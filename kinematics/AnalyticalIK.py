@@ -395,23 +395,49 @@ def tangent_type(an, bn, cn, ad, bd, cd, joint, verbose=False):
     roots = sorted(find_root(theta_min, True) + find_root(theta_max, False), key=lambda r: r.root)
 
     # Joint Limits feasible sets
+    # Jumps
+    tmp = list()
+    print("jumpings ", jumpings)
+    for i in range(0, len(jumpings), 2):
+        jump1 = jumpings[i]; th1_tmp = theta_f(jump1.root)
+        jump2 = jumpings[i+1]; th2_tmp = theta_f(jump2.root)
+        if (th1_tmp < theta_min) and (th2_tmp < theta_max):
+            jump2.enters=True
+            tmp.append(jump2)
+        elif (th1_tmp > theta_max) and (th2_tmp > theta_min):
+            jump2.enters=True
+            tmp.append(jump2)
+        elif (th1_tmp > theta_min) and (th2_tmp > theta_max):
+            jump1.enters=False
+            tmp.append(jump1)
+        elif (th1_tmp < theta_max) and (th2_tmp < theta_min):
+            jump1.enters=False
+            tmp.append(jump1)    
+            
+    print("tmps ", tmp)
+    root_jumps  = sorted(tmp + roots, key=lambda r: r.root)
+    print("root jumps ", root_jumps)
+    
+    # Roots
     # The idea is to go through all the roots and capture the feasible regions
     # of roots entering the limits. If the last root entered, the rest is feasible set.
     prev_entering = -np.pi
     limits_feasible_set = ContinuousSet()
-    if len(roots)>0:
-        for i, r in enumerate(roots):
+    if len(root_jumps)>0:
+        for i, r in enumerate(root_jumps):
             if r.enters:
                 prev_entering = r.root
             else:
-                limits_feasible_set.add_c_range(prev_entering, r.root)
-        if roots[-1].enters:
-            limits_feasible_set.add_c_range(prev_entering, np.pi)
+                if prev_entering is not None:
+                    limits_feasible_set.add_c_range(prev_entering, r.root)
+                prev_entering = None
+        if root_jumps[-1].enters:
+            if prev_entering is not None:
+                limits_feasible_set.add_c_range(prev_entering, np.pi)
     else:
         if  theta_min <= theta_f(2*random()*np.pi - np.pi) <= theta_max and theta_min <= theta_f(2*random()*np.pi - np.pi) <= theta_max:
             limits_feasible_set.add_c_range(-np.pi, np.pi)
     feasible_set -= limits_feasible_set
-
     # Ploting
     if verbose:
         title = r'$\theta_{}$ -- tangent_type'.format(joint.index+1)
@@ -499,6 +525,7 @@ def IK_heuristic1(p07_d, R07_d, DH_model, verbose=False):
 def IK_heuristic2(p07_d, R07_d, DH_model):
     # Finds best branch of solutions
     biggest_feasible_set = ContinuousSet()
+    siz = -15555.
     solu_function = None
     GC2_final = 1.0
     GC4_final = 1.0
@@ -506,8 +533,9 @@ def IK_heuristic2(p07_d, R07_d, DH_model):
     GCs = [(i, ii, iii) for i in [-1.0, 1.0] for ii in [-1.0, 1.0] for iii in [-1.0, 1.0]]
     for GC2, GC4, GC6 in GCs:
         sf, psi_feasible_set = IK_anallytical(p07_d, R07_d, DH_model, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False, p06=None, p07=None)
-        if psi_feasible_set.max_range().size > biggest_feasible_set.size:
+        if psi_feasible_set.max_range().size > siz:
             biggest_feasible_set = psi_feasible_set.max_range()
+            siz = biggest_feasible_set.size
             solu_function = sf
             GC2_final = GC2
             GC4_final = GC4
