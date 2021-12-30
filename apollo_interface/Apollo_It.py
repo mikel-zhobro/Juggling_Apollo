@@ -404,8 +404,8 @@ class ApolloInterface:
         obs_np = self.obs_to_numpy(observation)
         return obs_np
 
-    def go_to_home_position(self, home_pose=None, it_time=4000):
-        eps = 3.  # degree
+    def go_to_home_position(self, home_pose=None, it_time=4000, eps=3., wait=2000, zero_speed=True, verbose=True):
+        # eps: degree
         if home_pose is None:
             home_pose = np.zeros((7,1))
 
@@ -417,7 +417,8 @@ class ApolloInterface:
                 if np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze()) <= eps:
                     break
         else:
-            print("Not using IK_dynamics")
+            if verbose:
+                print("Not using IK_dynamics")
 
             dt = 0.002
             P = 1.6
@@ -432,7 +433,7 @@ class ApolloInterface:
 
             # for i in range(int(5./dt)): # try for 5 sec
             i = 0; k = 0
-            while True and k < 2000:
+            while True and k < wait:
                 if all((180.0/np.pi)*np.abs(error) <= eps):
                     k +=1
                 if i==0:
@@ -445,9 +446,11 @@ class ApolloInterface:
 
                 controller_Input = error_P*P + error_I*I + error_D*D
                 obs = self.go_to_speed_array(controller_Input, int(dt*1000), globs.bursting)
-        obs = self.go_to_speed_array(np.zeros_like(home_pose), it_time/4, globs.bursting)
-        print("{}. HOME with error: {} deg".format(i, (180.0 / np.pi)*np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze())))
-        print((180.0 / np.pi)*(np.array(home_pose).squeeze()- obs[:,0].squeeze()))
+        if zero_speed:
+            obs = self.go_to_speed_array(np.zeros_like(home_pose), it_time/4, globs.bursting)
+        if verbose:
+            print("{}. HOME with error: {} deg".format(i, (180.0 / np.pi)*np.linalg.norm(np.array(home_pose).squeeze()-obs[:,0].squeeze())))
+            print((180.0 / np.pi)*(np.array(home_pose).squeeze()- obs[:,0].squeeze()))
         return obs[:,0:2].reshape(7, 2)
 
 def plot_simulation(dt, u, thetas_s, vel_s, acc_s, dP_N_vec=None, thetas_s_des=None, title=None, vertical_lines=None, horizontal_lines=None):
