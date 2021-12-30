@@ -70,7 +70,7 @@ class ApolloArmKinematics():
         q_joints = solu(psi)                          # Start configuration
 
         if for_seqik:
-            return q_joints, GC2, GC4, GC6, psi, feasible_set
+            return q_joints, GC2, GC4, GC6, psi, solu, feasible_set
         else:
             return q_joints
 
@@ -97,7 +97,7 @@ class ApolloArmKinematics():
         psi_maxs = np.zeros((N))
 
         # Find the solution branch we shall follow in this sequence and starting psi
-        q_joint_state_start, GC2, GC4, GC6, psi, _ = self.IK(T_dhTCP_traj[0], for_seqik=True, considered_joints=considered_joints)   # Start configuration
+        q_joint_state_start, GC2, GC4, GC6, psi, _, _ = self.IK(T_dhTCP_traj[0], for_seqik=True, considered_joints=considered_joints)   # Start configuration
         # Add start configuration
         joint_trajs[0] = q_joint_state_start
         for i, T_i in enumerate(T_dhTCP_traj[1:]): # position_traj and thetas should start from 0
