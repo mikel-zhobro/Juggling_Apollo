@@ -396,8 +396,8 @@ def tangent_type(an, bn, cn, ad, bd, cd, joint, verbose=False):
 
     # Joint Limits feasible sets
     # Jumps
+    # add jumps in the root_jumps list
     tmp = list()
-    print("jumpings ", jumpings)
     for i in range(0, len(jumpings), 2):
         jump1 = jumpings[i]; th1_tmp = theta_f(jump1.root)
         jump2 = jumpings[i+1]; th2_tmp = theta_f(jump2.root)
@@ -413,14 +413,11 @@ def tangent_type(an, bn, cn, ad, bd, cd, joint, verbose=False):
         elif (th1_tmp < theta_max) and (th2_tmp < theta_min):
             jump1.enters=False
             tmp.append(jump1)    
-            
-    print("tmps ", tmp)
-    root_jumps  = sorted(tmp + roots, key=lambda r: r.root)
-    print("root jumps ", root_jumps)
     
-    # Roots
-    # The idea is to go through all the roots and capture the feasible regions
+    # Roots & jumps
+    # The idea is to go through all the roots&jumps and capture the feasible regions
     # of roots entering the limits. If the last root entered, the rest is feasible set.
+    root_jumps  = sorted(tmp + roots, key=lambda r: r.root)
     prev_entering = -np.pi
     limits_feasible_set = ContinuousSet()
     if len(root_jumps)>0:
