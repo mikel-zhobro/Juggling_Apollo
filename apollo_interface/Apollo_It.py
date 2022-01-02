@@ -69,15 +69,16 @@ JOINTS_V_LIMITS = {
     "L_WAA":(-3.21,3.21)
 }
 
-#  Joints |  Joint limits  |  Velocity limits   | Moment limits
-# --------------------------------------------------------------
-# A1 (J1) |     +/-170     |   110,0 degree/s   |     176 Nm
-# A2 (J2) |     +/-120     |   110,0 degree/s   |     176 Nm
-# E1 (J3) |     +/-170     |   128,0 degree/s   |     100 Nm
-# A3 (J4) |     +/-120     |   128,0 degree/s   |     100 Nm
-# A4 (J5) |     +/-170     |   204,0 degree/s   |     100 Nm
-# A5 (J6) |     +/-120     |   184,0 degree/s   |     38 Nm
-# A6 (J7) |     +/-170     |   184,0 degree/s   |     38 Nm
+
+#  Joints |           Joint limits          |  Velocity limits   | Moment limits
+# ----------------------------------------------------------------------------------
+# A1 (J1) |     +/-170   (-169.59, 169.59)  |   110,0 degree/s   |     176 Nm
+# A2 (J2) |     +/-120   (-177.61, -5.72)   |   110,0 degree/s   |     176 Nm
+# E1 (J3) |     +/-170   (-108.86, 229.18)  |   128,0 degree/s   |     100 Nm
+# A3 (J4) |     +/-120   (-119.74, 119.74)  |   128,0 degree/s   |     100 Nm
+# A4 (J5) |     +/-170   (-177.61, 77.34)   |   204,0 degree/s   |     100 Nm
+# A5 (J6) |     +/-120   (-119.74, 119.74)  |   184,0 degree/s   |     38 Nm
+# A6 (J7) |     +/-170   (-169.59, 169.59)  |   184,0 degree/s   |     38 Nm
 
 
 def ref_name_to_index(posture):
@@ -505,5 +506,11 @@ def main():
 
         plot_simulation(dt, u, poses, velocities, acc)
 
+
+def main2():
+    for j in joints[:7]:
+        p = JOINTS_LIMITS[j]
+        A = 180./np.pi
+        print ((p[0] *A, p[1]*A))
 if __name__ == "__main__":
-    main()
+    main2()
