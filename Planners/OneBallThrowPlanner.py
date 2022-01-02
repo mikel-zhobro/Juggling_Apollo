@@ -1,9 +1,10 @@
 import math
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.optimize import minimize
 
 import MinJerk
-from utils import g, plot_A, set_axes_equal
+from utils import g, plot_A, set_axes_equal, utilities
 
 
 T_home = np.array([[0.0, -1.0, 0.0,  0.3],  # uppword orientation(cup is up)
@@ -170,7 +171,7 @@ def plan2(dt, kinematics, h=0.5, throw_height=0.0, swing_size=0.46, slower=1.0, 
     # Joint Velocities
     W = np.diag([0.1, 1., 1, 44, 44, 24, 144])
     H = np.zeros((10,10)); H[:7,:7] = W
-    
+
     b = np.zeros((10,1))
     qv_s = np.zeros((len(xs),7,1))
     for i in range(len(qv_s)):
@@ -181,6 +182,8 @@ def plan2(dt, kinematics, h=0.5, throw_height=0.0, swing_size=0.46, slower=1.0, 
         # qv_s[i,:4] = np.linalg.pinv(Ji[:, :4]).dot(vs[i])
         b[7:] = -vs[i]
         qv_s[i] = np.linalg.inv(H).dot(b)[:7]
+
+        # constrained_optim(kinematics.J, q_s[i], qv_s[i], vs[i] )
 
     q_traj, qv_traj, qa_traj, qj_traj = MinJerk.get_multi_interval_multi_dim_minjerk(dt, ts, q_s, qv_s, smooth_acc=False, only_pos=False, i_a_end=0)
     T_traj = kinematics.seqFK(q_traj)
@@ -210,3 +213,52 @@ def plan2(dt, kinematics, h=0.5, throw_height=0.0, swing_size=0.46, slower=1.0, 
     return q_traj, T_traj
 
 
+
+def constrained_optim(J, q_init, vgoal, jac=None):
+    con = lambda i: lambda qdot: J[i, :].dot(qdot) - vgoal[i]
+    cons = (
+            # {'type':'eq', 'fun': con(0)},
+            # {'type':'eq', 'fun': con(1)},
+            # {'type':'eq', 'fun': con(2)},
+            {'type':'ineq', 'fun': lambda qdot: 0.5 - abs(J[0, :].dot(qdot))},
+            {'type':'ineq', 'fun': lambda qdot: 0.5 - abs(J[1, :].dot(qdot))},
+            )
+
+    bounds = [utilities.JOINTS_V_LIMITS[j] for j in utilities.R_joints]
+
+    def fun(q_dot):
+        qd = np.asarray(q_dot).reshape(7,1).copy()
+        return q_dot.T.dot(q_dot)
+
+    def fun(qdot):
+        return - J[2, :].dot(qdot)
+
+    # def fun(qdot):
+    #     v = J[:3, :].dot(qdot)
+    #     return - v.dot(v)
+
+    result = minimize(fun, q_init, method="SLSQP", bounds=bounds, constraints=cons)
+    if not result.success:
+        print("optim was unseccussfull")
+        return q_init
+    return result.x
+
+
+
+def findBestThrowPosition(J, q_init, qdot_init, vgoal, jac=None):
+    con = lambda i: lambda qqd: J(qqd[:7])[i, :].dot(qqd[7:]) - vgoal[i]
+    cons = (
+            {'type':'eq', 'fun': con(0)},
+            {'type':'eq', 'fun': con(1)},
+    )
+
+    bounds =  [utilities.JOINTS_LIMITS[j] for j in utilities.R_joints] + [utilities.JOINTS_V_LIMITS[j] for j in utilities.R_joints]
+
+    def fun(qqd):
+        return - J(qqd[:7])[2, :].dot(qqd[7:])
+
+    result = minimize(fun, (q_init, qdot_init) , method="SLSQP", bounds=bounds, constraints=cons)
+    if not result.success:
+        print("optim was unseccussfull")
+        return q_init
+    return result.x
