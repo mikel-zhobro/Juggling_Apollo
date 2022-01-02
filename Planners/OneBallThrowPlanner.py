@@ -183,7 +183,7 @@ def plan2(dt, kinematics, h=0.5, throw_height=0.0, swing_size=0.46, slower=1.0, 
         b[7:] = -vs[i]
         qv_s[i] = np.linalg.inv(H).dot(b)[:7]
 
-        # constrained_optim(kinematics.J, q_s[i], qv_s[i], vs[i] )
+        # findBestThrowPosition(kinematics.FK, kinematics.J, q_s[i], qv_s[i], vs[i], T_home[:3,:3])
 
     q_traj, qv_traj, qa_traj, qj_traj = MinJerk.get_multi_interval_multi_dim_minjerk(dt, ts, q_s, qv_s, smooth_acc=False, only_pos=False, i_a_end=0)
     T_traj = kinematics.seqFK(q_traj)
@@ -245,12 +245,12 @@ def constrained_optim(J, q_init, vgoal, jac=None):
 
 
 
-def findBestThrowPosition(J, q_init, qdot_init, vgoal, jac=None):
+def findBestThrowPosition(FK, J, q_init, qdot_init, vgoal, R_des, jac=None):
     con = lambda i: lambda qqd: J(qqd[:7])[i, :].dot(qqd[7:]) - vgoal[i]
-    cons = (
-            {'type':'eq', 'fun': con(0)},
-            {'type':'eq', 'fun': con(1)},
-    )
+    con_R = lambda i: lambda qqd: FK(qqd[:7])[i,i] - R_des[i,i]
+
+    cons = tuple({'type':'eq', 'fun': con(i)} for i in range(2)) + tuple({'type':'eq', 'fun': con_R(i)} for i in range(3))
+
 
     bounds =  [utilities.JOINTS_LIMITS[j] for j in utilities.R_joints] + [utilities.JOINTS_V_LIMITS[j] for j in utilities.R_joints]
 
@@ -258,6 +258,7 @@ def findBestThrowPosition(J, q_init, qdot_init, vgoal, jac=None):
         return - J(qqd[:7])[2, :].dot(qqd[7:])
 
     result = minimize(fun, (q_init, qdot_init) , method="SLSQP", bounds=bounds, constraints=cons)
+    qqd = result.x
     if not result.success:
         print("optim was unseccussfull")
         return q_init
