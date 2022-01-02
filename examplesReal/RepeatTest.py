@@ -69,7 +69,7 @@ u_ff_vec              = np.zeros([ILC_it, N_1, N_joints, 1], dtype='float')
 cartesian_error_norms = np.zeros([ILC_it, 6, 1], dtype='float')  # (x,y,z,nx,ny,nz)
 joint_error_norms     = np.zeros([ILC_it, N_joints, 1], dtype='float')
 joints_d_vec          = np.zeros([ILC_it, N_1, N_joints, 1], dtype='float')
-d_xyz_vec             = np.zeros([ILC_it, N, 3], dtype='float')
+d_xyz_rpy_vec         = np.zeros([ILC_it, N, 6], dtype='float')
 ########################################################################################################
 
 
@@ -102,7 +102,7 @@ for j in range(ILC_it):
   u_ff_vec[j]           = u_ff
   q_traj_des_vec[j]     = q_traj_des
   # c. Errors
-  d_xyz_vec[j]          = d_xyz   # actual cartesian errors
+  d_xyz_rpy_vec[j]      = delta   # actual cartesian errors
   joints_d_vec[j]       = q_traj_des[1:] - q_traj         # actual joint space error
   joint_error_norms[j]  = np.linalg.norm(joints_d_vec[j, :], axis=0, keepdims=True).T
   cartesian_error_norms[j]  = np.linalg.norm(delta, axis=0, keepdims=True).T
@@ -131,7 +131,7 @@ if SAVING:
        joints_q_vec=joints_q_vec, joints_vq_vec=u_ff.reshape(1,-1,N_joints,1),                           # Joint Informations
        joints_aq_vec=joints_aq_vec, joint_torque_vec=joint_torque_vec,                   #        =|=
        u_ff_vec=joints_vq_vec,                                                           # Learned Trajectories (uff and disturbance)
-       d_xyz_vec=d_xyz_vec, joints_d_vec=joints_d_vec,                                   # Progress Measurments
+       d_xyz_rpy_vec=d_xyz_rpy_vec, joints_d_vec=joints_d_vec,                                   # Progress Measurments
        joint_error_norms=joint_error_norms, cartesian_error_norms=cartesian_error_norms,
        learnable_joints=learnable_joints)  # ILC parameters
 

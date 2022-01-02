@@ -139,7 +139,7 @@ disturbanc_vec        = np.zeros([ILC_it, Nf, N_joints], dtype='float')
 cartesian_error_norms = np.zeros([ILC_it, 6, 1], dtype='float')  # (x,y,z,nx,ny,nz)
 joint_error_norms     = np.zeros([ILC_it, N_joints, 1], dtype='float')
 joints_d_vec          = np.zeros([ILC_it, N_1, N_joints, 1], dtype='float')
-d_xyz_vec             = np.zeros([ILC_it, N, 3], dtype='float')
+d_xyz_rpy_vec         = np.zeros([ILC_it, N, 6], dtype='float')
 
 
 
@@ -234,10 +234,10 @@ for j in range(ILC_it):
   disturbanc_vec[j]     = np.squeeze([ilc.d for ilc in my_ilcs]).T  # learned joint space disturbances
   q_traj_des_vec[j]     = q_traj_des_i[1:]
   # c. Errors
-  d_xyz_vec[j]          = d_xyz   # actual cartesian errors
+  d_xyz_rpy_vec[j]      = delta   # actual cartesian errors
   joints_d_vec[j]       = delta_q_traj_des_i-delta_y_meas         # actual joint space error
-  joint_error_norms[j]  = np.linalg.norm(joints_d_vec[j, :], axis=0, keepdims=True).T
-  cartesian_error_norms[j]  = np.linalg.norm(delta, axis=0, keepdims=True).T
+  joint_error_norms[j]  = np.linalg.norm(joints_d_vec[j, :], axis=0, keepdims=True).T / N_1
+  cartesian_error_norms[j]  = np.linalg.norm(delta, axis=0, keepdims=True).T / N_1
 
 
   # For the next iteration
@@ -283,7 +283,7 @@ if False:
   plot_info(dt, learnable_joints,
             joints_q_vec=joints_q_vec, q_traj_des=q_traj_des_i[1:],
             u_ff_vec=u_ff_vec, q_v_traj=q_v_traj, cartesian_error_norms = cartesian_error_norms,
-            disturbanc_vec=disturbanc_vec, d_xyz=d_xyz, joint_error_norms=joint_error_norms,
+            disturbanc_vec=disturbanc_vec, d_xyz_rpy_vec=d_xyz_rpy_vec, joint_error_norms=joint_error_norms,
             v=True, p=True, dp=False, e_xyz=True, e=True, M=2)
 
 if SAVING:
@@ -298,7 +298,7 @@ if SAVING:
        joints_q_vec=joints_q_vec, joints_vq_vec=joints_vq_vec,                           # Joint Informations
        joints_aq_vec=joints_aq_vec, joint_torque_vec=joint_torque_vec,                   #        =|=
        disturbanc_vec=disturbanc_vec, u_ff_vec=u_ff_vec,                                 # Learned Trajectories (uff and disturbance)
-       d_xyz_vec=d_xyz_vec, joints_d_vec=joints_d_vec,                                   # Progress Measurments
+       d_xyz_rpy_vec=d_xyz_rpy_vec, joints_d_vec=joints_d_vec,                                   # Progress Measurments
        joint_error_norms=joint_error_norms, cartesian_error_norms=cartesian_error_norms,
        pattern=pattern, h=h, r_dwell=r_dwell, throw_height=throw_height,                 # SiteSwap Params
        swing_size=swing_size, w=w, slower=slower, rep=rep,

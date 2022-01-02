@@ -11,27 +11,28 @@ from juggling_apollo.utils import DotDict
 colors = ["r", 'g', 'b', 'k', 'c', 'm', 'y']
 line_types = ["-", "--", ":", '-.']
 
-def plot_A(lines_list, indexes_list=list(range(7)), labels=None, dt=1, xlabel="", ylabel="", limits=None, fill_between=None, index_labels=None):
+def plot_A(lines_list, indexes_list=list(range(7)), labels=None, dt=1, xlabel="", ylabel="", limits=None, fill_between=None, index_labels=None, degree=True, rows=1):
   # assert len(lines_list) == len(labels), "Please use same number of lines and labels"
-  A = 180./np.pi
+  A = 180./np.pi if degree else 1.
   # A = 1.
   N = len(lines_list)
   M = len(indexes_list)
   lines_list = A*np.asarray(lines_list)
   timesteps = dt*np.arange(lines_list[0].shape[0])
-  fig, axs = plt.subplots(1,M, figsize=(18, 3))
+  fig, axs = plt.subplots(rows,M/rows, figsize=(18, 3), sharex=True, sharey=True)
+
   axs = np.array(axs)
+  lines2 = []
   for iii, ax in enumerate(axs.flat):
     ix = indexes_list[iii]
     for i in range(N):
-      l = ax.plot(timesteps,  lines_list[i][:, ix].squeeze(),
-                              # color=colors[iii%len(colors)],
+      lines2 += ax.plot(timesteps,  lines_list[i][:, ix].squeeze(),
                               linestyle=line_types[i%len(line_types)],
-                              label=r"{} {}".format(r"$\theta_{}$".format(ix+1) if index_labels is None else index_labels[ix], labels[i] if labels is not None else ''))
+                              label= i*"_" + (r"$\theta_{}$".format(ix+1) if index_labels is None else index_labels[ix]))
     if limits is not None:
       ax.axhspan(A*limits[iii].a, A*limits[iii].b, color='gray', alpha=0.2)  # color=l[0].get_color()
     if fill_between is not None:
-      ax.fill_between(timesteps, A*fill_between[0][:, ix].squeeze(), A*fill_between[1][:, ix].squeeze(), color='gray', alpha=0.2)
+      ax.fill_between(timesteps, A*fill_between[0][:, ix].squeeze(), A*fill_between[1][:, ix].squeeze(), color='purple', alpha=0.2)
 
     ymin = np.min(lines_list); ymax = np.max(lines_list); ytmp = abs(ymin - ymax)
     ax.set_ylim([ymin-0.1*ytmp, ymax+0.1*ytmp])
@@ -39,17 +40,23 @@ def plot_A(lines_list, indexes_list=list(range(7)), labels=None, dt=1, xlabel=""
     # ax.set_title('joint ' + str(ix+1))
     ax.legend(loc='upper left')
 
-  # Put legend on last axis
-  # handles, labels = ax.get_legend_handles_labels()
-  # axs.flatten()[-1].legend(handles, labels, loc='upper center')
+  # Add extra legend for iteration space information
+  liness = []
+  labelss = []
   if limits is not None:
     liness = [plt.Rectangle((0,0),1,1, color='gray', alpha=0.2)]
     labelss = ['feasible set']
-    fig.legend(liness, labelss, loc ="lower center", mode=None)
 
-  fig.text(0.5, 0.04, xlabel, ha='center')
-  fig.text(0.04, 0.5, ylabel, va='center', rotation='vertical')
-  fig.tight_layout(rect=[0, 0.06, 1, 0.95])
+
+  if labels is not None:
+    liness = liness + lines2
+    labelss = labelss + [ labels[i] for i in range(N)  ]
+  fig.legend(liness, labelss, loc ="lower right", 
+              mode=None, borderaxespad=1, ncol=3, fontsize=10)
+
+  fig.text(0.5, 0.14, xlabel, ha='center')
+  fig.text(0.0, 0.5, ylabel, va='center', rotation='vertical')
+  fig.tight_layout(rect=[0., 0.16, 1, 0.95])
 
 
 def save(filename, **kwargs):
@@ -84,21 +91,24 @@ def plot_info(dt, learnable_joints=list(range(7)),
           joints_q_vec=None, q_traj_des=None,
           u_ff_vec=None, q_v_traj=None,
           joint_torque_vec=None,
-          disturbanc_vec=None, d_xyz=None,
+          disturbanc_vec=None, d_xyz_rpy_vec=None,
           joint_error_norms=None, cartesian_error_norms=None,
           v=True, p=True, dp=False, e_xyz=False, e=False, torque=False, N=None, M=1,
-          fname=None):
+          fname=None, kinematics=None):
 
   def save(typ):
     if fname is not None:
       fig = plt.gcf()
-      fig.set_size_inches((25.5, 8), forward=False)
+      # fig.set_size_inches((25.5, 8), forward=False)
       plt.savefig(fname+ "_" +typ + '.pdf', bbox_inches='tight')
+  
+  qlim = kinematics.limits if kinematics is not None else None
+  qvlim = kinematics.vlimits if kinematics is not None else None
 
   if joints_q_vec is not None and q_traj_des is not None and p:
-    line_list = [180./np.pi*q_traj_des] + list(180./np.pi*joints_q_vec[:N:M])
+    line_list = [q_traj_des] + list(joints_q_vec[:N:M])
     label_list = ["des"] + ["it="+str(i*M) for i in np.arange(len(line_list)-1)]
-    plot_A(line_list, learnable_joints, label_list, dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]")
+    plot_A(line_list, learnable_joints, label_list, dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$degree$]", limits=qlim)
     plt.suptitle("Angle Positions")
     save("angle_pos")
 
@@ -106,28 +116,31 @@ def plot_info(dt, learnable_joints=list(range(7)),
     line_list = [q_v_traj] + list(u_ff_vec[:N:M])
     label_list = ["performed"] + ["it="+str(i*M) for i in np.arange(len(line_list)-1)]
     plot_A(line_list, learnable_joints, fill_between=[np.max(u_ff_vec, axis=0), np.min(u_ff_vec, axis=0)],
-           labels=label_list, dt=dt, xlabel=r"$t$ [s]", ylabel=r" angle velocity [$\frac{grad}{s}$]")
+           index_labels=[r"$\dot{\theta}_%d$" %(i+1) for i in learnable_joints], labels=label_list, limits=qvlim,
+           dt=dt, xlabel=r"$t$ [s]", ylabel=r" angle velocity [$\frac{degree}{s}$]")
     plt.suptitle("Angle Velocities")
     save("angle_vel")
 
   if disturbanc_vec is not None and dp:
     line_list = list(disturbanc_vec[:N:M])
     label_list = ["it="+str(i*M) for i in range(len(line_list))]
-    plot_A(line_list, learnable_joints, label_list, dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
+    index_labels=[r"$d_%d$" %(i+1) for i in learnable_joints]
+    plot_A(line_list, learnable_joints, label_list, dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$degee$]",
+           index_labels=index_labels)
     plt.suptitle("Disturbance")
     save("disturbance")
 
-  if d_xyz is not None and e_xyz:
-    ls = ['x', 'y', 'z']
-    fig, axs = plt.subplots(3,1, figsize=(12,8))
-    for ii in range(3):
-      axs[ii].plot(np.abs(d_xyz[:, ii]), c=colors[ii], label="d_"+ls[ii], linestyle=line_types[0])
-      axs[ii].legend(loc=1)
+  if d_xyz_rpy_vec is not None and e_xyz:
+    ls = ['x', 'y', 'z', 'roll', 'pitch' ,'yaw']
+    plot_A(d_xyz_rpy_vec[0:2], list(range(6)), ["it0", "it1"], dt=dt, xlabel=r"$t$ [s]", ylabel=r"d [$m$]",
+           index_labels=ls, degree=False, rows=1)
     plt.suptitle("Cartesian Error Trajectories")
-    save("d_xyz")
+    save("d_xyz_rpy_vec")
 
   if joint_error_norms is not None and e:
-    plot_A([joint_error_norms], learnable_joints, ["L2-norm"], xlabel=r"$IT$", ylabel=r"angle [$rad$]")
+    index_labels=[r"$||\theta_%d - \theta^{des}_%d||_2$" %(i+1, i+1) for i in learnable_joints]
+    plot_A([joint_error_norms], learnable_joints, ["L2-norm"], xlabel=r"$IT$", ylabel=r"angle [$degree$]",
+           index_labels=index_labels)
     plt.suptitle("Joint angle errors through iterations")
     save("joint_error")
 
@@ -138,7 +151,8 @@ def plot_info(dt, learnable_joints=list(range(7)),
     save("cartesian_error")
 
   if joint_torque_vec is not None and torque:
-    plot_A([joint_torque_vec[-1]], learnable_joints, ["torque"], dt=dt, xlabel=r"$t$", ylabel=r"Newton")
+    plot_A([joint_torque_vec[-1]], learnable_joints, ["torque"], dt=dt, xlabel=r"$t$", ylabel=r"Newton",
+           index_labels=[r"$M_%d$" %(i+1) for i in learnable_joints])
     plt.suptitle("Torque trajectories for each joint")
     save("joint_torque")
 
@@ -171,5 +185,5 @@ def save_all(filename, special=None, **kwargs):
             joints_q_vec=ld.joints_q_vec, q_traj_des=ld.q_traj_des_vec[-1,1:],
             u_ff_vec=ld.u_ff_vec, q_v_traj=ld.joints_vq_vec[-1,],
             joint_torque_vec=ld.joint_torque_vec, cartesian_error_norms =ld.cartesian_error_norms,
-            disturbanc_vec=ld.disturbanc_vec, d_xyz=ld.d_xyz_vec[-1], joint_error_norms=ld.joint_error_norms,
-            v=True, p=True, dp=True, e_xyz=True, e=True, torque=True, M=1,fname=dir_exp)
+            disturbanc_vec=ld.disturbanc_vec, d_xyz_rpy_vec=ld.d_xyz_rpy_vec, joint_error_norms=ld.joint_error_norms,
+            v=True, p=True, dp=True, e_xyz=True, e=True, torque=True, M=1,fname=dir_exp, kinematics=ld.kinematics)

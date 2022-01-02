@@ -266,7 +266,7 @@ for jjoint in range(1):
          joints_q_vec=joints_q_vec, joints_vq_vec=joints_vq_vec,                           # Joint Informations
          joints_aq_vec=joints_aq_vec, joint_torque_vec=joint_torque_vec,                   #        =|=
          disturbanc_vec=disturbanc_vec, u_ff_vec=u_ff_vec,                                 # Learned Trajectories (uff and disturbance)
-         xyz_vec=xyz_vec, joints_d_vec=joints_d_vec, error_norms=error_norms, d_xyz=d_xyz, # Progress Measurments
+         xyz_vec=xyz_vec, joints_d_vec=joints_d_vec, error_norms=error_norms, d_xyz_rpy_vec=d_xyz_rpy_vec, # Progress Measurments
          tt=tt, yy=yy, zz=zz, uu=uu,                                                       # Minjerk Params
          learnable_joints=learnable_joints, alpha=alpha, n_ms=n_ms, n_ds=n_ds, ep_s=ep_s)  # ILC parameters
 
@@ -279,7 +279,7 @@ for jjoint in range(1):
     plot_info(dt, j, learnable_joints,
               joints_q_vec=joints_q_vec, q_traj_des=q_traj_des,
               u_ff_vec=u_ff_vec, q_v_traj=joints_vq_vec,
-              disturbanc_vec=disturbanc_vec, d_xyz=d_xyz, error_norms=error_norms,
+              disturbanc_vec=disturbanc_vec, d_xyz_rpy_vec=d_xyz_rpy_vec, error_norms=error_norms,
               v=True, p=True, dp=False, e_xyz=True, e=True)
 # Run Simulation with several repetition
 # rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL, u=u_arr[:-end_repeat], joint_home_config=q_start, repetitions=25, it=j)

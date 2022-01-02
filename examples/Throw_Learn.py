@@ -29,7 +29,7 @@ UB = 6.5
 CARTESIAN_ERROR = False
 NOISE=0.0
 
-ILC_it = 22                                # number of ILC iteration
+ILC_it = 2                                # number of ILC iteration
 end_repeat = 0  if not FREQ_DOMAIN else 0 # repeat the last position value this many time
 
 # Learnable Joints
@@ -77,7 +77,7 @@ rArmKinematics_nn = ApolloArmKinematics(r_arm=True)               ## kinematics 
 
 # C) PLANNINGs
 qh = rArmKinematics.IK(T_home)
-q_traj_des, T_traj = OneBallThrowPlanner.plan2(dt, kinematics=rArmKinematics, verbose=True)
+q_traj_des, T_traj = OneBallThrowPlanner.plan2(dt, kinematics=rArmKinematics, verbose=False)
 
 
 N = len(q_traj_des)
@@ -131,12 +131,12 @@ disturbanc_vec        = np.zeros([ILC_it, Nf, N_joints], dtype='float')
 cartesian_error_norms = np.zeros([ILC_it, 6, 1], dtype='float')  # (x,y,z,nx,ny,nz)
 joint_error_norms     = np.zeros([ILC_it, N_joints, 1], dtype='float')
 joints_d_vec          = np.zeros([ILC_it, N_1, N_joints, 1], dtype='float')
-d_xyz_vec             = np.zeros([ILC_it, N, 3], dtype='float')
+d_xyz_rpy_vec         = np.zeros([ILC_it, N, 6], dtype='float')
 
 
 
 # D. Main Loop
-every_N = 1
+every_N = 2
 
 # Use linear model to compute first input
 u_ff   = np.zeros([N-1, N_joints, 1], dtype='float')
@@ -189,10 +189,10 @@ for j in range(ILC_it):
   disturbanc_vec[j]     = np.squeeze([ilc.d for ilc in my_ilcs]).T  # learned joint space disturbances
   q_traj_des_vec[j]     = q_traj_des_i
   # c. Errors
-  d_xyz_vec[j]          = d_xyz   # actual cartesian errors
+  d_xyz_rpy_vec[j]      = delta   # actual cartesian errors
   joints_d_vec[j]       = delta_q_traj_des_i-delta_y_meas         # actual joint space error
-  joint_error_norms[j]  = np.linalg.norm(joints_d_vec[j, :], axis=0, keepdims=True).T
-  cartesian_error_norms[j]  = np.linalg.norm(delta, axis=0, keepdims=True).T
+  joint_error_norms[j]  = np.linalg.norm(joints_d_vec[j, :], axis=0, keepdims=True).T / N_1
+  cartesian_error_norms[j]  = np.linalg.norm(delta, axis=0, keepdims=True).T / N_1
 
 
   # For the next iteration
@@ -220,14 +220,14 @@ for j in range(ILC_it):
 
   print_info(j, learnable_joints, joints_d_vec, d_xyz)
 
-  if False and j%every_N==1:
+  if False and j%every_N==0:
     plot_info(dt, learnable_joints, joints_q_vec, q_traj_des_i[1:],
               u_ff_vec, q_v_traj,
               joint_torque_vec,
             #  disturbanc_vec,
             #  d_xyz,
               joint_error_norms=joint_error_norms, cartesian_error_norms=cartesian_error_norms,
-              v=False, p=True, dp=False, e_xyz=False, e=True, torque=False, N=j+1)
+              v=True, p=False, dp=False, e_xyz=False, e=True, torque=False, N=j+1, kinematics=rArmKinematics)
     plt.show()
 
   if False and j%every_N==0:  # How desired  trajectory changes
@@ -250,7 +250,7 @@ if False:
   plot_info(dt, learnable_joints,
             joints_q_vec=joints_q_vec, q_traj_des=q_traj_des_i[1:],
             u_ff_vec=u_ff_vec, q_v_traj=q_v_traj, cartesian_error_norms = cartesian_error_norms,
-            disturbanc_vec=disturbanc_vec, d_xyz=d_xyz, joint_error_norms=joint_error_norms,
+            disturbanc_vec=disturbanc_vec, d_xyz_rpy_vec=d_xyz_rpy_vec, joint_error_norms=joint_error_norms,
             v=True, p=False, dp=False, e_xyz=False, e=True, N=min(4, ILC_it-1))
 
 if SAVING:
@@ -265,12 +265,13 @@ if SAVING:
        joints_q_vec=joints_q_vec, joints_vq_vec=joints_vq_vec,                           # Joint Informations
        joints_aq_vec=joints_aq_vec, joint_torque_vec=joint_torque_vec,                   #        =|=
        disturbanc_vec=disturbanc_vec, u_ff_vec=u_ff_vec,                                 # Learned Trajectories (uff and disturbance)
-       d_xyz_vec=d_xyz_vec, joints_d_vec=joints_d_vec,                                   # Progress Measurments
+       d_xyz_rpy_vec=d_xyz_rpy_vec, joints_d_vec=joints_d_vec,                                   # Progress Measurments
        joint_error_norms=joint_error_norms, cartesian_error_norms=cartesian_error_norms,
     #    pattern=pattern, h=h, r_dwell=r_dwell, throw_height=throw_height,                 # SiteSwap Params
     #    swing_size=swing_size, w=w, slower=slower, rep=rep,
        ilc_learned_params = [(ilc.d, ilc.P) for ilc in my_ilcs],
-       learnable_joints=learnable_joints, alpha=alpha, n_ms=n_ms, n_ds=n_ds, ep_s=ep_s)  # ILC parameters
+       learnable_joints=learnable_joints, alpha=alpha, n_ms=n_ms, n_ds=n_ds, ep_s=ep_s,
+       kinematics=rArmKinematics)  # ILC parameters
 
 
 

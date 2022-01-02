@@ -219,7 +219,7 @@ if SAVING:
         joints_q_vec=joints_q_vec, joints_vq_vec=joints_vq_vec,                           # Joint Informations
         joints_aq_vec=joints_aq_vec, joint_torque_vec=joint_torque_vec,                   #        =|=
         disturbanc_vec=disturbanc_vec, u_ff_vec=u_ff_vec,                                 # Learned Trajectories (uff and disturbance)
-        xyz_vec=xyz_vec, joints_d_vec=joints_d_vec, error_norms=error_norms, d_xyz=d_xyz, # Progress Measurments
+        xyz_vec=xyz_vec, joints_d_vec=joints_d_vec, error_norms=error_norms, d_xyz_rpy_vec=d_xyz_rpy_vec, # Progress Measurments
         learnable_joints=learnable_joints, alpha=alpha, n_ms=n_ms, n_ds=n_ds, ep_s=ep_s)  # ILC parameters
 
   with open('examplesReal/dataReal/TrapezoidTest/list_files.txt', 'a') as f:
