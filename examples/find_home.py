@@ -97,7 +97,7 @@ if False:
 
 
 # C) Rotate around shoulder-wrist axis
-if True:
+if False:
     T_home = np.array([[0.0, -1.0, 0.0,  0.3],  # uppword orientation(cup is up)
                     [0.0,  0.0, 1.0,  0.9],
                     [-1.0, 0.0, 0.0, -0.5],
@@ -116,12 +116,58 @@ if True:
         endd =startt
         startt = tmp
 
-# q_traj_des, T_traj = OneBallThrowPlanner.plan2(dt, T_home, kinematics=rArmKinematics, verbose=True)
 
 
-# N = len(q_traj_des)
-# q_start = q_traj_des[0]
-# T_home = T_traj[0]
+if True:
+    from scipy.optimize import minimize
+    def findBestThrowPosition(FK, J, q_init, qdot_init, R_des, jac=None):
+        con = lambda i: lambda qqd: J(qqd[:7])[i, :].dot(qqd[7:])
+        con_R = lambda i: lambda qqd: FK(qqd[:7])[i,i] - R_des[i,i]
+
+        cons = tuple({'type':'eq', 'fun': con(i)} for i in range(2)) + tuple({'type':'eq', 'fun': con_R(i)} for i in range(3))
+
+
+        bounds =  [utilities.JOINTS_LIMITS[j] for j in utilities.R_joints] + [utilities.JOINTS_V_LIMITS[j] for j in utilities.R_joints]
+
+        def fun(qqd):
+            return - J(qqd[:7])[2, :].dot(qqd[7:])
+
+        result = minimize(fun, (q_init, qdot_init) , method="SLSQP", bounds=bounds, constraints=cons)
+        qqd = result.x
+        if not result.success:
+            print("optim was unseccussfull")
+            return q_init, qqd[7:]
+        else:
+            print(result)
+        return qqd[:7], qqd[7:]
+
+
+    
+
+    for z in np.arange(-0.4, -0.2, 0.05):
+        for y in np.arange(0.8, 1., 0.05):
+            for x in np.arange(0.3, 0.5, 0.05):
+
+                T_home = np.array([[0.0, -1.0, 0.0,  x],  # uppword orientation(cup is up)
+                                [0.0,  0.0, 1.0,     y],
+                                [-1.0, 0.0, 0.0,     z],
+                                [0.0,  0.0, 0.0,  1.0 ]], dtype='float')
+                raw_input("Press Enter to continue...")
+                try:
+                    q_init = rArmKinematics.IK(T_home)
+                    q, qdot = findBestThrowPosition(rArmKinematics.FK, rArmKinematics.J, q_init, np.zeros((7,1)), R_des=T_home[:3,:3])
+                    rArmInterface.go_to_home_position(q, 2000)
+                    print(x,y,z)
+                except:
+                    print("Not vaild home")
+                    print(x,y,z)
+                    
+                    
+ 
+        
+        
+
+
 
 ########################################################################################################
 
@@ -133,4 +179,10 @@ if True:
     (0.3, 0.9, -0.30000000000000004)
     (0.4, 0.9, -0.30000000000000004)
     (0.3, 1.0, -0.30000000000000004)
+    """
+    
+    
+    
+    """Throw
+    1.91  ,  1.91  , -2.23  , -2.23  ,  3.56  ,  3.21  ,  0.
     """

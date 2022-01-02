@@ -136,6 +136,9 @@ def plan2(dt, kinematics, h=0.5, throw_height=0.0, swing_size=0.46, slower=1.0, 
         slower (float, optional):
         rep (int, optional): [description]. Defaults to 1.
     """
+    q_init = np.array([0.2975, -0.9392, -0.5407,  1.4676,  1.35  , -0.4971, -0.4801]).reshape(7,1)
+    T_home = kinematics.FK(q_init)
+
     d_bs = 0.378724; d_se = 0.4; d_ew = 0.39; d_wt = 0.186
 
     dt = dt/slower
@@ -181,7 +184,8 @@ def plan2(dt, kinematics, h=0.5, throw_height=0.0, swing_size=0.46, slower=1.0, 
         # qv_s[i] = np.linalg.pinv(Ji).dot(vs[i])
         # qv_s[i,:4] = np.linalg.pinv(Ji[:, :4]).dot(vs[i])
         b[7:] = -vs[i]
-        qv_s[i] = np.linalg.inv(H).dot(b)[:7]
+        # qv_s[i] = np.linalg.inv(H).dot(b)[:7]
+        qv_s[i] = constrained_optim(Ji, np.zeros((7,1)), vs[i])
 
         # findBestThrowPosition(kinematics.FK, kinematics.J, q_s[i], qv_s[i], vs[i], T_home[:3,:3])
 
@@ -189,9 +193,10 @@ def plan2(dt, kinematics, h=0.5, throw_height=0.0, swing_size=0.46, slower=1.0, 
     T_traj = kinematics.seqFK(q_traj)
 
     if verbose:
-        plot_A(q_traj.reshape(1,-1,7,1), dt=dt, limits=kinematics.limits)
+        plot_A(q_traj.reshape(1,-1,7,1), dt=dt, limits=kinematics.limits, xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]")
         plt.suptitle("Joint angles")
-        plot_A(qv_traj.reshape(1,-1,7,1), dt=dt, limits=kinematics.vlimits, index_labels=[r"$\dot{\theta}_%d$" %i for i in range(7)])
+        plot_A(qv_traj.reshape(1,-1,7,1), dt=dt, limits=kinematics.vlimits, index_labels=[r"$\dot{\theta}_%d$" %(i+1) for i in range(7)],
+               xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]")
         plt.suptitle("Joint angle velocities")
         # plot_A(180./np.pi*qa_traj.reshape(1,-1,7,1))
         # plt.suptitle("Angle Accelerations")
@@ -216,11 +221,11 @@ def plan2(dt, kinematics, h=0.5, throw_height=0.0, swing_size=0.46, slower=1.0, 
 def constrained_optim(J, q_init, vgoal, jac=None):
     con = lambda i: lambda qdot: J[i, :].dot(qdot) - vgoal[i]
     cons = (
-            # {'type':'eq', 'fun': con(0)},
-            # {'type':'eq', 'fun': con(1)},
-            # {'type':'eq', 'fun': con(2)},
-            {'type':'ineq', 'fun': lambda qdot: 0.5 - abs(J[0, :].dot(qdot))},
-            {'type':'ineq', 'fun': lambda qdot: 0.5 - abs(J[1, :].dot(qdot))},
+            {'type':'eq', 'fun': con(0)},
+            {'type':'eq', 'fun': con(1)},
+            {'type':'eq', 'fun': con(2)},
+            # {'type':'ineq', 'fun': lambda qdot: 0.5 - abs(J[0, :].dot(qdot))},
+            # {'type':'ineq', 'fun': lambda qdot: 0.5 - abs(J[1, :].dot(qdot))},
             )
 
     bounds = [utilities.JOINTS_V_LIMITS[j] for j in utilities.R_joints]
@@ -240,7 +245,7 @@ def constrained_optim(J, q_init, vgoal, jac=None):
     if not result.success:
         print("optim was unseccussfull")
         return q_init
-    return result.x
+    return result.x.reshape(7,1)
 
 
 
