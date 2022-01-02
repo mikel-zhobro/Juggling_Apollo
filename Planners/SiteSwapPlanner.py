@@ -83,10 +83,10 @@ class Traj():
   def init_traj(self, ttt, xxx, vvv, aaa, jjj, set_thetas=False, v_throw=None):
     self.N_Whole = ttt.size
     self.ttt = ttt
-    self.xxx = xxx
-    self.vvv = vvv
-    self.aaa = aaa
-    self.jjj = jjj
+    self.xxx = xxx.squeeze()
+    self.vvv = vvv.squeeze()
+    self.aaa = aaa.squeeze()
+    self.jjj = jjj.squeeze()
     if set_thetas:
       # Create the axis
       N_smooth_window = len(self.vvv)//2
@@ -130,7 +130,7 @@ class MinJerkTraj(Traj):
     self.tt = tt
     self.xx = xx
     self.vv = vv
-    self.ctc_traj_lambda =MinJerk.get_multi_interval_multi_dim_minjerk(dt, tt, self.xx, self.vv, smooth_acc=True, i_a_end=0, lambdas=True)
+    self.ctc_traj_lambda = MinJerk.get_multi_interval_multi_dim_minjerk(dt, tt, self.xx, self.vv, smooth_acc=True, i_a_end=0, lambdas=True)
 
 
   def initMJTraj(self, ttt, last=False):
