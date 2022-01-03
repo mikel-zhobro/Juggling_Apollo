@@ -86,7 +86,10 @@ class ILC:
       assert lb is None and ub is None, "No constraint optimization possible in freqDomain."
 
     # update uff
-    self._u_ff = self.quad_input_optim.calcDesiredInput(np.zeros_like(self.kf_dpn.d), self.y_des.reshape(-1, 1), print_norm=verbose, lb=lb, ub=ub)
+    if self.timeDomain:
+      self._u_ff = self.quad_input_optim.calcDesiredInput(np.zeros_like(self.kf_dpn.d), self.y_des.reshape(-1, 1), print_norm=verbose, lb=lb, ub=ub)
+    else:
+      self._u_ff = np.linalg.pinv(self.lss.GF).dot(self.get_delta_y(0))
     return self.transf_uff(self._u_ff)
 
   def updateStep(self, y_meas, y_des=None, verbose=False, lb=None, ub=None):
