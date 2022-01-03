@@ -77,7 +77,7 @@ rArmKinematics_nn = ApolloArmKinematics(r_arm=True)               ## kinematics 
 
 # C) PLANNINGs
 qh = rArmKinematics.IK(T_home)
-q_traj_des, T_traj = OneBallThrowPlanner.plan2(dt, kinematics=rArmKinematics, verbose=False)
+q_traj_des, T_traj = OneBallThrowPlanner.plan2(dt, kinematics=rArmKinematics, verbose=True)
 
 
 N = len(q_traj_des)
