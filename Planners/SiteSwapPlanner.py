@@ -214,14 +214,18 @@ class CatchThrow():
 
     # throw position is swingSize in the direction of the hand the ball goes to
     c_delta_x, c_delta_y = self.ct_c.P[:2] - self.P[:2]
-    theta = math.atan2(c_delta_y, c_delta_x)
-    self.p_t[0] = self.P[0] + math.cos(theta)*swingSize
-    self.p_t[1] = self.P[1] + math.sin(theta)*swingSize
+    if self.ct_c != self:
+      theta = math.atan2(c_delta_y, c_delta_x)
+      self.p_t[0] = self.P[0] + math.cos(theta)*swingSize
+      self.p_t[1] = self.P[1] + math.sin(theta)*swingSize
+    else: # when juggling to the same hand we choose to throw in -x direction
+      self.p_t[0] = self.P[0] - swingSize
+      self.p_t[1] = self.P[1]
     self.p_t[2] = self.P[2] + throw_height
     # throw velocity
     self.v_t[0] = (self.ct_t.P[0] - self.p_t[0]) / self.t_fly
     self.v_t[1] = (self.ct_t.P[1] - self.p_t[1]) / self.t_fly
-    self.v_t[2] = 0.5 * g * self.t_fly - throw_height/self.t_fly
+    self.v_t[2] = 0.5 * g * self.t_fly  +  (self.ct_t.P[2]- throw_height)/self.t_fly
 
   def initCTTraj(self, dt, ttt, last):
     # Init plan points
@@ -461,9 +465,13 @@ class JugglingPlanner():
     # It is just a definition, in general the nr of hands can be different.
     # tf3 = 0.5*(3*tH - 2*r_dwell*tH) = (3*tB - 2*r_dwell*tB) = tB(3 - 2*r_dwell)
     # where 2*r_dwell*tB is the dwell time with which we have to shorten the flight time. TODO: (not doing that right now, but could do)
-    nb = min(pattern)
-    tf3 = 2.0*math.sqrt(2.0*(h-throw_height)/g)  # time of flight for a 3-throw
-    tB = tf3 / (nb - nh*r_dwell)
+    nb = 3
+    tf3 = 2.0*math.sqrt(nb*(h-throw_height)/g)  # time of flight for a 3-throw
+    
+    nb = 3
+    v = math.sqrt(2.0*(h-throw_height)*g)
+    tf = (v + math.sqrt(v**2 + 2.*throw_height*g))/g  # consider that we throw from a higher position than we catch
+    tB = tf / (nb - nh*r_dwell)
 
 
 
