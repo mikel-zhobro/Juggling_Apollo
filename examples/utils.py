@@ -11,7 +11,7 @@ from juggling_apollo.utils import DotDict
 colors = ["r", 'g', 'b', 'k', 'c', 'm', 'y']
 line_types = ["-", "--", ":", '-.']
 
-def plot_A(lines_list, indexes_list=list(range(7)), labels=None, dt=1, xlabel="", ylabel="", limits=None, fill_between=None, index_labels=None, degree=True, rows=1):
+def plot_A(lines_list, indexes_list=list(range(7)), labels=None, dt=1, xlabel="", ylabel="", limits=None, fill_between=None, index_labels=None, scatter_times=list(), degree=True, rows=1):
   # assert len(lines_list) == len(labels), "Please use same number of lines and labels"
   A = 180./np.pi if degree else 1.
   # A = 1.
@@ -35,6 +35,9 @@ def plot_A(lines_list, indexes_list=list(range(7)), labels=None, dt=1, xlabel=""
       ax.fill_between(timesteps, A*fill_between[0][:, ix].squeeze(), A*fill_between[1][:, ix].squeeze(), color='purple', alpha=0.2)
 
     ymin = np.min(lines_list); ymax = np.max(lines_list); ytmp = abs(ymin - ymax)
+    
+    [ax.axvline(pos, linestyle='--', color='k') for pos in scatter_times]
+    
     ax.set_ylim([ymin-0.1*ytmp, ymax+0.1*ytmp])
     ax.grid(True)
     # ax.set_title('joint ' + str(ix+1))

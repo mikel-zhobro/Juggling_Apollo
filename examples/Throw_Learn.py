@@ -29,7 +29,7 @@ UB = 6.5
 CARTESIAN_ERROR = False
 NOISE=0.0
 
-ILC_it = 2                                # number of ILC iteration
+ILC_it = 32                                # number of ILC iteration
 end_repeat = 0  if not FREQ_DOMAIN else 0 # repeat the last position value this many time
 
 # Learnable Joints
@@ -77,7 +77,7 @@ rArmKinematics_nn = ApolloArmKinematics(r_arm=True)               ## kinematics 
 
 # C) PLANNINGs
 qh = rArmKinematics.IK(T_home)
-q_traj_des, T_traj = OneBallThrowPlanner.plan2(dt, kinematics=rArmKinematics, verbose=False)
+q_traj_des, T_traj = OneBallThrowPlanner.plan2(dt, kinematics=rArmKinematics, verbose=True)
 
 
 N = len(q_traj_des)
@@ -276,8 +276,9 @@ if SAVING:
 
 
 # Run Simulation with several repetition
-if end_repeat!=0:
-  rArmInterface.apollo_run_one_iteration2(dt=dt, T=end_repeat*dt, u=u_ff[:end_repeat], joint_home_config=q_start_i, repetitions=1, it=j)
-  rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL-end_repeat*dt, u=u_ff[end_repeat:], repetitions=5, it=j)
-else:
-  rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL, u=u_ff, joint_home_config=q_start_i, repetitions=5, it=j)
+if False:
+  if end_repeat!=0:
+    rArmInterface.apollo_run_one_iteration2(dt=dt, T=end_repeat*dt, u=u_ff[:end_repeat], joint_home_config=q_start_i, repetitions=1, it=j)
+    rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL-end_repeat*dt, u=u_ff[end_repeat:], repetitions=5, it=j)
+  else:
+    rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL, u=u_ff, joint_home_config=q_start_i, repetitions=5, it=j)

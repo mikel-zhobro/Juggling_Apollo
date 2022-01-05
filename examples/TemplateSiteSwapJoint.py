@@ -22,7 +22,7 @@ print("juggling_apollo")
 ########################################################################################################
 ########################################################################################################
 FREQ_DOMAIN=False
-NF=6
+NF=12
 
 SAVING = True
 UB = 6.5
@@ -46,7 +46,10 @@ n_ds  = [1e-3]*N_joints               # initial disturbance covariance
 ep_s  = [1e-3]*N_joints               # covariance of noise on the disturbance
 alpha = np.ones((N_joints,)) * 18.0
 alpha[:] = 17.
-syss  = [ApolloDynSys(dt, x0=np.zeros((2,1)), alpha_=a, freq_domain=FREQ_DOMAIN) for a in alpha]
+if FREQ_DOMAIN:
+  syss  = [ApolloDynSysWithFeedback(dt, x0=np.zeros((2,1)), alpha_=a, freq_domain=FREQ_DOMAIN) for a in alpha]
+else:
+  syss  = [ApolloDynSys(dt, x0=np.zeros((2,1)), alpha_=a, freq_domain=FREQ_DOMAIN) for a in alpha]
 
 # Cartesian Error propogation params
 damp            = 1e-12
@@ -65,8 +68,6 @@ T_home = np.array([[0.0, -1.0, 0.0,  0.32],  # uppword orientation(cup is up)
                    [0.0,  0.0, 1.0,  0.71],
                    [-1.0, 0.0, 0.0, -0.49],
                    [0.0,  0.0, 0.0,  1.0 ]], dtype='float')
-T_dhtcp_tcp = np.eye(4)
-T_dhtcp_tcp[:3,:3] = T_home[:3,:3].T
 ########################################################################################################
 ########################################################################################################
 ########################################################################################################
@@ -81,7 +82,7 @@ rArmKinematics    = ApolloArmKinematics(r_arm=True, noise=NOISE)  ## kinematics 
 rArmKinematics_nn = ApolloArmKinematics(r_arm=True)               ## kinematics without noise  (used to calculate measurments, plays the wrole of a localization system)
 
 # C) PLANNINGs
-q_traj_des, T_traj = SiteSwapJointPlanner.plan(dt, T_home, T_dhtcp_tcp, IK=rArmKinematics.IK, J=rArmKinematics.J, seqFK=rArmKinematics.seqFK, verbose=True)
+q_traj_des, T_traj = SiteSwapJointPlanner.plan(dt, T_home, rArmKinematics, verbose=True)
 
 
 N = len(q_traj_des)
@@ -143,20 +144,20 @@ d_xyz_rpy_vec         = np.zeros([ILC_it, N, 6], dtype='float')
 every_N = 1
 
 # Use linear model to compute first input
-u_ff   = np.zeros([N-1, N_joints, 1], dtype='float')
+u_ff   = np.zeros([N_1, N_joints, 1], dtype='float')
 for i in learnable_joints:
   u_ff[:,i] = my_ilcs[i].init_uff_from_lin_model()
 
 
-A = 180./np.pi
-plot_A([A*q_traj_des])
-plt.suptitle('Joint angle trajectories')
-plt.savefig('Joint_Angle_Traj_joint.pdf')
+# A = 180./np.pi
+# plot_A([A*q_traj_des])
+# plt.suptitle('Joint angle trajectories')
+# plt.savefig('Joint_Angle_Traj_joint.pdf')
 
-plot_A([A*u_ff])
-plt.suptitle('Joint angle velocity trajectories')
-plt.savefig('Joint_Angle_Vel_Traj_joint.pdf')
-plt.show()
+# plot_A([A*u_ff])
+# plt.suptitle('Joint angle velocity trajectories')
+# plt.savefig('Joint_Angle_Vel_Traj_joint.pdf')
+# plt.show()
 
 for j in range(ILC_it):
   # Limit Input

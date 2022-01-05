@@ -145,7 +145,7 @@ def plan2(dt, kinematics, h=0.5, throw_height=0.0, swing_size=0.46, slower=1.0, 
 
     tf = 2.0*math.sqrt(2.0*(h-throw_height)/g)  # time of flight
     t1 = 0.8                     # throw time
-    t2 = t1 + 1.*tf              # home time
+    t2 = t1 + 0.5*tf              # home time
     ts = [0., t1, t2]
     print('TCatch', t2)
 
