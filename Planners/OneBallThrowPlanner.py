@@ -137,14 +137,14 @@ def plan2(dt, kinematics, h=0.5, throw_height=0.0, swing_size=0.46, slower=1.0, 
         rep (int, optional): [description]. Defaults to 1.
     """
     q_init = np.array([0.2975, -0.9392, -0.5407,  1.4676,  1.35  , -0.4971, -0.4801]).reshape(7,1)
-    T_home = kinematics.FK(q_init)
+    q_init = findBestThrowPosition(kinematics.FK, kinematics.J, q_init, np.zeros((7,1)), np.eye(3))
 
-    d_bs = 0.378724; d_se = 0.4; d_ew = 0.39; d_wt = 0.186
+    T_home = kinematics.FK(q_init)
 
     dt = dt/slower
 
     tf = 2.0*math.sqrt(2.0*(h-throw_height)/g)  # time of flight
-    t1 = 0.4                     # throw time
+    t1 = 0.8                     # throw time
     t2 = t1 + 1.*tf              # home time
     ts = [0., t1, t2]
     print('TCatch', t2)
@@ -249,11 +249,11 @@ def constrained_optim(J, q_init, vgoal, jac=None):
 
 
 
-def findBestThrowPosition(FK, J, q_init, qdot_init, vgoal, R_des, jac=None):
-    con = lambda i: lambda qqd: J(qqd[:7])[i, :].dot(qqd[7:]) - vgoal[i]
-    con_R = lambda i: lambda qqd: FK(qqd[:7])[i,i] - R_des[i,i]
+def findBestThrowPosition(FK, J, q_init, qdot_init, R_des):
+    con = lambda i: lambda qqd: J(qqd[:7])[i, :].dot(qqd[7:])
+    con_R = lambda i: lambda qqd: FK(qqd[:7])[2,i] - R_des[2,i]
 
-    cons = tuple({'type':'eq', 'fun': con(i)} for i in range(2)) + tuple({'type':'eq', 'fun': con_R(i)} for i in range(3))
+    cons = tuple({'type':'eq', 'fun': con(i)} for i in range(0)) + tuple({'type':'eq', 'fun': con_R(i)} for i in range(3))
 
 
     bounds =  [utilities.JOINTS_LIMITS[j] for j in utilities.R_joints] + [utilities.JOINTS_V_LIMITS[j] for j in utilities.R_joints]
