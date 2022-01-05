@@ -8,20 +8,22 @@ np.set_printoptions(precision=4, suppress=True)
 spi6 = 0.5
 cpi6 = cos(np.pi/6)
 
-T_base_rbase = np.array([  # Sets the Arm to the correct(main) base frame
-    [-spi6,  cpi6,  0.0, 0.0],
-    [ cpi6,  spi6,  0.0, 0.0],
-    [ 0.0,   0.0,  -1.0, 0.0],
-    [ 0.0,   0.0,   0.0, 1.0]], dtype = 'float')
-
-T_rbase_dhbase = np.array([  # Sets the Arm to the right base frame
-    [ 0.0, -1.0, 0.0, 0.0],
-    [ 0.0,  0.0, 1.0, 0.0],
-    [-1.0,  0.0, 0.0, 0.0],
-    [ 0.0,  0.0, 0.0, 1.0]], dtype = 'float')
-
-
 class DH_revolut():
+    T_base_rbase = np.array([  # Sets the Arm to the correct(main) base frame
+        [-spi6,  cpi6,  0.0, 0.0],
+        [ cpi6,  spi6,  0.0, 0.0],
+        [ 0.0,   0.0,  -1.0, 0.0],
+        [ 0.0,   0.0,   0.0, 1.0]], dtype = 'float')
+
+    T_rbase_dhbase = np.array([  # Sets the Arm to the right base frame
+        [ 0.0, -1.0, 0.0, 0.0],
+        [ 0.0,  0.0, 1.0, 0.0],
+        [-1.0,  0.0, 0.0, 0.0],
+        [ 0.0,  0.0, 0.0, 1.0]], dtype = 'float')
+    T_dhtcp_tcp = np.array([[ 0.0,  0.0, -1.0,  0.0],  # uppword orientation(cup is up)
+                            [-1.0,  0.0,  0.0,  0.01],
+                            [ 0.0,  1.0,  0.0,  0.04],
+                            [ 0.0,  0.0,  0.0,  1.0 ]], dtype='float')
     class Joint():
         def __init__(self, a, alpha, d, theta, index, limit=(-np.pi, np.pi), vlimit=(-10., 10.), name="", offset=0.0):
             self.a = a
@@ -64,7 +66,7 @@ class DH_revolut():
                 [[s_th,   c_th,    0.0,  0.0],
                 [-c_th,   s_th,    0.0,  0.0],
                 [0.0,     0.0,     1.0,  j.d],
-                [0.0,     0.0,     0.0,  1.0]], dtype='float')
+                [0.0,     0.0,     0.0,  1.0]], dtype='float').dot(self.T_dhtcp_tcp)
         else:
             sig = float(np.sign(j.alpha))
             return np.array(
@@ -79,10 +81,10 @@ class DH_revolut():
         for j, theta_j in zip(self.joints, Q):
             T0_7 = T0_7.dot(self.getT(j, theta_j))
         # dh_base -> r_base
-        T0_7 = T_rbase_dhbase.dot(T0_7)
+        T0_7 = self.T_rbase_dhbase.dot(T0_7)
         if not rbase_frame:  # dont enter if we want fk in rbase frame
             # r_base -> base
-            T0_7 = T_base_rbase.dot(T0_7)
+            T0_7 = self.T_base_rbase.dot(T0_7)
         return T0_7
 
     def get_i_R_j(self, i, j, Qi_j):
@@ -112,17 +114,25 @@ class DH_revolut():
         return i_T_j
 
     def get_goal_in_dh_base_frame(self, p_base, R_base):
+        T_base = pR2T(p_base, R_base).squeeze()
         # base-> rbase
-        T_rbase_base = invT(T_base_rbase)
-        R_ret = T_rbase_base[:3,:3].dot(R_base)
-        p_ret = T_rbase_base[:3,:3].dot(p_base) + T_rbase_base[:3,3:4]
+        T_rbase_base = invT(self.T_base_rbase)
+        T_ret = T_rbase_base.dot(T_base)
+        # R_ret = T_rbase_base[:3,:3].dot(R_base)
+        # p_ret = T_rbase_base[:3,:3].dot(p_base) + T_rbase_base[:3,3:4]
 
         # rbase -> dh_base
-        T_dhbase_rbase = invT(T_rbase_dhbase)
-        R_ret = T_dhbase_rbase[:3,:3].dot(R_ret)
-        p_ret = T_dhbase_rbase[:3,:3].dot(p_ret) + T_dhbase_rbase[:3,3:4]
+        T_dhbase_rbase = invT(self.T_rbase_dhbase)
+        # R_ret = T_dhbase_rbase[:3,:3].dot(R_ret)
+        # p_ret = T_dhbase_rbase[:3,:3].dot(p_ret) + T_dhbase_rbase[:3,3:4]
+        T_ret = T_dhbase_rbase.dot(T_ret)
 
-        return p_ret, R_ret
+        return T_ret[:3,3:4], T_ret[:3,:3]
+
+    def get_goal_in_dhtcp_frame(self, p, R):
+        T_0_tcp = pR2T(p, R).squeeze()
+        T_0_dhtcp = T_0_tcp.dot(invT(self.T_dhtcp_tcp))
+        return T_0_dhtcp[:3,3:4], T_0_dhtcp[:3,:3]
 
     def i_J_j(self, i, j, Qi_j):
         # J = [zi(x)delta(pi), .., zk(x)delta(pk), .., zj(x)delta(pj)
@@ -154,10 +164,10 @@ class DH_revolut():
         # jacobian expresses the cartesian velocities caused byz joint velocities. We want the cartesian velocities in the right base.
 
         # dh_base -> rbase
-        T_base_dhbase = T_rbase_dhbase.copy()
+        T_base_dhbase = self.T_rbase_dhbase.copy()
         # rbase -> base
         if not rbase_frame:  # dont enter if we want to work with reference to rbase
-            T_base_dhbase = T_base_rbase.dot(T_base_dhbase)
+            T_base_dhbase = self.T_base_rbase.dot(T_base_dhbase)
 
         TMP = np.eye(6)
         TMP[:3,:3] = T_base_dhbase[:3,:3]

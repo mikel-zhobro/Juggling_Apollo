@@ -33,6 +33,7 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
     """
     # Transform goal in dh base frame
     p07_d, R07_d = DH_model.get_goal_in_dh_base_frame(p07_d, R07_d)
+    p07_d, R07_d = DH_model.get_goal_in_dhtcp_frame(p07_d, R07_d)
 
     # Prepare desired wrist position
     d_wt = DH_model.joint(6).d; l7wt = vec([0,   0,  d_wt])
@@ -412,8 +413,8 @@ def tangent_type(an, bn, cn, ad, bd, cd, joint, verbose=False):
             tmp.append(jump1)
         elif (th1_tmp < theta_max) and (th2_tmp < theta_min):
             jump1.enters=False
-            tmp.append(jump1)    
-    
+            tmp.append(jump1)
+
     # Roots & jumps
     # The idea is to go through all the roots&jumps and capture the feasible regions
     # of roots entering the limits. If the last root entered, the rest is feasible set.
