@@ -29,7 +29,7 @@ UB = 6.5
 CARTESIAN_ERROR = False
 NOISE=0.0
 
-ILC_it = 2                                # number of ILC iteration
+ILC_it = 32                                # number of ILC iteration
 end_repeat = 0  if not FREQ_DOMAIN else 0 # repeat the last position value this many time
 
 # Learnable Joints

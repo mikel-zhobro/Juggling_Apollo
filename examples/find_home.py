@@ -97,28 +97,30 @@ if False:
 
 
 # C) Rotate around shoulder-wrist axis
-if False:
+if True:
     T_home = np.array([[0.0, -1.0, 0.0,  0.3],  # uppword orientation(cup is up)
                     [0.0,  0.0, 1.0,  0.9],
                     [-1.0, 0.0, 0.0, -0.5],
                     [0.0,  0.0, 0.0,  1.0 ]], dtype='float')
     _, _, _, _, _, solu, feasible_set = rArmKinematics.IK(T_home, for_seqik=True)
     startt = feasible_set.b; endd = feasible_set.a
-    rArmInterface.go_to_home_position(solu(feasible_set.b), 2000)
+    rArmInterface.go_to_home_position(solu(feasible_set.b), 2000, eps=3., )
+    # rArmInterface.go_to_home_position(solu(feasible_set.a), 2000)
+    # rArmInterface.go_to_home_position(solu(feasible_set.b), 2000)
 
     raw_input("Press Enter to continue...")
-    for i in range(4):
-        for psi in np.linspace(startt, endd, 200):
+    for i in range(8):
+        for psi in np.linspace(startt, endd, 100):
             qh = solu(psi)
-            rArmInterface.go_to_home_position(qh, it_time=10, eps=3., wait=1, zero_speed= (psi==endd), verbose=False)
-            
+            rArmInterface.go_to_home_position(qh, it_time=30, eps=3., wait=1, zero_speed= (psi==endd), verbose=False, reset_PID=False)
+
         tmp = endd
         endd =startt
         startt = tmp
 
 
 
-if True:
+if False:
     from scipy.optimize import minimize
     def findBestThrowPosition(FK, J, q_init, qdot_init, R_des, jac=None):
         con = lambda i: lambda qqd: J(qqd[:7])[i, :].dot(qqd[7:])
@@ -142,7 +144,7 @@ if True:
         return qqd[:7], qqd[7:]
 
 
-    
+
 
     for z in np.arange(-0.4, -0.2, 0.05):
         for y in np.arange(0.8, 1., 0.05):
@@ -161,11 +163,11 @@ if True:
                 except:
                     print("Not vaild home")
                     print(x,y,z)
-                    
-                    
- 
-        
-        
+
+
+
+
+
 
 
 
@@ -180,9 +182,9 @@ if True:
     (0.4, 0.9, -0.30000000000000004)
     (0.3, 1.0, -0.30000000000000004)
     """
-    
-    
-    
+
+
+
     """Throw
     1.91  ,  1.91  , -2.23  , -2.23  ,  3.56  ,  3.21  ,  0.
     """
