@@ -3,7 +3,7 @@ import numpy as np
 from fk_pin_local import PinRobot
 from DH import DH_revolut
 from AnalyticalIK import IK_anallytical
-from utilities import R_joints, L_joints, JOINTS_LIMITS, pR2T
+from utilities import R_joints, L_joints, JOINTS_LIMITS, pR2T, JOINTS_V_LIMITS
 from tqdm import tqdm
 
 np.set_printoptions(precision=3, suppress=True)
@@ -26,7 +26,7 @@ offsets = [0.0, 0.0, th3_offset, 0.0, 0.0, 0.0, 0.0]
 # Create Robots
 dh_rob = DH_revolut()
 for a, alpha, d, theta, name, offset in zip(a_s, alpha_s, d_s, theta_s, joints2Use, offsets):
-    dh_rob.add_joint(a, alpha, d, theta, JOINTS_LIMITS[name], name, offset)
+    dh_rob.add_joint(a, alpha, d, theta, JOINTS_LIMITS[name], JOINTS_V_LIMITS[name], name, offset)
 
 try:
     pin_rob = PinRobot(r_arm=r_arm)
@@ -65,6 +65,7 @@ def check_IK():
                 s = solu(f*np.pi)
                 nrr = np.linalg.norm(dh_rob.FK(s) - T_pin)
                 if nrr >4e-4:
+                    print(dh_rob.FK(s) - T_pin)
                     print('ERR', nrr)
                     print("GCs", GC2, GC4, GC6)
                     print(home_pose.T)
@@ -89,6 +90,6 @@ def check_get2Base():
             assert False
 
 if __name__ == "__main__":
-    # check_FK()
-    # check_get2Base()
+    check_FK()
+    check_get2Base()
     check_IK()
