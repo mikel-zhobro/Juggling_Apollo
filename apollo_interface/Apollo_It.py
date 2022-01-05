@@ -405,11 +405,20 @@ class ApolloInterface:
         obs_np = self.obs_to_numpy(observation)
         return obs_np
 
-    def go_to_home_position(self, home_pose=None, it_time=4000, eps=3., wait=2000, zero_speed=True, verbose=True):
+    def go_to_home_position(self, home_pose=None, it_time=4000, eps=3., wait=2000, zero_speed=True, verbose=True, reset_PID=True):
         # eps: degree
         if home_pose is None:
             home_pose = np.zeros((7,1))
 
+        i = 0 if reset_PID else 1
+        dt = 0.002 if reset_PID else 0.01
+        P = 1.6
+        I = 0.04
+        D = 0.2
+        if reset_PID:
+            self.error_P = np.zeros(7)
+            self.error_I = np.zeros(7)
+            self.error_D = np.zeros(7)
         if False:
             print("Using IK_dynamics")
             while True:
@@ -420,14 +429,6 @@ class ApolloInterface:
         else:
             if verbose:
                 print("Not using IK_dynamics")
-
-            dt = 0.002
-            P = 1.6
-            I = 0.04
-            D = 0.2
-            error_P = np.zeros(7)
-            error_I = np.zeros(7)
-            error_D = np.zeros(7)
 
             obs = self.read()
             error = np.array(home_pose).squeeze()-obs[:,0].squeeze()
@@ -441,11 +442,11 @@ class ApolloInterface:
                     obs = self.go_to_posture_array(home_pose, it_time, globs.bursting)
                 i += 1
                 error = np.array(home_pose).squeeze()-obs[:,0].squeeze()
-                error_D = (error - error_P)/dt
-                error_P = error
-                error_I += error_P*dt
+                self.error_D = (error - self.error_P)/dt
+                self.error_P = error
+                self.error_I += self.error_P*dt
 
-                controller_Input = error_P*P + error_I*I + error_D*D
+                controller_Input = self.error_P*P + self.error_I*I + self.error_D*D
                 obs = self.go_to_speed_array(controller_Input, int(dt*1000), globs.bursting)
         if zero_speed:
             obs = self.go_to_speed_array(np.zeros_like(home_pose), it_time/4, globs.bursting)
