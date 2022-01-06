@@ -114,7 +114,7 @@ def IK_elbow(DH_model, x0sw, d_se, d_ew, GC4, verbose):
     c_th4 = clip_c((np.linalg.norm(x0sw)**2 - d_se**2 - d_ew**2) / (2*d_se*d_ew))
     th4 = GC4*acos(c_th4)
     fset_4 = [ContinuousSet(-np.pi, np.pi, False, True) if th4 in DH_model.joint(3).limit_range else ContinuousSet()]
-    plot_params_4 = [fset_4[0] if verbose else None]
+    plot_params_4 = [(DH_model.joint(3).limit_range, th4) if verbose else None]
     if verbose:
         print('Theta4:', th4)
     return th4, fset_4, plot_params_4
@@ -454,13 +454,12 @@ def sine_type(a, b, c, joint, GC=1.0, verbose=False):
     return cosine_type(a, b, c, joint, GC=GC, verbose=verbose, sine_type=True)
 
 
-def plot_type(axis, theta_f, grad_theta_f, theta_min, theta_max, stat_psi, roots, jumpings, feasible_set, title, singular_feasible_set=ContinuousSet()):
+def plot_type(axis, index, theta_f, grad_theta_f, theta_min, theta_max, stat_psi, roots, jumpings, feasible_set, title, singular_feasible_set=ContinuousSet()):
     psi_s =  np.linspace(-np.pi, np.pi, np.pi/0.01)
     thetas =   [theta_f(psi) for psi in psi_s]
     grad_thetas =   [grad_theta_f(psi) for psi in psi_s]
 
-
-    ax = axis[0]
+    ax = axis[0]; ax.set_ylim([-np.pi, np.pi])
     ax2 = axis[1]
 
     # Limits
@@ -493,8 +492,9 @@ def plot_type(axis, theta_f, grad_theta_f, theta_min, theta_max, stat_psi, roots
     # Feasible Set
     for psi in feasible_set.c_ranges:
         ax.axvspan(psi.a, psi.b, color='green', alpha=0.3)
-    ax.set_xlabel(r'$\psi$')
-    ax.set_ylabel(r'$\theta_i$')
+    ax.set_xlabel(r'$\psi$',y=0.85)
+    ax.xaxis.set_label_coords(0.02,-0.1)
+    ax.set_ylabel(r'$\theta_%d$'%(index+1),rotation=0)
 
     # Feasible Set -- Green
     for i, psi in enumerate(feasible_set.c_ranges):
@@ -504,6 +504,9 @@ def plot_type(axis, theta_f, grad_theta_f, theta_min, theta_max, stat_psi, roots
     if not singular_feasible_set.empty:
         for i, psi in enumerate(singular_feasible_set.inverse(-np.pi, np.pi)):
             ax2.bar(psi.a, height=1, width=psi.b-psi.a, bottom=0, align='edge', color='red', alpha=0.3, label="_"*i + 'singularity')
+    ax2.set_xticklabels([r'$0^\circ$', '', '', '', r'$180^\circ$', '', '', ''])
+    ax2.set_yticklabels([])
+    ax2.set_title(r"$\psi$",y=-0.26)
 
 
 def IK_heuristic1(p07_d, R07_d, DH_model, verbose=False):
@@ -576,18 +579,26 @@ def plt_analIK(plot_params, psi_feasible_set):
             ax.axis('off')
             fig.add_subplot(ax)
             axis = (fig.add_subplot(inner[0,0]), fig.add_subplot(inner[0,1], projection='polar'))
-            ax = axis[0]
+            ax = axis[0]; ax.set_ylim([-np.pi, np.pi])
             ax2 = axis[1]
-            if not plot_params[i].empty:
+            if not plot_params[i][0].empty:
+                ax.axhline(plot_params[3][0].a, color='k')
+                ax.axhline(plot_params[3][0].b, color='k')
+                ax.plot(np.linspace(-np.pi, np.pi, np.pi/0.01), [plot_params[3][1]]*int(np.pi/0.01))
                 ax.axvspan(-np.pi, np.pi, color='green', alpha=0.3)
+                ax.set_xlabel(r'$\psi$')
+                ax.xaxis.set_label_coords(0.02,-0.1)
+                ax.set_ylabel(r'$\theta_%d$' %4,rotation=0)
                 ax2.bar(0, height=1, width=2*np.pi, bottom=0, align='edge', color='green', alpha=0.3, label="_"*i + 'singularity')
+                ax2.set_xticklabels([r'$0^\circ$', '', '', '', r'$180^\circ$', '', '', ''])
+                ax2.set_title(r"$\psi$",y=-0.26,)
         else:
             ax = plt.Subplot(fig, outer[i])
             ax.set_title(plot_params[i][-2])
             ax.axis('off')
             fig.add_subplot(ax)
             axis = (fig.add_subplot(inner[0,0]), fig.add_subplot(inner[0,1], projection='polar'))
-            plot_type(axis, *plot_params[i])
+            plot_type(axis, i, *plot_params[i])
 
 
     # Total feasible set
@@ -595,7 +606,9 @@ def plt_analIK(plot_params, psi_feasible_set):
     ax.set_title("Total feasible set")
     for psi in psi_feasible_set.c_ranges:
         ax.bar(psi.a, height=1, width=psi.b-psi.a, bottom=0, align='edge', color='green', alpha=0.3, label='feasible')
-
+    ax.set_title(r"$\psi$",y=-0.11)
+    ax.set_xticklabels([r'$0^\circ$', '', '', '', r'$180^\circ$', '', '', ''])
+    ax.set_yticklabels([])
 
     # Legend
     lines_labels = [ax.get_legend_handles_labels() for ax in fig.axes]
