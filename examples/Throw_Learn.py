@@ -29,7 +29,7 @@ UB = 6.5
 CARTESIAN_ERROR = False
 NOISE=0.0
 
-ILC_it = 32                                # number of ILC iteration
+ILC_it = 22                                # number of ILC iteration
 end_repeat = 0  if not FREQ_DOMAIN else 0 # repeat the last position value this many time
 
 # Learnable Joints
@@ -76,7 +76,6 @@ rArmKinematics    = ApolloArmKinematics(r_arm=True, noise=NOISE)  ## kinematics 
 rArmKinematics_nn = ApolloArmKinematics(r_arm=True)               ## kinematics without noise  (used to calculate measurments, plays the wrole of a localization system)
 
 # C) PLANNINGs
-qh = rArmKinematics.IK(T_home)
 q_traj_des, T_traj = OneBallThrowPlanner.plan2(dt, kinematics=rArmKinematics, verbose=True)
 
 
@@ -258,7 +257,7 @@ if SAVING:
   freq = 'freq_domain' if FREQ_DOMAIN else "time_domain"
   cartesian_err = 'cart_err_on' if CARTESIAN_ERROR else "cart_err_off"
   filename = "one_throw_joint_{}_alpha_{}_eps_{}_{}_{}".format(learnable_joints, alpha, ep_s[0], freq, cartesian_err)
-  save_all(filename,
+  save_all(filename, kinematics=rArmKinematics,
        dt=dt,
        q_start=q_start_i, T_home=T_home,                                                 # Home
        T_traj=T_traj, q_traj_des_vec=q_traj_des_vec,                                     # Desired Trajectories
@@ -270,8 +269,7 @@ if SAVING:
     #    pattern=pattern, h=h, r_dwell=r_dwell, throw_height=throw_height,                 # SiteSwap Params
     #    swing_size=swing_size, w=w, slower=slower, rep=rep,
        ilc_learned_params = [(ilc.d, ilc.P) for ilc in my_ilcs],
-       learnable_joints=learnable_joints, alpha=alpha, n_ms=n_ms, n_ds=n_ds, ep_s=ep_s,
-       kinematics=rArmKinematics)  # ILC parameters
+       learnable_joints=learnable_joints, alpha=alpha, n_ms=n_ms, n_ds=n_ds, ep_s=ep_s)  # ILC parameters
 
 
 
