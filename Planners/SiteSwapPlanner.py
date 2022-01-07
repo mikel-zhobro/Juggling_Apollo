@@ -135,7 +135,7 @@ class MinJerkTraj(Traj):
 
   def initMJTraj(self, ttt, last=False):
     # Mask out only concerning time steps
-    ttt_ = ttt[(self.tt[0] <= ttt) & ( (ttt <= self.tt[2]) if last else (ttt < self.tt[2]))]
+    ttt_ = ttt[(self.tt[0] <= ttt) & ( (ttt < self.tt[2]) if last else (ttt <= self.tt[2]))]
     x, v, a, j = self.ctc_traj_lambda(ttt_)
     self.init_traj(ttt_, x, v, a, j, set_thetas=True, v_throw=self.vv[1])
 
@@ -424,7 +424,7 @@ class JugglingPlan():
     fig = plt.figure(figsize=(13,6))
     self.plotTrajectories(122)
     self.plotTimeDiagram(323)
-    fig.tight_layout()
+    fig.tight_layout(rect=[0., 0.16, 1, 0.95])
     plt.suptitle('{} hands plan for pattern: {}'.format(self.Nh, self.pattern))
     plt.show()
 
@@ -467,7 +467,7 @@ class JugglingPlanner():
     # where 2*r_dwell*tB is the dwell time with which we have to shorten the flight time. TODO: (not doing that right now, but could do)
     nb = 3
     tf3 = 2.0*math.sqrt(nb*(h-throw_height)/g)  # time of flight for a 3-throw
-    
+
     nb = 3
     v = math.sqrt(2.0*(h-throw_height)*g)
     tf = (v + math.sqrt(v**2 + 2.*throw_height*g))/g  # consider that we throw from a higher position than we catch
@@ -602,8 +602,8 @@ if __name__ == "__main__":
   dt = 0.004
   jp = JugglingPlanner()
   # jp.plan(1, pattern=(3,3,3), rep=1).plot()
-  p = jp.plan(dt, 2, pattern=(3,5,3,5,3,5,3,5), slower=5, rep=1)
-  p.plotTimeDiagram()
+  p = jp.plan(dt, 2, pattern=(3,5,), slower=5, rep=1)
+  p.plot()
   # jp.plan(4, pattern=(3,), rep=1).plot()
   # jp.plan(dt, 4, pattern=(5,), slower=5, rep=1).plot()
   # N_Whole0, x0, v0, a0, j0, thetas = p.hands[0].get(True)  # get plan for hand0
