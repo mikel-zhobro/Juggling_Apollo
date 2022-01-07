@@ -20,10 +20,14 @@ class DH_revolut():
         [ 0.0,  0.0, 1.0, 0.0],
         [-1.0,  0.0, 0.0, 0.0],
         [ 0.0,  0.0, 0.0, 1.0]], dtype = 'float')
-    T_dhtcp_tcp = np.array([[ 0.0,  0.0, -1.0,  0.0],  # uppword orientation(cup is up)
-                            [-1.0,  0.0,  0.0,  0.01],
-                            [ 0.0,  1.0,  0.0,  0.04],
+    T_dhtcp_tcp = np.array([[ 0.0,  0.0, -1.0, -0.04],  # uppword orientation(cup is up)
+                            [-1.0,  0.0,  0.0,  0.0],
+                            [ 0.0,  1.0,  0.0,  0.01],
                             [ 0.0,  0.0,  0.0,  1.0 ]], dtype='float')
+                # = invT(np.array([[0.0, -1.0, 0.0,  0.0],
+                #                  [0.0,  0.0, 1.0,  0.01],
+                #                  [-1.0, 0.0, 0.0, -0.04],
+                #                  [0.0,  0.0, 0.0,  1.0]], dtype='float'))
     class Joint():
         def __init__(self, a, alpha, d, theta, index, limit=(-np.pi, np.pi), vlimit=(-10., 10.), name="", offset=0.0):
             self.a = a
