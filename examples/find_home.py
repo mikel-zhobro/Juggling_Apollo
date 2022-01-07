@@ -1,4 +1,3 @@
-from random import expovariate
 import numpy as np
 import time
 import matplotlib.pyplot as plt
@@ -99,7 +98,7 @@ if False:
 # C) Rotate around shoulder-wrist axis
 if True:
     T_home = np.array([[0.0, -1.0, 0.0,  0.3],  # uppword orientation(cup is up)
-                    [0.0,  0.0, 1.0,  0.9],
+                    [0.0,  0.0, 1.0,  0.7],
                     [-1.0, 0.0, 0.0, -0.5],
                     [0.0,  0.0, 0.0,  1.0 ]], dtype='float')
     _, _, _, _, _, solu, feasible_set = rArmKinematics.IK(T_home, for_seqik=True)
