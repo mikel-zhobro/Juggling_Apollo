@@ -11,14 +11,14 @@ from utils import g, plot_A, set_axes_equal, utilities
 
 def vel_from_position(qtraj, qv0, dt):
     qvtraj = np.zeros_like(qtraj)
-    
+
     qvtraj[0] = qv0.reshape(-1,1)
-    
+
     for i in range(1, len(qtraj)):
         qvtraj[i] = ((qtraj[i] - qtraj[i-1])/dt  + qvtraj[i-1]) /2.
     return qvtraj
-    
-    
+
+
 
 
 def plan(dt, T_home, kinematics, h=0.5, throw_height=0.35, swing_size=0.46, slower=1.0, rep=1, verbose=False):
@@ -44,15 +44,15 @@ def plan(dt, T_home, kinematics, h=0.5, throw_height=0.35, swing_size=0.46, slow
     for ct in cts:
         ts = ct.traj.tt
         xs = [xtmp.T.reshape(3,1) for xtmp in ct.traj.xx]
-        vs = [vtmp.T.reshape(3,1) for vtmp in ct.traj.vv]    
-    
+        vs = [vtmp.T.reshape(3,1) for vtmp in ct.traj.vv]
+
     # Find home
     # dt = dt/slower
     q_init = np.array([0.2975, -0.9392, -0.5407,  1.4676,  1.35  , -0.4971, -0.4801]).reshape(7,1)
     # q_init = np.array([0.1193, -1.0512, -0.1186,  1.1475, -0.4451,  0.2153,  1.3167]).reshape(7,1)
     # q_init, qdot_init = findBestThrowPosition(FK=kinematics.FK, J=kinematics.J, q_init=np.zeros((7,1)), qdot_init=np.zeros((7,1)), vgoal=vs[1], R_des=T_home[:3,:3])
     T_home = kinematics.FK(q_init)
-    
+
     # Joint Positions
     offset = xs[1]
     q_s = np.zeros((len(xs),7,1))
@@ -135,7 +135,7 @@ def plan(dt, T_home, kinematics, h=0.5, throw_height=0.35, swing_size=0.46, slow
 
         ax.scatter(*yYy[0, 0:3], color ='k') #label="start")
         ax.scatter(*yYy[int(ts[1]/dt), 0:3], color ='k') # label="throw")
-        
+
         ax.scatter(*(T_home[:3, 3:4] + xs[0] - offset), color ='purple') #label="start")
         ax.scatter(*(T_home[:3, 3:4] + xs[1] - offset), color ='purple') #label="start")
         ax.scatter(*(T_home[:3, 3:4] + xs[2] - offset), color ='purple') #label="start")
@@ -189,8 +189,8 @@ def constrained_optim(J, q_init, vgoal, jac=None):
 
 
 # def findBestThrowPosition(FK, J, q_init, qdot_init, v_throw, v_catch,  d_caresian R_des, jac=None):
-    
-    
+
+
 def findBestThrowPosition(FK, J, q_init, qdot_init, vgoal, R_des, jac=None):
     con = lambda i: lambda qqd: J(qqd[:7])[i, :].dot(qqd[7:]) - vgoal[i]
     con_R = lambda i, j: lambda qqd: FK(qqd[:7])[:3,:3].T.dot(R_des)[i,j]
@@ -205,7 +205,7 @@ def findBestThrowPosition(FK, J, q_init, qdot_init, vgoal, R_des, jac=None):
 
     def fun(qqd):
         return qqd[7:].T.dot(qqd[7:])
-    
+
     # def fun(qqd):
     #     return np.linalg.norm(FK(qqd[:7])[:3,:3] - R_des)
 

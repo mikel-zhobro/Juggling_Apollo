@@ -27,7 +27,7 @@ def plot_A(lines_list, indexes_list=list(range(7)), labels=None, dt=1, xlabel=""
     ix = indexes_list[iii]
     for i in range(N):
       lines2 += ax.plot(timesteps,  lines_list[i][:, ix].squeeze(),
-                              linestyle=line_types[i%len(line_types)],
+                              linestyle=line_types[i%len(line_types)],linewidth=1,
                               label= i*"_" + (r"$\theta_{}$".format(ix+1) if index_labels is None else index_labels[ix]))
     if limits is not None:
       ax.axhspan(A*limits[iii].a, A*limits[iii].b, color='gray', alpha=0.2)  # color=l[0].get_color()
@@ -35,9 +35,9 @@ def plot_A(lines_list, indexes_list=list(range(7)), labels=None, dt=1, xlabel=""
       ax.fill_between(timesteps, A*fill_between[0][:, ix].squeeze(), A*fill_between[1][:, ix].squeeze(), color='purple', alpha=0.2)
 
     ymin = np.min(lines_list); ymax = np.max(lines_list); ytmp = abs(ymin - ymax)
-    
+
     [ax.axvline(pos, linestyle='--', color='k') for pos in scatter_times]
-    
+
     ax.set_ylim([ymin-0.1*ytmp, ymax+0.1*ytmp])
     ax.grid(True)
     # ax.set_title('joint ' + str(ix+1))
@@ -54,7 +54,7 @@ def plot_A(lines_list, indexes_list=list(range(7)), labels=None, dt=1, xlabel=""
   if labels is not None:
     liness = liness + lines2
     labelss = labelss + [ labels[i] for i in range(N)  ]
-  fig.legend(liness, labelss, loc ="lower right", 
+  fig.legend(liness, labelss, loc ="lower right",
               mode=None, borderaxespad=1, ncol=3, fontsize=10)
 
   fig.text(0.5, 0.14, xlabel, ha='center')
@@ -104,7 +104,7 @@ def plot_info(dt, learnable_joints=list(range(7)),
       fig = plt.gcf()
       # fig.set_size_inches((25.5, 8), forward=False)
       plt.savefig(fname+ "_" +typ + '.pdf', bbox_inches='tight')
-  
+
   qlim = kinematics.limits if kinematics is not None else None
   qvlim = kinematics.vlimits if kinematics is not None else None
 
@@ -163,7 +163,7 @@ def plot_info(dt, learnable_joints=list(range(7)),
     plt.show()
 
 
-def save_all(filename, special=None, **kwargs):
+def save_all(filename, kinematics=None, special=None, **kwargs):
   "Backups the data for reproduction, creates plots and saves plots."
   directory="/home/apollo/Desktop/Investigation/{}/".format(time.strftime("%Y_%m_%d"))
   if not os.path.exists(directory):
@@ -172,8 +172,6 @@ def save_all(filename, special=None, **kwargs):
   dir_exp =directory+"{}/".format(time.strftime("%H_%M_%S") + ("_"+special if special is not None else ""))
   if not os.path.exists(dir_exp):
       os.makedirs(dir_exp)
-
-
 
   ld = DotDict(kwargs)
   filename = dir_exp + filename +'.data'
@@ -189,4 +187,4 @@ def save_all(filename, special=None, **kwargs):
             u_ff_vec=ld.u_ff_vec, q_v_traj=ld.joints_vq_vec[-1,],
             joint_torque_vec=ld.joint_torque_vec, cartesian_error_norms =ld.cartesian_error_norms,
             disturbanc_vec=ld.disturbanc_vec, d_xyz_rpy_vec=ld.d_xyz_rpy_vec, joint_error_norms=ld.joint_error_norms,
-            v=True, p=True, dp=True, e_xyz=True, e=True, torque=True, M=1,fname=dir_exp, kinematics=ld.kinematics)
+            v=True, p=True, dp=True, e_xyz=True, e=True, torque=True, M=1, fname=dir_exp, kinematics=kinematics)
