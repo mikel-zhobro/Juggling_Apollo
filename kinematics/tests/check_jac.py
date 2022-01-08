@@ -5,6 +5,7 @@ import numpy as np
 from fk import J, FK, FK_DH
 from scipy.optimize import approx_fprime
 from DH import DH_revolut
+from tqdm import tqdm
 
 np.set_printoptions(precision=3, suppress=True)
 
@@ -33,6 +34,7 @@ fk_dh = lambda rbase_frame: lambda *q: my_fk_dh.FK(np.array(q), rbase_frame)
 J_dh = lambda rbase_frame: lambda q: my_fk_dh.J(q, rbase_frame)
 H_dh = lambda rbase_frame: lambda q: my_fk_dh.H(q, rbase_frame)
 
+# helpers
 
 def numerical_J_pos(q, fk):
     def pos(q, i):
@@ -42,6 +44,7 @@ def numerical_J_pos(q, fk):
 
     jac = np.array([approx_fprime(q, pos, eps, i) for i in range(3)]).reshape(3,7)
     return jac
+
 
 def numerical_H_pos(q, J):
     def pos(q, i, j):
@@ -62,48 +65,49 @@ def numerical_J_orientation(q, fk): #TODO
     return jac
 
 
-def check_J_position(fk, jac):
-    for _ in range(8):
-        x = np.random.uniform(0, np.pi, 7) # draw joint values between 0 and pi/2
+# tests
 
+def check_J_position(fk, jac):
+    for _ in tqdm(range(500)):
+        x = np.random.uniform(0, np.pi, 7) # draw joint values between 0 and pi/2
         J_num = numerical_J_pos(x, fk)
         J_an = jac(x)[:3,:]
-
-        print(np.linalg.norm(J_an-J_num))
+        err2 = np.linalg.norm(J_an-J_num)
+        assert err2 < 1e-7, 'err is: {} -> \n {}'.format(err2, J_an-J_num)
 
 
 def check_FK_FKDH():
-    for _ in range(8):
+    for _ in tqdm(range(100)):
         x = np.random.uniform(0, np.pi, 7) # draw joint values between 0 and pi/2
-
         T = FK(*x.copy())
         T_DH = FK_DH(x)
-
-        print(np.linalg.norm(T-T_DH))
+        err2 = np.linalg.norm(T-T_DH)
+        assert err2 < 1e-6, 'err is: {} -> \n {}'.format(err2, T-T_DH)
 
 
 def check_Hessian(hess, jacc):
-    for _ in range(8):
+    for _ in tqdm(range(25)):
         x = np.random.uniform(0, np.pi, 7) # draw joint values between 0 and pi/2
         H = hess(x)
         H_num = numerical_H_pos(x, jacc)
-        print(np.linalg.norm(H-H_num))
+        err2 = np.linalg.norm(H-H_num)
+        assert err2 < 1e-6, 'err is: {} -> \n {}'.format(err2, H-H_num)
 
 
 
 print("1. DH Jacobian Test")
-print("\n-- a) Not rBase --\n")  # REFERENCE IS SIM-APOLLO'S BASE
+print("-- a) Not rBase --")  # REFERENCE IS SIM-APOLLO'S BASE
 check_J_position(fk_dh(False), J_dh(False))
-print("\n-- b) rBase --\n")  # REFERENCE IS RIGHT-HAND BASE
-
+print("-- b) rBase --")  # REFERENCE IS RIGHT-HAND BASE
 check_J_position(fk_dh(True), J_dh(True))
-print("\n2. Analytical Jacobian Test\n")
-check_J_position(FK, J_)
-print("\n-- Position fk-fk_dh --\n")
-check_FK_FKDH()
 
-print("\n3. Hessian Test\n")
-print("\n-- a) Not rBase --\n")  # REFERENCE IS SIM-APOLLO'S BASE
+# print("\n2. Analytical Jacobian Test\n")
+# check_J_position(FK, J_)
+# print("\n-- Position fk-fk_dh --\n")
+# check_FK_FKDH()
+
+print("\n3. Hessian Test")
+print("-- a) Not rBase --")  # REFERENCE IS SIM-APOLLO'S BASE
 check_Hessian(H_dh(True), J_dh(True))
-print("\n-- b) rBase --\n")  # REFERENCE IS RIGHT-HAND BASE
+print("-- b) rBase --")  # REFERENCE IS RIGHT-HAND BASE
 check_Hessian(H_dh(False), J_dh(False))
