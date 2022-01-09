@@ -34,8 +34,8 @@ def plot_A(lines_list, indexes_list=list(range(7)), labels=None, dt=1, xlabel=""
     if fill_between is not None:
       ax.fill_between(timesteps, A*fill_between[0][:, ix].squeeze(), A*fill_between[1][:, ix].squeeze(), color='purple', alpha=0.2)
 
-    ymin = np.min(lines_list); ymax = np.max(lines_list); ytmp = abs(ymin - ymax)
-
+    ymin = np.min(lines_list[:,:,indexes_list]); ymax = np.max(lines_list[:,:,indexes_list]); ytmp = abs(ymin - ymax)
+    
     [ax.axvline(pos, linestyle='--', color='k') for pos in scatter_times]
 
     ax.set_ylim([ymin-0.1*ytmp, ymax+0.1*ytmp])
