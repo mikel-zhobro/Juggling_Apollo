@@ -35,7 +35,7 @@ def plan(dt, T_home, kinematics, h=0.5, throw_height=0.35, swing_size=0.46, slow
         rep (int, optional): [description]. Defaults to 1.
     """
     jp = SiteSwapPlanner.JugglingPlanner()
-    pattern=(4,); h=0.6; r_dwell=0.5; throw_height=0.35; swing_size=0.16; w=0.1; slower=1.3; rep=1
+    pattern=(4,); h=0.5; r_dwell=0.5; throw_height=0.25; swing_size=0.26; w=0.1; slower=1.3; rep=1
     plan = jp.plan(dt, 2, pattern=pattern, h=h, r_dwell=r_dwell, throw_height=throw_height, swing_size=swing_size, w=w, rep=rep)
     # dt = dt/slower
 
@@ -80,25 +80,35 @@ def plan(dt, T_home, kinematics, h=0.5, throw_height=0.35, swing_size=0.46, slow
         # qv_s[i] = np.linalg.inv(H).dot(b)[:7]
         qv_s[i], vw = constrained_optim(Ji, np.zeros((7,1)), vs[i])
         print(i, vs[i], vw.T)
-    q_traj, qv_traj, qa_traj, qj_traj = MinJerk.get_multi_interval_multi_dim_minjerk(dt, ts, q_s, qv_s, smooth_acc=False, only_pos=False, i_a_end=0)
+    q_traj, qv_traj, qa_traj, qj_traj = MinJerk.get_multi_interval_multi_dim_minjerk(dt, ts, q_s, qv_s, smooth_acc=False, only_pos=False, i_a_end=None)
     # q_traj, qv_traj, qa_traj, qj_traj = MinJerk.get_multi_interval_minjerk_xyz(dt, ts, q_s, qv_s, smooth_acc=False, only_pos=False, i_a_end=0)
     q_traj = q_traj.reshape(-1,7,1)
     T_traj = kinematics.seqFK(q_traj)
 
     # Cartesian plan
+    plan.plot(orientation=True)
     N, x0, v0, a0, j0, rot_traj_des = plan.hands[0].get(get_thetas=True)  # get plan for hand0
     xXx = x0-offset.squeeze()+T_home[:3, -1]
-    # T_traj_cartesian = utilities.pR2T(xXx, rot_traj_des)
-    # q_cartesian, _, _ = kinematics.seqIK(T_traj_cartesian, considered_joints=[])
-    # qv_cartesian = vel_from_position(q_cartesian, qv_traj[0], dt)
+    T_traj_cartesian = utilities.pR2T(xXx, rot_traj_des)
+    q_cartesian, _, _ = kinematics.seqIK(T_traj_cartesian, considered_joints=[])
+    qv_cartesian = vel_from_position(q_cartesian, qv_traj[0], dt)
+    joint_list = [0,1,2,3, 4, 5]
+    plot_A(q_cartesian.reshape(1,-1,7,1), indexes_list=joint_list, dt=dt, limits=kinematics.limits, xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]", scatter_times=ts)
+    plt.suptitle("Angle Positions")
+    # plt.savefig('Joint_Angle_Traj_joint.pdf')
+    plot_A(qv_cartesian.reshape(1,-1,7,1), indexes_list=joint_list, dt=dt, limits=kinematics.vlimits, index_labels=[r"$\dot{\theta}_%d$" %(i+1) for i in range(7)],
+            xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]", scatter_times=ts)
+    plt.suptitle("Angle Velocities")
+    plt.show()
 
     if verbose:
         A = 1.
         # A = 1.
-        plot_A(A*q_traj.reshape(1,-1,7,1), dt=dt, limits=kinematics.limits, xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]", scatter_times=ts)
+        joint_list = [0,1,2,3]
+        plot_A(A*q_traj.reshape(1,-1,7,1), indexes_list=joint_list, dt=dt, limits=kinematics.limits, xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]", scatter_times=ts)
         plt.suptitle("Angle Positions")
         # plt.savefig('Joint_Angle_Traj_joint.pdf')
-        plot_A(A*qv_traj.reshape(1,-1,7,1), dt=dt, limits=kinematics.vlimits, index_labels=[r"$\dot{\theta}_%d$" %(i+1) for i in range(7)],
+        plot_A(A*qv_traj.reshape(1,-1,7,1), indexes_list=joint_list, dt=dt, limits=kinematics.vlimits, index_labels=[r"$\dot{\theta}_%d$" %(i+1) for i in range(7)],
                xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]", scatter_times=ts)
         plt.suptitle("Angle Velocities")
         # plt.savefig('Joint_Angle_Vel_Traj_joint.pdf')
@@ -150,7 +160,8 @@ def plan(dt, T_home, kinematics, h=0.5, throw_height=0.35, swing_size=0.46, slow
         plt.legend()
         plt.show()
 
-    return q_traj, T_traj
+    # return q_traj, T_traj
+    return q_cartesian, T_traj_cartesian
 
 
 

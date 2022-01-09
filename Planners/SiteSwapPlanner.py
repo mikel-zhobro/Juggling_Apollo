@@ -102,7 +102,7 @@ class Traj():
         _z[:,2] = np.clip(_z[:,2], 0.8, np.inf)
       _z /= np.linalg.norm(_z, axis=1, keepdims=True)
 
-      _y = -np.cross(vvv_smoothed, aaa_smoothed)
+      _y = np.cross(vvv_smoothed, aaa_smoothed)
       _y /= np.linalg.norm(_y, axis=1, keepdims=True)
       _x = np.cross(_y, _z)
 
@@ -141,7 +141,7 @@ class MinJerkTraj(Traj):
 
     return self.get()
 
-  def plotMJTraj(self, ax, ttt, i, h_i):
+  def plotMJTraj(self, ax, ttt, i, h_i, orientation):
     # Plot path
     a = ax.plot3D(self.xxx[:,0], self.xxx[:,1], self.xxx[:,2], label='{}_{}'.format(h_i, i))
 
@@ -151,17 +151,19 @@ class MinJerkTraj(Traj):
     ax.quiver(self.xxx[ts,0], self.xxx[ts,1], self.xxx[ts,2],
               self.vvv[ts,0], self.vvv[ts,1], self.vvv[ts,2],
               length=0.07, normalize=True, color=a[0].get_color())
-    tmp = 9
-    # ax.quiver(self.xxx[0::tmp,0], self.xxx[0::tmp,1], self.xxx[0::tmp,2],
-    #           -self.thetas[::tmp,0,0], -self.thetas[::tmp,1,0], -self.thetas[::tmp,2,0],
-    #           length=0.07, normalize=True, color='r', alpha=0.2, label='_'*int(bool(i or h_i)) + '-x direction')
 
-    # ax.quiver(self.xxx[0::tmp,0], self.xxx[0::tmp,1], self.xxx[0::tmp,2],
-    #           self.thetas[::tmp,0,1], self.thetas[::tmp,1,1], self.thetas[::tmp,2,1],
-    #           length=0.07, normalize=True, color='g', alpha=0.2, label='_'*int(bool(i or h_i)) + 'y direction')
-    ax.quiver(self.xxx[0::tmp,0], self.xxx[0::tmp,1], self.xxx[0::tmp,2],
-              self.thetas[::tmp,0,2], self.thetas[::tmp,1,2], self.thetas[::tmp,2,2],
-              length=0.07, normalize=True, color='b', alpha=0.2, label='_'*int(bool(i or h_i)) + 'z direction')
+    if orientation:
+      tmp = 9
+      ax.quiver(self.xxx[0::tmp,0], self.xxx[0::tmp,1], self.xxx[0::tmp,2],
+                -self.thetas[::tmp,0,0], -self.thetas[::tmp,1,0], -self.thetas[::tmp,2,0],
+                length=0.07, normalize=True, color='r', alpha=0.2, label='_'*int(bool(i or h_i)) + '-x direction')
+
+      ax.quiver(self.xxx[0::tmp,0], self.xxx[0::tmp,1], self.xxx[0::tmp,2],
+                self.thetas[::tmp,0,1], self.thetas[::tmp,1,1], self.thetas[::tmp,2,1],
+                length=0.07, normalize=True, color='g', alpha=0.2, label='_'*int(bool(i or h_i)) + 'y direction')
+      ax.quiver(self.xxx[0::tmp,0], self.xxx[0::tmp,1], self.xxx[0::tmp,2],
+                self.thetas[::tmp,0,2], self.thetas[::tmp,1,2], self.thetas[::tmp,2,2],
+                length=0.07, normalize=True, color='b', alpha=0.2, label='_'*int(bool(i or h_i)) + 'z direction')
 
     print('a',np.max(self.aaa, axis=0))
     print('v',np.max(self.vvv, axis=0))
@@ -229,7 +231,7 @@ class CatchThrow():
 
   def initCTTraj(self, dt, ttt, last):
     # Init plan points
-    rat = 0.2
+    rat = 0.0
     tt = np.array([self.t_catch,       self.t_throw,      self.t_catch2])
     xx = np.array([[self.P[0],         self.P[1],         self.P[2]],          # catch position
                    [self.p_t[0],       self.p_t[1],       self.p_t[2]],        # throw position
@@ -261,12 +263,12 @@ class CatchThrow():
     plotConnection(ax, actual_beat-self.n_c, actual_beat, self.h_c.h, self.h.h, self.h_c.h==self.h.h, color=color)
     plotConnection(ax, actual_beat, actual_beat+self.n_t, self.h.h, self.h_t.h, self.h.h==self.h_t.h, color=color)
 
-  def plotCTTrajectory(self, ax, ttt, h_i, period=0):
+  def plotCTTrajectory(self, ax, ttt, h_i, orientation):
     ax.scatter(*self.p_t, color='k')
     ax.scatter(*self.P, color='k')
     ax.text(self.p_t[0], self.p_t[1], self.p_t[2], 'throw', size=11, zorder=1,  color='k')
     ax.text(self.P[0], self.P[1], self.P[2], 'catch', size=11, zorder=1,  color='k')
-    col = self.traj.plotMJTraj(ax, ttt, self.i, h_i)
+    col = self.traj.plotMJTraj(ax, ttt, self.i, h_i, orientation)
     self.ballTraj.plotBallTraj(ax, col)
 
   @property
@@ -337,10 +339,10 @@ class JugglingHand(Traj):
     self.ct_period[0].plotCTTimeDiagram(ax, 1) # 1 more than the period(first ct is included twice) for visual effects
     [ct.plotCTTimeDiagram(ax) for ct in self.ct_period]
 
-  def plotHandTrajectory(self, ax):
+  def plotHandTrajectory(self, ax, orientation):
     ax.scatter(self.position[0], self.position[1])
     for ct in self.ct_period:
-      ct.plotCTTrajectory(ax, self.ttt, self.h)
+      ct.plotCTTrajectory(ax, self.ttt, self.h, orientation)
 
   def getTimesPositionsVelocities(self):
     """ Puts together the plan of the hand.
@@ -386,12 +388,12 @@ class JugglingPlan():
   def getBallNPlatte(self):
     return [[ (ct.traj, ct.ballTraj) for ct in h.ct_period] for h in self.hands]
 
-  def plotTrajectories(self, subplot=111):
+  def plotTrajectories(self, subplot=111, orientation=False):
     from mpl_toolkits.mplot3d import axes3d, Axes3D  # noqa: F401
     # fig = plt.figure()
     ax = plt.subplot(subplot, projection='3d')
     # Plot hands
-    [h.plotHandTrajectory(ax) for h in self.hands]
+    [h.plotHandTrajectory(ax, orientation) for h in self.hands]
 
     set_axes_equal(ax) # IMPORTANT - this is also required
     ax.set_xlabel('X axis')
@@ -420,9 +422,9 @@ class JugglingPlan():
     if subplot==111:
       plt.show()
 
-  def plot(self):
+  def plot(self, orientation=False):
     fig = plt.figure(figsize=(13,6))
-    self.plotTrajectories(122)
+    self.plotTrajectories(122, orientation=orientation)
     self.plotTimeDiagram(323)
     fig.tight_layout(rect=[0., 0.16, 1, 0.95])
     plt.suptitle('{} hands plan for pattern: {}'.format(self.Nh, self.pattern))
@@ -472,8 +474,6 @@ class JugglingPlanner():
     v = math.sqrt(2.0*(h-throw_height)*g)
     tf = (v + math.sqrt(v**2 + 2.*throw_height*g))/g  # consider that we throw from a higher position than we catch
     tB = tf / (nb - nh*r_dwell)
-
-
 
 
     pattern = tuple(pattern)
