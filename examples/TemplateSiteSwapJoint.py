@@ -21,7 +21,7 @@ print("juggling_apollo")
 ########################################################################################################
 ########################################################################################################
 ########################################################################################################
-FREQ_DOMAIN=False
+FREQ_DOMAIN=True
 NF=12
 
 SAVING = True
@@ -30,7 +30,7 @@ UB = 6.5
 CARTESIAN_ERROR = False
 NOISE=0.0
 
-ILC_it = 32                                # number of ILC iteration
+ILC_it = 15                                # number of ILC iteration
 end_repeat = 0  if not FREQ_DOMAIN else 0 # repeat the last position value this many time
 
 # Learnable Joints
@@ -69,7 +69,7 @@ rArmKinematics    = ApolloArmKinematics(r_arm=True, noise=NOISE)  ## kinematics 
 rArmKinematics_nn = ApolloArmKinematics(r_arm=True)               ## kinematics without noise  (used to calculate measurments, plays the wrole of a localization system)
 
 # C) PLANNINGs
-q_traj_des, T_traj = SiteSwapJointPlanner.plan(dt, rArmKinematics, verbose=False)
+q_traj_des, qv_traj_des, T_traj = SiteSwapJointPlanner.plan(dt, rArmKinematics, verbose=True)
 
 
 N = len(q_traj_des)
@@ -266,7 +266,7 @@ if SAVING:
   save_all(filename,
        dt=dt,
        q_start=q_start_i, T_home=T_home,                                                 # Home
-       T_traj=T_traj, q_traj_des_vec=q_traj_des_vec,                                     # Desired Trajectories
+       T_traj=T_traj, q_traj_des_vec=q_traj_des_vec, qv_traj_des=qv_traj_des,            # Desired Trajectories
        joints_q_vec=joints_q_vec, joints_vq_vec=joints_vq_vec,                           # Joint Informations
        joints_aq_vec=joints_aq_vec, joint_torque_vec=joint_torque_vec,                   #        =|=
        disturbanc_vec=disturbanc_vec, u_ff_vec=u_ff_vec,                                 # Learned Trajectories (uff and disturbance)

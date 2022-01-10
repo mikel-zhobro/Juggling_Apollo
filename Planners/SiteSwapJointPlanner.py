@@ -161,8 +161,8 @@ def plan(dt, kinematics, h=0.5, throw_height=0.35, swing_size=0.46, slower=1.0, 
         plt.legend()
         plt.show()
 
-    return q_traj, T_traj
-    return q_cartesian, T_traj_cartesian
+    return q_traj, qv_traj, T_traj
+    return q_cartesian, qv_cartesian, T_traj_cartesian
 
 
 

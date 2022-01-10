@@ -200,7 +200,7 @@ def save_all(filename, kinematics=None, special=None, **kwargs):
   # Save plots
   plot_info(1, ld.learnable_joints,
             joints_q_vec=ld.joints_q_vec, q_traj_des=ld.q_traj_des_vec[-1,1:],
-            u_ff_vec=ld.u_ff_vec, q_v_traj=ld.joints_vq_vec[-1,],
+            u_ff_vec=ld.joints_vq_vec, q_v_traj=ld.qv_traj_des,
             joint_torque_vec=ld.joint_torque_vec, cartesian_error_norms =ld.cartesian_error_norms,
             disturbanc_vec=ld.disturbanc_vec, d_xyz_rpy_vec=ld.d_xyz_rpy_vec, joint_error_norms=ld.joint_error_norms,
             v=True, p=True, dp=True, e_xyz=True, e=True, torque=True, M=1, fname=dir_exp, kinematics=kinematics)
