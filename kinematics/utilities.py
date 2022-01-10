@@ -134,7 +134,7 @@ def pR2T(p,R):
     """
     p_shape = p.shape
     R_shape = R.shape
-    T_shape = (4,4) if len(p_shape)==2 else (-1, 4, 4)
+    T_shape = (4,4) if len(R_shape)==2 else (-1, 4, 4)
     p = p.reshape(-1,3,1)
     R = R.reshape(-1,3,3)
 

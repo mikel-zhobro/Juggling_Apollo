@@ -29,7 +29,7 @@ for a, alpha, d, theta, name, offset in zip(a_s, alpha_s, d_s, theta_s, joints2U
     dh_rob.add_joint(a, alpha, d, theta, JOINTS_LIMITS[name], JOINTS_V_LIMITS[name], name, offset)
 
 try:
-    pin_rob = PinRobot(r_arm=r_arm)
+    pin_rob = dh_rob # PinRobot(r_arm=r_arm)
 except:
     pin_rob = dh_rob
 
