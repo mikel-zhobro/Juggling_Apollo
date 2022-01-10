@@ -3,6 +3,8 @@ import matplotlib as mpl
 from matplotlib.ticker import MaxNLocator
 from settings import g, ABS
 import numpy as np
+from matplotlib.transforms import Bbox
+
 # mpl.use('TkAgg')
 np.set_printoptions(precision=3, suppress=True)
 
@@ -117,3 +119,17 @@ def plot_lines_coord(ax, tt, xx):
   for t, x in zip(tt, xx):
     ax.plot([t, t], [ymin, x], ls='--', lw=1.5, alpha=0.5)
     ax.plot([xmin, t], [x, x], ls='--', lw=1.5, alpha=0.5)
+
+def full_extent(ax, pad=0.0):
+    """Get the full extent of an axes, including axes labels, tick labels, and
+    titles."""
+    # For text objects, we need to draw the figure first, otherwise the extents
+    # are undefined.
+    ax.figure.canvas.draw()
+    items = ax.get_xticklabels() + ax.get_yticklabels() 
+#    items += [ax, ax.title, ax.xaxis.label, ax.yaxis.label]
+    items += [ax, ax.title]
+    bbox = Bbox.union([item.get_window_extent() for item in items])
+
+    return bbox.expanded(1.0 + pad, 1.0 + pad)
+  
