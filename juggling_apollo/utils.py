@@ -111,14 +111,21 @@ def plotIterations(y, title, dt=1, every_n=1):
   plt.axes().xaxis.set_major_locator(MaxNLocator(integer=True))
   plt.show(block=False)
 
-def plot_lines_coord(ax, tt, xx):
+def plot_lines_coord(ax, tt, xx, typ=None):
+
+  einheit = ['m', r'$\frac{m}{s}$', r'$\frac{m}{s^2}$']
+  ei = einheit[typ] if typ is not None else ''
   assert len(tt) == len(xx)
   xmin, xmax, ymin, ymax = ax.axis()
   # Draw lines connecting points to axes
   ax.scatter(tt, xx)
-  for t, x in zip(tt, xx):
-    ax.plot([t, t], [ymin, x], ls='--', lw=1.5, alpha=0.5)
-    ax.plot([xmin, t], [x, x], ls='--', lw=1.5, alpha=0.5)
+  for t, x in zip(tt,xx):
+    txt = r'({}s, {} {})'.format(t, x, ei)
+    ax.text(t, x, txt, size=9, color='k', zorder=10, weight='normal')
+
+#   for t, x in zip(tt, xx):
+#     ax.plot([t, t], [ymin, x], ls='--', lw=1.5, alpha=0.5)
+#     ax.plot([xmin, t], [x, x], ls='--', lw=1.5, alpha=0.5)
 
 def full_extent(ax, pad=0.0):
     """Get the full extent of an axes, including axes labels, tick labels, and
@@ -126,10 +133,9 @@ def full_extent(ax, pad=0.0):
     # For text objects, we need to draw the figure first, otherwise the extents
     # are undefined.
     ax.figure.canvas.draw()
-    items = ax.get_xticklabels() + ax.get_yticklabels() 
+    items = ax.get_xticklabels() + ax.get_yticklabels()
 #    items += [ax, ax.title, ax.xaxis.label, ax.yaxis.label]
     items += [ax, ax.title]
     bbox = Bbox.union([item.get_window_extent() for item in items])
 
     return bbox.expanded(1.0 + pad, 1.0 + pad)
-  

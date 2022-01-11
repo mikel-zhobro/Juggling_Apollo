@@ -91,8 +91,6 @@ def plan(dt, kinematics, h=0.65, throw_height=0.25, swing_size=0.46, slower=1.0,
 
     q_traj, qv_traj, qa_traj, qj_traj = MinJerk.get_multi_interval_minjerk_xyz(dt, ts, q_s, qv_s, smooth_acc=False, only_pos=False, i_a_end=0)
 
-    q_traj = q_traj.reshape(-1,7,1)
-
     T_traj = kinematics.seqFK(q_traj)
 
     if verbose:

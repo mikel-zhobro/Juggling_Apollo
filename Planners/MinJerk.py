@@ -42,7 +42,7 @@ def get_multi_interval_minjerk_xyz(dt, tt, xx, uu, smooth_acc=False, smooth_star
       xxx[i],vvv[i],aaa[i],jjj[i] = get_multi_interval_minjerk_1D(dt, tt, xx[:,i], uu[:,i],
                                                                   smooth_acc=smooth_acc, smooth_start=smooth_start,
                                                                   i_a_end=i_a_end, only_x=False)
-    return np.array(xxx).T, np.array(vvv).T, np.array(aaa).T, np.array(jjj).T
+    return np.array(xxx).T[:,:,np.newaxis], np.array(vvv).T[:,:,np.newaxis], np.array(aaa).T[:,:,np.newaxis], np.array(jjj).T[:,:,np.newaxis]
 
 def get_multi_interval_minjerk_1D(dt, tt, xx, uu, smooth_acc=False, smooth_start=False, i_a_end=None, only_x=False, extra_at_end=None):
   """Generates a multi-interval minjerk trajectory in 1 dimension
@@ -336,35 +336,37 @@ def plotMinJerkTraj(x, v, a, j, dt, title, intervals=None, colors=None, tt=None,
       intervals ([set((a,b))], optional): {(0.1, 0.2), (0.42,0.55), ..}
       colors ([tuple], optional): ('gray', 'blue', ..)
   """
+  fsize = 12
   if colors is None:
     colors = []
-  fig, axs = plt.subplots(4, 1)
+  fig, axs = plt.subplots(4, 1, figsize=(16, 11))
   timesteps = np.arange(0, x.size) * dt  # (1:length(x))*dt
   for ax in axs:
+    ax.grid(True)
     ax.set_xlim(xmin=0,xmax=timesteps[-1])
-  axs[0].plot(timesteps, x, 'b', label='Plate position')
-  axs[0].legend(loc=1)
-  axs[1].plot(timesteps, v, 'b', label='Plate velocity')
-  axs[1].legend(loc=1)
-  axs[2].plot(timesteps, a, 'b', label='Plate acceleration')
-  axs[2].legend(loc=1)
-  axs[3].plot(timesteps, j, 'b', label='Plate jerk')
-  axs[3].legend(loc=1)
+  axs[0].plot(timesteps, x, 'b', label='Position')
+  axs[0].legend(loc=1, fontsize=fsize)
+  axs[1].plot(timesteps, v, 'b', label='Velocity')
+  axs[1].legend(loc=1, fontsize=fsize)
+  axs[2].plot(timesteps, a, 'b', label='Acceleration')
+  axs[2].legend(loc=1, fontsize=fsize)
+  axs[3].plot(timesteps, j, 'b', label='Jerk')
+  axs[3].legend(loc=1, fontsize=fsize)
   if intervals is not None:
     for ax in axs:
       ax = plot_intervals(ax, intervals, dt, colors)
 
   if tt is not None:
     if xx is not None:
-      plot_lines_coord(axs[0], tt, xx)
+      plot_lines_coord(axs[0], tt, xx, typ=None)
     else:
       for t in tt:
-        ax[0].axvline(t, linestyle='--')
+        axs[0].axvline(t, linestyle='--')
     if uu is not None:
-      plot_lines_coord(axs[1], tt, uu)
+      plot_lines_coord(axs[1], tt, uu, typ=None)
     else:
       for t in tt:
-        ax[1].axvline(t, linestyle='--')
+        axs[1].axvline(t, linestyle='--')
     for ax in axs[2:]:
       for t in tt:
         ax.axvline(t, linestyle='--')
@@ -410,17 +412,18 @@ if __name__ == "__main__":
   func = get_multi_interval_multi_dim_minjerk(dt, tt, xx, uu, smooth_acc, smooth_start, i_a_end=i_a_end, lambdas=True)
   xxx2, vvv2, aaa2, jjj2 =  func(ttt)
 
-  print(np.linalg.norm(xxx2 -xxx1)/xxx1.size)
-  print(np.linalg.norm(xxx -xxx1)/xxx.size)
-  print(np.linalg.norm(vvv -vvv1)/vvv.size)
-  print(np.linalg.norm(aaa -aaa1)/vvv.size)
-  print(np.linalg.norm(jjj -jjj1)/vvv.size)
+  print(np.linalg.norm(xxx2 - xxx1)/xxx1.size)
+  print(np.linalg.norm(xxx - xxx1)/xxx.size)
+  print(np.linalg.norm(vvv - vvv1)/vvv.size)
+  print(np.linalg.norm(aaa - aaa1)/vvv.size)
+  print(np.linalg.norm(jjj - jjj1)/vvv.size)
 
 
   plt.plot(ttt, aaa[:,0], 'b')
   plt.plot(ttt, aaa1[:,0], 'r')
   plt.title('Differences: straight forward vs functional approach')
-  plotMinJerkTraj(xxx[:,0], vvv[:,0], aaa[:,0], jjj[:,0], dt, "straight forward approach", block=False)
-  plotMinJerkTraj(xxx1[:,0], vvv1[:,0], aaa1[:,0], jjj1[:,0], dt, "functional approach values", block=False)
-  plotMinJerkTraj(xxx1[:,0], vvv2[:,0], aaa2[:,0], jjj2[:,0], dt, "functional approach lambdas", block=False)
+  plotMinJerkTraj(xxx[:,0], vvv[:,0], aaa[:,0], jjj[:,0], dt, "straight forward approach", block=False, tt=tt, xx=xx[:,0], uu=uu[:,0])
+  plotMinJerkTraj(xxx1[:,0], vvv1[:,0], aaa1[:,0], jjj1[:,0], dt, "functional approach values", block=False, tt=tt, xx=xx[:,0], uu=uu[:,0])
+  plotMinJerkTraj(xxx1[:,0], vvv2[:,0], aaa2[:,0], jjj2[:,0], dt, "functional approach lambdas", block=False, tt=tt, xx=xx[:,0], uu=uu[:,0])
+  plt.savefig('MJ_proposal.pdf')
   plt.show()
