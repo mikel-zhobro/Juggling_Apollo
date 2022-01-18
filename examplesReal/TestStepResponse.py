@@ -3,19 +3,22 @@ import time
 import os
 
 import __add_path__
+from examples.utils import plot_A
 from juggling_apollo.settings import dt
 from apollo_interface.Apollo_It import ApolloInterface
 from kinematics.ApolloKinematics import ApolloArmKinematics
 from utils import save, plot_info
+import matplotlib.pyplot as plt
+
 
 np.set_printoptions(precision=4, suppress=True)
 
 
 print("juggling_apollo")
-T_home = np.array([[0.0, -1.0, 0.0,  0.32],  # uppword orientation(cup is up)
-                   [0.0,  0.0, 1.0,  0.81],
-                   [-1.0, 0.0, 0.0, -0.49],
-                   [0.0,  0.0, 0.0,  0.0 ]], dtype='float')
+T_home = np.array([[1.0, 0.0, 0.0,  0.32],  # uppword orientation(cup is up)
+                   [0.0, 1.0, 0.0,  0.81],
+                   [0.0, 0.0, 1.0, -0.49],
+                   [0.0, 0.0, 0.0,  0.0 ]], dtype='float')
 
 # 0. Create Apollo objects
 rArmKinematics = ApolloArmKinematics(r_arm=True)  ## noise noisifies the forward dynamics only
@@ -35,14 +38,17 @@ N_step = 150; N_start = (N_1-N_step)//2
 
 step_value = -0.6
 try_out_joints = [
-  [[0],[1],[2],[3],[4],[5],[6]],
   [list(range(7))],
+  [[0],[1],[2],[3],[4],[5],[6]],
   ]
 
-for step_value in [-0.1, -0.2, -0.3, -0.4, -0.5, -0.6, -0.7, -0.8, -0.9, -1.0]:
-  q_v_traj_vec = np.zeros((1, N_1, N_joints, 1))
-  uff_collect = np.zeros((1, N_1, N_joints, 1))
+vs = [-0.9]
+SIZ = len(vs)* len(try_out_joints)
+q_v_traj_vec = np.zeros((SIZ, N_1, N_joints, 1))
+uff_collect = np.zeros((SIZ, N_1, N_joints, 1))
+jj = 0
 
+for step_value in vs:
   for learnable_joints_l in try_out_joints:
     for learnable_joints in learnable_joints_l:
 
@@ -55,15 +61,24 @@ for step_value in [-0.1, -0.2, -0.3, -0.4, -0.5, -0.6, -0.7, -0.8, -0.9, -1.0]:
       q_traj, q_v_traj, q_a_traj, F_N_vec, u_vec = rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL, u=u_ff, joint_home_config=q_start, repetitions=1)
 
       for i in learnable_joints:
-        uff_collect[0,:,i] = (180.0 / np.pi) * u_ff[:,i]
-        q_v_traj_vec[0,:,i] = (180.0 / np.pi) * q_v_traj[1:,i]
-
-    dir_name = "/home/apollo/Desktop/Investigation/Step_Response/{}".format(time.strftime("%Y_%m_%d"))
-    if not os.path.exists(dir_name):
-      os.makedirs(dir_name)
-    plot_info(dt, learnable_joints=[l for ll in learnable_joints_l for l in ll],
-              u_ff_vec=uff_collect, q_v_traj=q_v_traj_vec[0],
-              v=True, p=False, dp=False, e_xyz=False, e=False, torque=False, N=1,
-              fname=dir_name + "/v_{}_joint_{}".format(str((180.0 / np.pi) * abs(step_value)).replace('.', ''), learnable_joints_l))
+        uff_collect[jj,:,i] = (180.0 / np.pi) * u_ff[:,i] * (-1 if i ==1 else 1)
+        q_v_traj_vec[jj,:,i] = (180.0 / np.pi) * q_v_traj[1:,i] * (-1 if i ==1 else 1)
+    jj += 1
 
 
+index_labels  = ['input']
+for v in vs:
+  for s in ["one by one: v=", "all: v="]:
+    index_labels.append(s + str(v) + "m/s")
+
+plot_A(lines_list=[uff_collect[0],] + list(q_v_traj_vec), dt=dt, xlabel=r"$t$ [s]", ylabel=r"[$\frac{grad}{s}$]", 
+       index_labels=[r"$\dot{\theta}_%d$" %(i+1) for i in range(7)], labels=index_labels, degree=False)
+plt.suptitle("Angle Positions")
+
+dir_name = "/home/apollo/Desktop/Investigation/Step_Response/{}".format(time.strftime("%Y_%m_%d"))
+if not os.path.exists(dir_name):
+  os.makedirs(dir_name)
+fname = dir_name + "/v_" + str(step_value)
+plt.savefig(fname+".pdf")
+
+plt.show()
