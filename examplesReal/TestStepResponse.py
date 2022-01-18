@@ -42,7 +42,7 @@ try_out_joints = [
   [[0],[1],[2],[3],[4],[5],[6]],
   ]
 
-vs = [-0.9]
+vs = [-0.8]
 SIZ = len(vs)* len(try_out_joints)
 q_v_traj_vec = np.zeros((SIZ, N_1, N_joints, 1))
 uff_collect = np.zeros((SIZ, N_1, N_joints, 1))
@@ -71,7 +71,7 @@ for v in vs:
   for s in ["one by one: v=", "all: v="]:
     index_labels.append(s + str(v) + "m/s")
 
-plot_A(lines_list=[uff_collect[0],] + list(q_v_traj_vec), dt=dt, xlabel=r"$t$ [s]", ylabel=r"[$\frac{grad}{s}$]", 
+plot_A(lines_list=[uff_collect[0],] + list(q_v_traj_vec), dt=dt, xlabel=r"$t$ [s]", ylabel=r"[$\frac{grad}{s}$]",
        index_labels=[r"$\dot{\theta}_%d$" %(i+1) for i in range(7)], labels=index_labels, degree=False)
 plt.suptitle("Angle Positions")
 
