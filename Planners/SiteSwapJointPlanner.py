@@ -113,7 +113,7 @@ def plan(dt, kinematics, h=0.5, throw_height=0.35, swing_size=0.46, slower=1.0, 
         plt.suptitle("Angle Positions [Joint space plan]")
         # plt.savefig('Joint_Angle_Traj_joint.pdf')
         plot_A(qv_traj.reshape(1,-1,7,1), indexes_list=joint_list, dt=dt, limits=kinematics.vlimits, index_labels=[r"$\dot{\theta}_%d$" %(i+1) for i in range(7)],
-               xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]", scatter_times=ts)
+               xlabel=r"$t$ [s]", ylabel=r"[$\frac{grad}{s}$]", scatter_times=ts)
         plt.suptitle("Angle Velocities [Joint space plan]")
         # plt.savefig('Joint_Angle_Vel_Traj_joint.pdf')
         # plot_A(180./np.pi*qa_traj.reshape(1,-1,7,1))

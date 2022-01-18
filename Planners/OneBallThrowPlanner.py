@@ -194,7 +194,7 @@ def plan2(dt, kinematics, h=0.5, throw_height=0.0, swing_size=0.46, slower=1.0, 
         plot_A(q_traj.reshape(1,-1,7,1), dt=dt, limits=kinematics.limits, xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]")
         plt.suptitle("Joint angles")
         plot_A(qv_traj.reshape(1,-1,7,1), dt=dt, limits=kinematics.vlimits, index_labels=[r"$\dot{\theta}_%d$" %(i+1) for i in range(7)],
-               xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]")
+               xlabel=r"$t$ [s]", ylabel=r"[$\frac{grad}{s}$]")
         plt.suptitle("Joint angle velocities")
         # plot_A(180./np.pi*qa_traj.reshape(1,-1,7,1))
         # plt.suptitle("Angle Accelerations")
