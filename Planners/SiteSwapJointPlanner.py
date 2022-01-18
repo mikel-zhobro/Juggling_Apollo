@@ -35,7 +35,7 @@ def plan(dt, kinematics, h=0.5, throw_height=0.35, swing_size=0.46, slower=1.0, 
         rep (int, optional): [description]. Defaults to 1.
     """
     jp = SiteSwapPlanner.JugglingPlanner()
-    pattern=(3,); h=0.6; r_dwell=0.45; throw_height=0.25; swing_size=0.16; w=0.4; slower=1.5; rep=1
+    pattern=(3,); h=0.6; r_dwell=0.45; throw_height=0.25; swing_size=0.16; w=0.4;  rep=1; # slower=1.5
     plan = jp.plan(dt, 2, pattern=pattern, h=h, r_dwell=r_dwell, throw_height=throw_height, swing_size=swing_size, w=w, rep=rep)
 
     # plan.plot()

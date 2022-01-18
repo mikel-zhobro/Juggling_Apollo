@@ -21,7 +21,7 @@ print("juggling_apollo")
 ########################################################################################################
 ########################################################################################################
 ########################################################################################################
-FREQ_DOMAIN=True
+FREQ_DOMAIN=False
 NF=12
 
 SAVING = True
@@ -69,7 +69,7 @@ rArmKinematics    = ApolloArmKinematics(r_arm=True, noise=NOISE)  ## kinematics 
 rArmKinematics_nn = ApolloArmKinematics(r_arm=True)               ## kinematics without noise  (used to calculate measurments, plays the wrole of a localization system)
 
 # C) PLANNINGs
-q_traj_des, qv_traj_des, T_traj = SiteSwapJointPlanner.plan(dt, rArmKinematics, verbose=True)
+q_traj_des, qv_traj_des, T_traj = SiteSwapJointPlanner.plan(dt, rArmKinematics, slower=1.5, verbose=True)
 
 
 N = len(q_traj_des)
