@@ -62,7 +62,7 @@ def plot_A(lines_list, indexes_list=list(range(7)), labels=None, dt=1, xlabel=""
   # fig.text(0.5, 0.14, xlabel, ha='center')
   axs.flat[-1].set_xlabel(xlabel)
   fig.text(0.0, 0.5, ylabel, va='center', rotation='vertical')
-  fig.tight_layout(rect=[0, 0.06, 1, 0.98])
+  fig.tight_layout(rect=[0, 0.03, 1, 0.96])
   return axs.flat
 
 def save(filename, **kwargs):
