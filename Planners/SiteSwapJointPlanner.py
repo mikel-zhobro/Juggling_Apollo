@@ -85,7 +85,7 @@ def plan(dt, kinematics, h=0.5, throw_height=0.35, swing_size=0.46, slower=1.0, 
         # qv_s[i] = np.linalg.inv(H).dot(b)[:7]
         qv_s[i], vw = constrained_optim(Ji, np.zeros((7,1)), vs[i])
         print(i, vs[i].T, vw.T)
-    q_traj, qv_traj, qa_traj, qj_traj = MinJerk.get_multi_interval_multi_dim_minjerk(dt, ts, q_s, qv_s, smooth_acc=False, only_pos=False, i_a_end=True)
+    q_traj, qv_traj, qa_traj, qj_traj = MinJerk.get_multi_interval_multi_dim_minjerk(dt, ts, q_s, qv_s, smooth_acc=True, only_pos=False, i_a_end=True)
     # q_traj, qv_traj, qa_traj, qj_traj = MinJerk.get_multi_interval_minjerk_xyz(dt, ts, q_s, qv_s, smooth_acc=False, only_pos=False, i_a_end=0)
     T_traj = kinematics.seqFK(q_traj)
 
