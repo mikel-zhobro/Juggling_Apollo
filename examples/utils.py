@@ -5,7 +5,9 @@ import time
 import numpy as np
 import pickle
 
-from juggling_apollo.utils import DotDict, full_extent
+# from Planners.utils import set_axes_equal
+
+from juggling_apollo.utils import DotDict, full_extent, set_axes_equal
 
 colors = ["r", 'g', 'b', 'k', 'c', 'm', 'y']
 line_types = ["-", "--", ":", '-.']
@@ -35,7 +37,7 @@ def plot_A(lines_list, indexes_list=list(range(7)), labels=None, dt=1, xlabel=""
       ax.fill_between(timesteps, A*fill_between[0][:, ix].squeeze(), A*fill_between[1][:, ix].squeeze(), color='purple', alpha=0.2)
 
     ymin = np.min(lines_list[:,:,indexes_list]); ymax = np.max(lines_list[:,:,indexes_list]); ytmp = abs(ymin - ymax)
-    
+
     [ax.axvline(pos, linestyle='--', color='k') for pos in scatter_times]
 
     ax.set_ylim([ymin-0.1*ytmp, ymax+0.1*ytmp])
@@ -106,13 +108,13 @@ def plot_info(dt, learnable_joints=list(range(7)),
       fig = plt.gcf()
       # fig.set_size_inches((25.5, 8), forward=False)
       plt.savefig(fname+ "_" +typ + '.pdf', bbox_inches='tight')
-      
+
       # for i, ax2 in enumerate(axs):
       #   extent = full_extent(ax2).transformed(fig.dpi_scale_trans.inverted())
       #   fname2 = fname+"/joint_{}/".format(learnable_joints[i])
       #   if not os.path.exists(fname2):
       #       os.makedirs(fname2)
-        
+
       #   fig.savefig(fname2 + typ + "_" + '.pdf', bbox_inches=extent)
 
   qlim = kinematics.limits if kinematics is not None else None
@@ -142,7 +144,7 @@ def plot_info(dt, learnable_joints=list(range(7)),
 
     line_list = [q_v_traj] + list(u_ff_vec[its])
     label_list = ["performed"] + ["it="+str(it) for it in its]
-    axs = plot_A(line_list, learnable_joints, 
+    axs = plot_A(line_list, learnable_joints,
                  fill_between=[np.max(u_ff_vec, axis=0), np.min(u_ff_vec, axis=0)],
            index_labels=[r"$\dot{\theta}_%d$" %(i+1) for i in learnable_joints], labels=label_list, limits=qvlim,
            dt=dt, xlabel=r"$t$ [s]", ylabel=r" angle velocity [$\frac{degree}{s}$]")
@@ -199,24 +201,25 @@ def plot_info(dt, learnable_joints=list(range(7)),
     fig = plt.figure(figsize=(14,14))
     ax = fig.add_subplot(111, projection='3d')
     ax.plot3D(T_traj[:,0,-1], T_traj[:,1,-1], T_traj[:,2,-1], linestyle="-",# if i ==0 else '--',
-                              linewidth=1, marker="*", #if i ==0 else None, 
+                              linewidth=1, marker="*", #if i ==0 else None,
                               markersize = 1.4,
                               label= 'Desired trajectory')
-    
+
     for it in its:
       Tmp_traj = T_traj[:,:3,-1] + d_xyz_rpy_vec[it,:,:3]
       ax.plot3D(Tmp_traj[:,0], Tmp_traj[:,1], Tmp_traj[:,2], linestyle="--",# if i ==0 else '--',
                           linewidth=1,
                           label= 'it: %d' %it)
     # ax.plot3D(ld.xyz_traj_des[:,0], ld.xyz_traj_des[:,1], ld.xyz_traj_des[:,2], 'gray')
+    set_axes_equal(ax) # IMPORTANT - this is also required
     plt.title("Catesian trajectories")
     plt.legend()
     save("cartesian_trajs", [ax])
 
     if fname is None:
       plt.show()
-  
-  
+
+
 def save_all(filename, kinematics=None, special=None, **kwargs):
   "Backups the data for reproduction, creates plots and saves plots."
   directory="/home/apollo/Desktop/Investigation/{}/".format(time.strftime("%Y_%m_%d"))
