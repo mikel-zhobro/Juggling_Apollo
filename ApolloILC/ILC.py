@@ -1,5 +1,4 @@
 import numpy as np
-from scipy import optimize
 import utils
 from LiftedStateSpace import LiftedStateSpace
 from OptimLss import OptimLss
@@ -25,6 +24,7 @@ class ILC:
 
     # Components of ilc
     self.y_des = None  # keeps the time domain desired trajectory
+    self.c_s_ = None
     self._u_ff = None  # keeps the learned feed forward signal(Fourier coeficients in FreqDomain))
     self._delta_u_ff = None
     self.y_des_feedback = 0.  # keeps the feedback part that has to be substracted from desired traj(Fourier Coef in FreqDomin)
@@ -54,13 +54,12 @@ class ILC:
   def update_y_des(self, y_des):
     assert y_des.size == self.Nt, "Make sure the new y_des has the same size as the input ILC was initialized with."
     self.y_des = y_des.copy().reshape(-1,1)
-      # self.y_des = fourier_series_coeff(y_des, self.N).reshape(-1,1)
 
     if self.lss.sys.with_feedback:
       self.y_des_feedback = self.lss.GF_feedback.dot(self.y_des)
 
   def transf_uff(self, uff):
-    """ Transforms uff to the right format for robot usage.
+    """ Transforms uff to time format for robot usage.
 
     Args:
         uff ([np.array(N{t/f},1)]): feedForward input in timeDomain or freqDomain according to how ILC was initialized
@@ -71,13 +70,7 @@ class ILC:
     return uff.copy() if self.timeDomain else series_real_coeff(uff, t=np.arange(0, self.Nt)*self.dt, T=self.T).reshape(-1,1)
 
   def get_delta_y(self, y_meas):
-    """ Transforms uff to the right format for robot usage.
-
-    Args:
-        uff ([np.array(N{t/f},1)]): feedForward input in timeDomain or freqDomain according to how ILC was initialized
-
-    Returns:
-        [np.array(Nt,1)]: copy of feedForward input in timeDomain
+    """ Computes the input deviation trajectory in the right format.
     """
     return self.y_des-y_meas if self.timeDomain else fourier_series_coeff(self.y_des-y_meas-self.y_des_feedback, self.N).reshape(-1,1)
 
@@ -155,6 +148,67 @@ class ILC:
 
       return self.transf_uff(self._u_ff)
 
+  def updateStep3(self, y_meas, y_des=None, verbose=False, lb=None, ub=None):
+      """ Updates learned feedforward input and disturbance according to (self._u_ff, y_meas) tuple.
+
+      Args:
+          y_meas ([np.array(Nt, 1)]): measured output for the previously calculated u_ff
+          y_des ([np.array(Nt, 1)], optional): A new desired desired trajectory in time domain. Defaults to None.
+          verbose (bool, optional): whether to print out verbose info
+          lb, ub ([type], optional): Whether to inforce upper and lower bounds onthe input. Only valid for timeDomain usage.
+
+      Returns:
+          [np.array(Nt, 1)]: new feed forward input
+      """
+      delta_y = self.get_delta_y(y_meas)
+      print(np.linalg.norm(delta_y))
+
+      if not self.timeDomain:
+        assert lb is None and ub is None, "No constraint optimization possible in freqDomain."
+
+      if y_des is not None:
+        self.update_y_des(y_des)
+
+      if self._u_ff is None:
+        return self.init_uff_from_lin_model(verbose, lb, ub)
+
+      if self.c_s_ is None:
+        cks = delta_y.real[0:self.Nf]
+        sks = -delta_y.imag[0:self.Nf]
+        self.c_s_ = np.hstack((cks, sks))
+
+      # update uff
+      def T(k):
+        a = 17.
+        K = a/4.
+        tmp = k* 2*np.pi/self.T
+        A = np.linalg.inv(
+          # np.array([[tmp,  0,    0,    -1.],
+          #           [0 ,   tmp,  a*K,   a],
+          #           [0 ,   -1.,   tmp,   0],
+          #           [a*K,   a,    0,   tmp]]).reshape(4,4))
+          np.array([[0,    -1.,    tmp,    0.],
+                    [a*K,   a,  0.,   tmp],
+                    [-tmp ,  0.,  0,    -1.],
+                    [0.,   -tmp,  a*K,   a]]).reshape(4,4))
+        t_ret = np.eye(2)*0.0
+
+        t_ret[0,0] = A[0,1]
+        t_ret[0,1] = A[0,3]
+        t_ret[0,1] = A[2,1]
+        t_ret[1,1] = A[2,3]
+        return t_ret
+
+      aks = delta_y.real[0:self.Nf]
+      bks = -delta_y.imag[0:self.Nf]
+      a_b_ = np.hstack((aks, bks))
+
+      for i, ab in enumerate(a_b_):
+        k = i+1
+        self.c_s_[i] -= 0.163 * (T(k).dot(ab.reshape(2,1))).squeeze()
+      print(self.c_s_)
+      # return self.transf_uff(self._u_ff)
+      return series_real_coeff3(self.c_s_[:,0], self.c_s_[:,1], t=np.arange(0, self.Nt)*self.dt, T=self.T).reshape(-1,1)
 
 def fourier_series_coeff(f, Nf, complex=False):
   return fourier_series_coeff2(f, Nf+1, True)[1:]
@@ -164,13 +218,13 @@ def series_real_coeff(y, t, T):
     """calculates the Fourier series with period T at times t,
     from the real coeff. a0,a,b"""
     tmp = np.zeros_like(t)
-    for k, (ak, bk) in enumerate(zip(y.real, -y.imag)):
-        tmp += ak * np.cos(2 * np.pi * (k + 1) * t / T) + bk * np.sin(2 * np.pi * (k + 1) * t / T)
+    for k, (ck, sk) in enumerate(zip(y.real, -y.imag)):
+        tmp += ck * np.cos(2 * np.pi * (k + 1) * t / T) + sk * np.sin(2 * np.pi * (k + 1) * t / T)
     return tmp
 
 
 # Unchanged implementation that do and undo eachother
-def fourier_series_coeff2(f, Nf, complex=False):
+def fourier_series_coeff2(f, Nf, complex=True):
     """Calculates the first 2*N+1 Fourier series coeff. of a periodic function.
 
     Given a periodic, function f(t) with period T, this function returns the
@@ -201,3 +255,27 @@ def series_real_coeff2(y, t, T):
     for k, (ak, bk) in enumerate(zip(y[1:].real, -y[1:].imag)):
         tmp += ak * np.cos(2 * np.pi * (k + 1) * t / T) + bk * np.sin(2 * np.pi * (k + 1) * t / T)
     return tmp
+
+def series_real_coeff3(a, b, t, T):
+    """calculates the Fourier series with period T at times t,
+    from the real coeff. a0,a,b"""
+    tmp = np.zeros_like(t)
+    for k, (ak, bk) in enumerate(zip(a, b)):
+        tmp += ak * np.cos(2 * np.pi * (k + 1) * t / T) + bk * np.sin(2 * np.pi * (k + 1) * t / T)
+    return tmp
+
+
+
+if __name__ == "__main__":
+  import matplotlib.pyplot as plt
+  x = np.linspace(0,3,400)
+  fx = (x-1.5)**6 - 1.5**6  # second order polynomial
+
+  F = fourier_series_coeff2(fx, 40, complex=True)
+  fxx= series_real_coeff2(F, x , T=3.)
+
+
+  plt.plot(x, fx)
+  plt.plot(x, fxx)
+  # plt.plot(x, np.fft.irfft(F)*40 /2 )
+  plt.show()
