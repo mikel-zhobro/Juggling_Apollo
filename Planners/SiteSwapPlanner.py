@@ -41,7 +41,7 @@ def plotConnection(ax, actual_beat, catch_beat, y0, y1, same_hand, color='k'):
     a = (y1-y0)/(catch_beat - actual_beat)
     b = y0 - a*actual_beat
     y = a*x + b # straight line starting at actual_beat and ending at actual_beat+nt with y=1
-  ax.plot(x, y, color=color)
+  ax.plot(x, y, color=color, linewidth=1)
 
 
 class BallTraj():
@@ -250,9 +250,9 @@ class CatchThrow():
     x , y = actual_beat, self.h.h
     # color = None
     color = 'b'
-    if actual_beat in [2, 5]:
-      print(actual_beat)
-      color = 'r'
+    # if actual_beat in [2, 5]:
+    #   print(actual_beat)
+    #   color = 'r'
     # elif (actual_beat) %3 ==1:
     #   color = 'g'
 
@@ -266,10 +266,13 @@ class CatchThrow():
   def plotCTTrajectory(self, ax, ttt, h_i, orientation):
     ax.scatter(*self.p_t, color='k')
     ax.scatter(*self.P, color='k')
-    ax.text(self.p_t[0], self.p_t[1], self.p_t[2], 'throw', size=11, zorder=1,  color='k')
-    ax.text(self.P[0], self.P[1], self.P[2], 'catch', size=11, zorder=1,  color='k')
-    col = self.traj.plotMJTraj(ax, ttt, self.i, h_i, orientation)
+    ax.text(self.p_t[0], self.p_t[1], self.p_t[2], 'throw', size=6, zorder=1,  color='k')
+    ax.text(self.P[0], self.P[1], self.P[2], 'catch', size=6, zorder=1,  color='k')
+    col = None
+    # col = self.traj.plotMJTraj(ax, ttt, self.i, h_i, orientation)
     self.ballTraj.plotBallTraj(ax, col)
+
+
 
   @property
   def P(self):
@@ -343,6 +346,8 @@ class JugglingHand(Traj):
     ax.scatter(self.position[0], self.position[1])
     for ct in self.ct_period:
       ct.plotCTTrajectory(ax, self.ttt, self.h, orientation)
+    # plt.savefig("tata" + '.pdf', bbox_inches='tight')
+
 
   def getTimesPositionsVelocities(self):
     """ Puts together the plan of the hand.
@@ -406,6 +411,7 @@ class JugglingPlan():
       plt.show()
 
   def plotTimeDiagram(self, subplot=111):
+    plt.figure(figsize=(14,8))
     ax = plt.subplot(subplot)
     N_beats = self.T
     heights = np.arange(self.Nh)
@@ -419,6 +425,8 @@ class JugglingPlan():
     ax.set_xlim((-0.2, N_beats-0.2))
     ax.set_ylim((heights[0]-0.5, heights[-1]+0.5))
     ax.set_title('Time Diagram')
+    # plt.savefig("44" + '.pdf', bbox_inches='tight')
+
     if subplot==111:
       plt.show()
 
@@ -602,8 +610,10 @@ if __name__ == "__main__":
   dt = 0.004
   jp = JugglingPlanner()
   # jp.plan(1, pattern=(3,3,3), rep=1).plot()
-  p = jp.plan(dt, 2, pattern=(3,5,), slower=5, rep=1)
-  p.plot()
+  # p = jp.plan(dt, 3, pattern=(3,5,3,5), slower=5, rep=1)
+  p = jp.plan(dt, 3, h=0.4, pattern=(4,), slower=5, w=0.7, rep=1)
+  p.plotTimeDiagram()
+
   # jp.plan(4, pattern=(3,), rep=1).plot()
   # jp.plan(dt, 4, pattern=(5,), slower=5, rep=1).plot()
   # N_Whole0, x0, v0, a0, j0, thetas = p.hands[0].get(True)  # get plan for hand0
