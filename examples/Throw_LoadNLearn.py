@@ -35,6 +35,8 @@ FILENAME= "/home/apollo/Desktop/Investigation/2021_12_14/21_25_12/one_throw_join
 FILENAME="/home/apollo/Desktop/Investigation/2021_12_15/14_42_24/one_throw_joint_[0, 1, 2, 3, 4, 5, 6]_alpha_[ 17.  17.  17.  17.  17.  17.  17.]_eps_0.001_time_domain_cart_err_off.data"
 FILENAME="/home/apollo/Desktop/Investigation/2021_12_16/17_18_05/one_throw_joint_[0, 1, 2, 3, 4, 5, 6]_alpha_[ 17.  17.  17.  17.  17.  17.  17.]_eps_0.001_time_domain_cart_err_off.data"
 FILENAME="/home/apollo/Desktop/Investigation/2022_01_05/14_56_51/one_throw_joint_[0, 1, 2, 3, 4, 5, 6]_alpha_[ 17.  17.  17.  17.  17.  17.  17.]_eps_0.001_time_domain_cart_err_off.data"
+FILENAME="/Users/mikel/Downloads/Investigation/2022_01_18/12_00_39/one_throw_joint_[0, 1, 2, 3, 4, 5, 6]_alpha_[ 17.  17.  17.  17.  17.  17.  17.]_eps_0.001_freq_domain_cart_err_off.data"
+
 ld = load(FILENAME)
 
 

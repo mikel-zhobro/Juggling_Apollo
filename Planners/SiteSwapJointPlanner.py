@@ -88,7 +88,7 @@ def plan(dt, kinematics, h=0.5, throw_height=0.35, swing_size=0.46, slower=1.0, 
     N, x0, v0, a0, j0, rot_traj_des = plan.hands[0].get(get_thetas=True)  # get plan for hand0
     xXx = x0-offset.squeeze()+T_home[:3, -1]
     T_traj_cartesian = utilities.pR2T(xXx, rot_traj_des)
-    q_cartesian, _, _ = kinematics.seqIK(T_traj_cartesian, [])
+    q_cartesian, _, _ = kinematics.seqIK(T_traj_cartesian, considered_joints=[])
     qv_cartesian = vel_from_position(q_cartesian, qv_traj[0], dt)
     joint_list = [0,1,2,3, 4, 5,6]
 

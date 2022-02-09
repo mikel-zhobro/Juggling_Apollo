@@ -23,7 +23,7 @@ class DynamicSystem:
     # FreqDomain
     self.Hu = None  # C(sI - A)^-1 B
     self.Hd = None  # C(sI - A)^-1 Bd
-    
+
     # Feedback Sys
     self.B_feedback = None
 
@@ -171,7 +171,8 @@ class ApolloDynSys(DynamicSystem):
     Bd = np.array([self.alpha*dt**2/2,
                    dt*self.alpha], dtype='float').reshape(2,1)
     Cd = np.array([1.0, 0.0], dtype='float').reshape(1,2)
-    S = np.array([0.0, 1.0], dtype='float').reshape(2,1)
+    # S = np.array([0.0, 1.0], dtype='float').reshape(2,1)
+    S = np.array([dt**2/2, dt], dtype='float').reshape(2,1)
     c = np.array([0.0, 0.0], dtype='float').reshape(2,1)
 
     return Ad, Bd, Cd, S, c
@@ -223,9 +224,9 @@ class ApolloDynSysWithFeedback(DynamicSystem): #TODO: update Lifted Space to all
     self.Hu         = lambda s: self.alpha / (s**2 + self.alpha*s + self.alpha*self.K)
     self.Hd         = lambda s: 1.0 / (s**2 + self.alpha*s + self.alpha*self.K)
     self.H_feedback = lambda s: self.K*self.alpha / (s**2 + self.alpha*s + self.alpha*self.K)
-  
-  
-  
+
+
+
 class ApolloDynSysWithFeedback2(DynamicSystem): #TODO: update Lifted Space to allow delay
   def __init__(self, dt, x0, alpha_=alpha, K=None, freq_domain=False):
     self.alpha = alpha_
@@ -243,7 +244,7 @@ class ApolloDynSysWithFeedback2(DynamicSystem): #TODO: update Lifted Space to al
     tmp = 0.5*adt*dt
     a =  self.K*tmp + adt - 2.0 # 2.0 - self.alpha*dt + tmp*self.K
     b =  self.K*tmp - adt + 1.0
-    
+
     bu = tmp/self.K
     bd = self.alpha**-1 * bu
 
@@ -270,4 +271,3 @@ class ApolloDynSysWithFeedback2(DynamicSystem): #TODO: update Lifted Space to al
     # |
     # X(kw) = cu_k * U(kw) +  cd_k D(kw)  <-- discrete fourier transformation
     pass
-  
