@@ -10,7 +10,7 @@ from juggling_apollo.ILC import ILC
 from Planners.MinJerk import plotMJ, get_multi_interval_minjerk_1D
 from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal
 from ApolloInterface.Apollo_It import ApolloInterface, plot_simulation
-from kinematics.ApolloKinematics import ApolloArmKinematics
+from ApolloKinematics.ApolloKinematics import ApolloArmKinematics
 from utils import plot_A, save, colors, line_types, print_info, plot_info
 
 

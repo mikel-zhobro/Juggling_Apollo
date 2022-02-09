@@ -2,7 +2,7 @@ import numpy as np
 
 import __add_path__
 from ApolloInterface.Apollo_It import ApolloInterface
-from kinematics.ApolloKinematics import ApolloArmKinematics
+from ApolloKinematics.ApolloKinematics import ApolloArmKinematics
 
 
 np.set_printoptions(precision=4, suppress=True)

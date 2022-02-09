@@ -4,7 +4,7 @@ import time
 import __add_path__
 from juggling_apollo.settings import dt
 from ApolloInterface.Apollo_It import ApolloInterface
-from kinematics.ApolloKinematics import ApolloArmKinematics
+from ApolloKinematics.ApolloKinematics import ApolloArmKinematics
 from utils import save, plot_info
 
 np.set_printoptions(precision=4, suppress=True)

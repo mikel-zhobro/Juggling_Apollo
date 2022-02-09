@@ -6,7 +6,7 @@ import __add_path__
 from juggling_apollo.settings import dt
 from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal
 from ApolloInterface.Apollo_It import ApolloInterface, plot_simulation
-from kinematics.ApolloKinematics import ApolloArmKinematics
+from ApolloKinematics.ApolloKinematics import ApolloArmKinematics
 from utils import plot_A, load
 
 np.set_printoptions(precision=4, suppress=True)

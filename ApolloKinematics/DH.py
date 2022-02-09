@@ -206,7 +206,7 @@ class DH_revolut():
 
 
 if __name__ == "__main__":
-    from kinematics.utilities import R_joints
+    from ApolloKinematics.utilities import R_joints
     pi2 = np.pi/2
     th3_offset = np.pi/6
     d_bs = 0.378724; d_se = 0.4; d_ew = 0.39; d_wt = 0.186

@@ -8,8 +8,8 @@ from juggling_apollo.settings import dt
 from juggling_apollo.ILC import ILC
 from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal, ApolloDynSys, ApolloDynSysWithFeedback
 from ApolloInterface.Apollo_It import ApolloInterface
-from kinematics.ApolloKinematics import ApolloArmKinematics
-from kinematics import utilities
+from ApolloKinematics.ApolloKinematics import ApolloArmKinematics
+from ApolloKinematics import utilities
 from Planners import SiteSwapPlanner, OneBallThrowPlanner, SiteSwapJointPlanner
 
 from utils import plot_A, save, save_all, colors, line_types, print_info, plot_info

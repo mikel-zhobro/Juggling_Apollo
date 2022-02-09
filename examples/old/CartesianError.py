@@ -4,8 +4,8 @@ import numpy as np
 import __add_path__
 import configs
 from juggling_apollo.settings import dt
-from kinematics.ApolloKinematics import ApolloArmKinematics
-from kinematics import utilities
+from ApolloKinematics.ApolloKinematics import ApolloArmKinematics
+from ApolloKinematics import utilities
 
 
 np.set_printoptions(precision=4, suppress=True)

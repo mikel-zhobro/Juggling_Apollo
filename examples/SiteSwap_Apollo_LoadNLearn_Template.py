@@ -8,8 +8,8 @@ from juggling_apollo.ILC import ILC
 from juggling_apollo.DynamicSystem import ApolloDynSys
 from Planners import SiteSwapPlanner
 from ApolloInterface.Apollo_It import ApolloInterface
-from kinematics.ApolloKinematics import ApolloArmKinematics
-from kinematics import utilities
+from ApolloKinematics.ApolloKinematics import ApolloArmKinematics
+from ApolloKinematics import utilities
 from utils import plot_A, save, load, print_info, plot_info
 
 np.set_printoptions(precision=4, suppress=True)
