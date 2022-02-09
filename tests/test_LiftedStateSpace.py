@@ -1,5 +1,5 @@
-import path_setter
 import numpy as np
+import __add_path__
 from ApolloILC.LiftedStateSpace import LiftedStateSpace
 
 

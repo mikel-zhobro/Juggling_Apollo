@@ -1,4 +1,4 @@
-import path_setter
+import __add_path__
 import numpy as np
 from ApolloILC.LiftedStateSpace import LiftedStateSpace
 from ApolloILC.OptimLss import OptimLss

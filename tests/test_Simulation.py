@@ -1,9 +1,10 @@
 #!/usr/bin/env python2
-import path_setter
+import __add_path__
 import numpy as np
 from ApolloILC.utils import plan_ball_trajectory, steps_from_time
-from ApolloILC.Simulation import Simulation, plot_simulation
 from ApolloILC.settings import dt, m_p
+from Simulation import SimulationPaddleBall
+from Simulation.SimulationPaddleBall import Simulation, plot_simulation
 
 
 def test1():

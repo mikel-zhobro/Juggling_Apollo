@@ -1,7 +1,9 @@
 
 import numpy as np
-from utils import steps_from_time, find_continuous_intervals, plot_intervals, plt
-from settings import m_b, m_p, k_c, g, ABS
+
+import __add_path__
+from ApolloILC.utils import steps_from_time, find_continuous_intervals, plot_intervals, plt
+from ApolloILC.settings import m_b, m_p, k_c, g, ABS
 from Visual import Paddle
 
 

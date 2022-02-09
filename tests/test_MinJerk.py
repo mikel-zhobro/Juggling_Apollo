@@ -1,5 +1,6 @@
-import path_setter
 import numpy as np
+
+import __add_path__
 from ApolloILC.utils import plan_ball_trajectory, steps_from_time, plt
 from ApolloILC.MinJerk import get_min_jerk_trajectory, plotMinJerkTraj, get_multi_interval_minjerk_1D
 from ApolloILC.settings import dt, g

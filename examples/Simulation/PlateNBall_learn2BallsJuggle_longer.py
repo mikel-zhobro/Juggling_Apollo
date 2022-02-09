@@ -3,7 +3,7 @@ import numpy as np
 
 import __add_path__
 from ApolloILC.utils import steps_from_time, plotIterations, plt, rtime
-from ApolloILC.Simulation import Simulation, plot_simulation
+from Simulation.SimulationPaddleBall import Simulation, plot_simulation
 from ApolloILC.settings import dt, g, ABS
 from ApolloILC.ILC import ILC
 from ApolloPlanners.JugglingPlanner import calc
