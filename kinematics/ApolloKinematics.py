@@ -6,7 +6,7 @@ from DH import DH_revolut
 from utilities import R_joints, L_joints, JOINTS_LIMITS, JOINTS_V_LIMITS
 from utilities import invT
 from fk_pin_local import PinRobot
-from AnalyticalIK import IK_anallytical, IK_heuristic2, IK_heuristic3
+from AnalyticalIK import IK_anallytical, IK_heuristic2, IK_heuristic3, IK_find_psi_and_GCs
 
 class ApolloArmKinematics():
     def __init__(self, r_arm=True, noise=None):
@@ -59,22 +59,25 @@ class ApolloArmKinematics():
         assert len(qs.shape)>2, "make sure you give a seq of joint states as input"
         return np.array([self.FK(q) for q in qs]).reshape(-1, 4, 4)
 
-    def IK(self, T_d, for_seqik=False, considered_joints=list(range(7))):
+    def IK(self, T_d, q_init=None, for_seqik=False, considered_joints=list(range(7))):
         # Returns joint configuration that correspond to the IK solutions with biggest PSI feasible set
         # PSI is choosen from the middle of the set
-        GC2, GC4, GC6, feasible_set, solu =  IK_heuristic3(p07_d=T_d[:3, 3:4], R07_d=T_d[:3, :3], DH_model=self.dh_rob, considered_joints=considered_joints) # decide branch of solutions(GC2=1)
-        assert not feasible_set.empty, "Not possible to calculate IK"
-        feasible_set = feasible_set.max_range()
-        psi = feasible_set.middle                     # Choose psi for start configuration
-        q_joints = solu(feasible_set.a+1e-4)          # Start configuration
-        q_joints = solu(psi)                          # Start configuration
+        if q_init is None:
+            GC2, GC4, GC6, feasible_set, solu =  IK_heuristic3(p07_d=T_d[:3, 3:4], R07_d=T_d[:3, :3], DH_model=self.dh_rob, considered_joints=considered_joints) # decide branch of solutions(GC2=1)
+            assert not feasible_set.empty, "Not possible to calculate IK"
+            feasible_set = feasible_set.max_range()
+            psi = feasible_set.middle                     # Choose psi for start configuration
+            q_joints = solu(psi)                          # Start configuration
+        else:
+           psi, GC2, GC4, GC6, feasible_set, solu = IK_find_psi_and_GCs(p07_d=T_d[:3, 3:4], R07_d=T_d[:3, :3], q_init=q_init, DH_model=self.dh_rob) #, considered_joints=considered_joints) # decide branch based on q_init
+           q_joints = solu(psi)
 
         if for_seqik:
             return q_joints, GC2, GC4, GC6, psi, solu, feasible_set
         else:
             return q_joints
 
-    def seqIK(self, T_dhTCP_traj, considered_joints=list(range(7)), verbose=False):
+    def seqIK(self, T_dhTCP_traj, q_init=None, considered_joints=list(range(7)), verbose=False):
         """
         Args:
             T_traj_TCP           ([np.array((N, 4,4))]): relative movements from start_position
@@ -102,7 +105,7 @@ class ApolloArmKinematics():
         joint_trajs[0] = q_joint_state_start
         for i, T_i in enumerate(T_dhTCP_traj[1:]): # position_traj and thetas should start from 0
             # Calc IK for new pose
-            solu, feas_set = IK_anallytical(T_i[:3,3:4], T_i[:3,:3], self.dh_rob, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False, considered_joints=considered_joints)
+            solu, feas_set, root_funcs = IK_anallytical(T_i[:3,3:4], T_i[:3,:3], self.dh_rob, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False, considered_joints=considered_joints)
 
             # Choose psi for the new joint configuration
             feas_set = feas_set.range_of(psi)
@@ -184,38 +187,3 @@ class ApolloArmKinematics():
         if noax:
             plt.show()
         return axs
-
-
-if __name__ == "__main__":
-    from apollo_interface.Apollo_It import ApolloInterface
-    dt = 0.004      # [s] discretization time step size
-    home_pose = np.array([0.0, -1.0, 0.0, np.pi/2, 0.0, 0.0, 0.0])
-
-    rArmInterface = ApolloInterface(r_arm=True)
-    rArmKinematics = ApolloArmKinematics(r_arm=True)
-
-    N = 200
-    T_start = rArmKinematics.FK(home_pose)
-    T_start[:3, :3] = np.array([[0.0, -1.0, 0.0,],  # uppword orientation(cup is up)
-                                [0.0,  0.0, 1.0,],
-                                [-1.0, 0.0, 0.0,]], dtype='float')
-
-    thetas_traj = 0.0* (np.cos(np.arange(N)*dt) * np.pi/4 - np.pi/4)
-    position_traj = np.zeros((N, 3))  # (x-left, y-forward, z-up)
-    position_traj[:, 0] = -np.sin(np.arange(N)*dt)*0.1
-    # position_traj[:, 1] = np.sin(np.arange(N)*dt)*0.1
-    # position_traj[:, 2] = np.sin(np.arange(N)*dt)*0.1
-
-    cartesian_traj_des, joints_traj, q_start, _ = rArmKinematics.seqIK(position_traj, thetas_traj, T_start, verbose=True)
-
-
-    rArmInterface.go_to_home_position(q_start, 2000)
-    for i in range(N):
-        q_i = joints_traj[i,:].reshape(-1, 1)
-        rArmInterface.go_to_posture_array(joints_traj[i], int(dt*1000), False)
-    rArmInterface.go_to_home_position(q_start, 2000)
-
-
-    # plt.plot([np.linalg.norm(position_traj[i] + T_start[:3, -1] - rArmKinematics.FK(joints_traj[i])[:3, -1] ) for i in range(N)])
-    # plt.title("ERROR on IK")
-    # plt.show()

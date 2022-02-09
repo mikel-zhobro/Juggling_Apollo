@@ -4,10 +4,11 @@ from math import sin, cos, acos, sqrt, atan2, asin, atan ,tan
 
 from DH import DH_revolut
 from utilities import R_joints, L_joints, JOINTS_LIMITS
-from utilities import skew, vec, clip_c
+from utilities import skew, vec, mod2Pi#, clip_c
 from random import random
 from Sets import ContinuousSet
 
+clip_c = mod2Pi
 np.set_printoptions(precision=4, suppress=True)
 
 # DH Params
@@ -40,14 +41,15 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
     p0w_d = p07_d - R07_d.dot(l7wt)
 
     # 1. Shoulder and elbo joints (set the wrist position)
-    th1, th2, th3, th4, As, Bs, Cs, fset_1_4, plot_params_1_4 = IK_elbow_shoulder(DH_model, p0w_d, GC2, GC4, verbose)
+    th1, th2, th3, th4, As, Bs, Cs, fset_1_4, plot_params_1_4, root_funcs_1_4 = IK_elbow_shoulder(DH_model, p0w_d, GC2, GC4, verbose)
 
     # 2. Wrist joint (finds th5, th6, th7 as function of psi to set the orientation of the wrist(== orientation of the tcp))
     R34 = DH_model.get_i_R_j(3,4, [th4])  # reference plane
-    th5, th6, th7, fset_5_7, plot_params_5_7 = IK_wrist(DH_model, R07_d, R34, As, Bs, Cs, GC6, verbose)
+    th5, th6, th7, fset_5_7, plot_params_5_7, root_funcs_5_7 = IK_wrist(DH_model, R07_d, R34, As, Bs, Cs, GC6, verbose)
 
     # Feasible set satisfying the limits
     feasible_sets = fset_1_4 + fset_5_7
+    root_funcs = root_funcs_1_4 + root_funcs_5_7
 
     psi_feasible_set = ContinuousSet(-np.pi, np.pi)
     for kkk in considered_joints:
@@ -68,7 +70,7 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
         plot_params = plot_params_1_4 + plot_params_5_7
         plt_analIK(plot_params, psi_feasible_set)
 
-    return (lambda psi: np.array([ th1(psi), th2(psi), th3(psi), th4, th5(psi), th6(psi), th7(psi)]).reshape(-1,1), psi_feasible_set)
+    return (lambda psi: np.array([ th1(psi), th2(psi), th3(psi), th4, th5(psi), th6(psi), th7(psi)]).reshape(-1,1), psi_feasible_set, root_funcs)
 
 
 def IK_elbow_shoulder(DH_model, p0w_d, GC2, GC4, verbose):
@@ -93,12 +95,12 @@ def IK_elbow_shoulder(DH_model, p0w_d, GC2, GC4, verbose):
     x0sw = p0w_d - l0bs
 
     # 1. Elbow joint (finds th4 to set the wrist position)
-    th4, fset_4, plot_params_4 = IK_elbow(DH_model, x0sw, d_se, d_ew, GC4, verbose)
+    th4, fset_4, plot_params_4, root_func_4 = IK_elbow(DH_model, x0sw, d_se, d_ew, GC4, verbose)
 
     # 2. Shoulder joint (finds th1, th2, th3 as function of psi to set the orientation of the shoulder)
-    As, Bs, Cs, th1, th2, th3, fset_1_3, plot_params_1_3 = IK_shoulder(DH_model, x0sw, d_se, d_ew, GC2, GC4, verbose)
+    As, Bs, Cs, th1, th2, th3, fset_1_3, plot_params_1_3, root_funcs_1_3 = IK_shoulder(DH_model, x0sw, d_se, d_ew, GC2, GC4, verbose)
 
-    return th1, th2, th3, th4, As, Bs, Cs, fset_1_3+fset_4, plot_params_1_3+plot_params_4
+    return th1, th2, th3, th4, As, Bs, Cs, fset_1_3+fset_4, plot_params_1_3+plot_params_4, root_funcs_1_3+root_func_4
 
 
 def IK_elbow(DH_model, x0sw, d_se, d_ew, GC4, verbose):
@@ -113,15 +115,16 @@ def IK_elbow(DH_model, x0sw, d_se, d_ew, GC4, verbose):
     """
     c_th4 = clip_c((np.linalg.norm(x0sw)**2 - d_se**2 - d_ew**2) / (2*d_se*d_ew))
     th4 = GC4*acos(c_th4)
+    root_func_4 = [None]
     fset_4 = [ContinuousSet(-np.pi, np.pi, False, True) if th4 in DH_model.joint(3).limit_range else ContinuousSet()]
     plot_params_4 = [(DH_model.joint(3).limit_range, th4) if verbose else None]
     if verbose:
         print('Theta4:', th4)
-    return th4, fset_4, plot_params_4
+    return th4, fset_4, plot_params_4, root_func_4
 
 
 def IK_shoulder(DH_model, x0sw, d_se, d_ew, GC2, GC4, verbose):
-    """Solves 2DOF IK for th1_ref, th2_ref given the th3_ref=0 and th4_ref=th4(from above) in order to set the wrist position.
+    """Solves 2DOF IK for th1_ref, th2_ref given the th3_ref=np.pi/2 + np.pi/6 and th4_ref(from above) in order to set the wrist position.
        Then returns th1 th2 th3 as functions of psi, which describe the rotation of elbow around sholder-wrist axis with psi.
 
     Args:
@@ -160,21 +163,21 @@ def IK_shoulder(DH_model, x0sw, d_se, d_ew, GC2, GC4, verbose):
     S3 = GC2 * np.array([ As[2,0],  Bs[2,0],  Cs[2,0],  As[2,2],   Bs[2,2],  Cs[2,2]]).reshape(6,1)
 
     # Feasible set satisfying the limits
-    feasible_sets = [None]*3; plot_params = [None]*3
-    feasible_sets[0], plot_params[0] = tangent_type(*S1, joint=DH_model.joint(0), verbose=verbose)
-    feasible_sets[1], plot_params[1] =    sine_type(*S2, joint=DH_model.joint(1), GC=GC2, verbose=verbose)
-    feasible_sets[2], plot_params[2] = tangent_type(*S3, joint=DH_model.joint(2), verbose=verbose)
+    feasible_sets = [None]*3; plot_params = [None]*3; root_funcs = [None]*3
+    feasible_sets[0], plot_params[0], root_funcs[0] = tangent_type(*S1, joint=DH_model.joint(0), verbose=verbose)
+    feasible_sets[1], plot_params[1], root_funcs[1] =    sine_type(*S2, joint=DH_model.joint(1), GC=GC2, verbose=verbose)
+    feasible_sets[2], plot_params[2], root_funcs[2] = tangent_type(*S3, joint=DH_model.joint(2), verbose=verbose)
 
     # Lambda functions that deliver solutions for each joint given arm-angle psi
     v = lambda psi: np.array([sin(psi), cos(psi), 1.0]).reshape(1,3)
     th1 = lambda psi: atan2(v(psi).dot(S1[0:3]), v(psi).dot(S1[3:]))
     if GC2>0.0:
-        th2 = ( lambda psi: GC2* asin(clip_c( v(psi).dot(S2))) )
+        th2 = ( lambda psi: asin(clip_c( v(psi).dot(S2))) )
     else:
         th2 = lambda psi: ( np.pi - asin(clip_c( v(psi).dot(S2))) ) if asin(clip_c( v(psi).dot(S2))) > 0.0 else ( -np.pi - asin(clip_c( v(psi).dot(S2))) )
     th3 = lambda psi: atan2(v(psi).dot(S3[0:3]), v(psi).dot(S3[3:])) - th3_offset
 
-    return As, Bs, Cs, th1, th2, th3, feasible_sets, plot_params
+    return As, Bs, Cs, th1, th2, th3, feasible_sets, plot_params, root_funcs
 
 
 def IK_wrist(DH_model, R07_d, R34, As, Bs, Cs, GC6, verbose):
@@ -189,10 +192,10 @@ def IK_wrist(DH_model, R07_d, R34, As, Bs, Cs, GC6, verbose):
     W7 = GC6 * np.array([-Aw[2,0], -Bw[2,0], -Cw[2,0], -Aw[2,1],  -Bw[2,1], -Cw[2,1]]).reshape(6,1)
 
     # Feasible set satisfying the limits
-    f_set = [None]*3; plot_params = [None]*3
-    f_set[0], plot_params[0] = tangent_type(*W5, joint=DH_model.joint(4), verbose=verbose)
-    f_set[1], plot_params[1] =  cosine_type(*W6, joint=DH_model.joint(5), GC=GC6, verbose=verbose)
-    f_set[2], plot_params[2] = tangent_type(*W7, joint=DH_model.joint(6), verbose=verbose)
+    f_set = [None]*3; plot_params = [None]*3; root_funcs = [None]*3
+    f_set[0], plot_params[0], root_funcs[0] = tangent_type(*W5, joint=DH_model.joint(4), verbose=verbose)
+    f_set[1], plot_params[1], root_funcs[1] =  cosine_type(*W6, joint=DH_model.joint(5), GC=GC6, verbose=verbose)
+    f_set[2], plot_params[2], root_funcs[2] = tangent_type(*W7, joint=DH_model.joint(6), verbose=verbose)
 
     # Lambda functions that deliver solutions for each joint given arm-angle psi
     v = lambda psi: np.array([sin(psi), cos(psi), 1.0]).reshape(1,3)
@@ -200,7 +203,7 @@ def IK_wrist(DH_model, R07_d, R34, As, Bs, Cs, GC6, verbose):
     th6 = lambda psi: GC6*acos(clip_c( v(psi).dot(W6) ))
     th7 = lambda psi: atan2(v(psi).dot(W7[0:3]), v(psi).dot(W7[3:]))
 
-    return th5, th6, th7, f_set, plot_params
+    return th5, th6, th7, f_set, plot_params, root_funcs
 
 
 def cosine_type(a, b, c, joint, GC=1.0, verbose=False, sine_type=False):
@@ -295,12 +298,14 @@ def cosine_type(a, b, c, joint, GC=1.0, verbose=False, sine_type=False):
             limits_feasible_set.add_c_range(-np.pi, np.pi)
     feasible_set -= limits_feasible_set
 
+    # Root function for inverse calculation theta -> psi
+    root_f = lambda theta: [round(root.root, 7) for root in find_root(theta, False)]
     # Ploting
     if verbose:
         title = r'$\theta_{}$ -- '.format(joint.index+1) + ("cosine_type" if not sine_type else "sine_type") + r'$\ GC_{}$={}'.format(joint.index+1, GC)
-        return feasible_set, (theta_f, grad_theta_f, theta_min, theta_max, stat_psi, roots, jumpings, feasible_set, title, ContinuousSet())
+        return feasible_set, (theta_f, grad_theta_f, theta_min, theta_max, stat_psi, roots, jumpings, feasible_set, title, ContinuousSet()), root_f
     else:
-        return feasible_set, None
+        return feasible_set, None, root_f
 
 
 def tangent_type(an, bn, cn, ad, bd, cd, joint, verbose=False):
@@ -436,12 +441,15 @@ def tangent_type(an, bn, cn, ad, bd, cd, joint, verbose=False):
         if  theta_min <= theta_f(2*random()*np.pi - np.pi) <= theta_max and theta_min <= theta_f(2*random()*np.pi - np.pi) <= theta_max:
             limits_feasible_set.add_c_range(-np.pi, np.pi)
     feasible_set -= limits_feasible_set
+
+    # Root function for inverse calculation theta -> psi
+    root_f = lambda theta: [round(root.root, 7) for root in find_root(theta, False)]
     # Ploting
     if verbose:
         title = r'$\theta_{}$ -- tangent_type'.format(joint.index+1)
-        return feasible_set, (theta_f, grad_theta_f, theta_min, theta_max, stat_psi, roots, jumpings, feasible_set, title, singular_feasible_set)
+        return feasible_set, (theta_f, grad_theta_f, theta_min, theta_max, stat_psi, roots, jumpings, feasible_set, title, singular_feasible_set), root_f
     else:
-        return feasible_set, None
+        return feasible_set, None, root_f
 
 
 def sine_type(a, b, c, joint, GC=1.0, verbose=False):
@@ -533,7 +541,7 @@ def IK_heuristic2(p07_d, R07_d, DH_model, considered_joints=list(range(7))):
     GC6_final = 1.0
     GCs = [(i, ii, iii) for i in [-1.0, 1.0] for ii in [-1.0, 1.0] for iii in [-1.0, 1.0]]
     for GC2, GC4, GC6 in GCs:
-        sf, psi_feasible_set = IK_anallytical(p07_d, R07_d, DH_model, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False, p06=None, p07=None, considered_joints=considered_joints)
+        sf, psi_feasible_set, root_funcs = IK_anallytical(p07_d, R07_d, DH_model, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False, p06=None, p07=None, considered_joints=considered_joints)
         if psi_feasible_set.max_range().size > siz:
             biggest_feasible_set = psi_feasible_set.max_range()
             siz = biggest_feasible_set.size
@@ -553,7 +561,7 @@ def IK_heuristic3(p07_d, R07_d, DH_model, considered_joints=list(range(7))):
     GC6_final = 1.0
     GCs = [(i, ii) for i in [1.0] for ii in [-1.0, 1.0]]
     for GC2, GC6 in GCs:
-        sf, psi_feasible_set = IK_anallytical(p07_d, R07_d, DH_model, GC2=GC2, GC4=GC4_final, GC6=GC6, verbose=False, p06=None, p07=None, considered_joints=considered_joints)
+        sf, psi_feasible_set, root_funcs = IK_anallytical(p07_d, R07_d, DH_model, GC2=GC2, GC4=GC4_final, GC6=GC6, verbose=False, p06=None, p07=None, considered_joints=considered_joints)
         if psi_feasible_set.max_range().size > siz:
             biggest_feasible_set = psi_feasible_set.max_range()
             siz = biggest_feasible_set.size
@@ -561,6 +569,30 @@ def IK_heuristic3(p07_d, R07_d, DH_model, considered_joints=list(range(7))):
             GC2_final = GC2
             GC6_final = GC6
     return GC2_final, GC4_final, GC6_final, biggest_feasible_set, solu_function
+
+def IK_find_psi_and_GCs(p07_d, R07_d, q_init, DH_model):
+    # Finds best branch of solutions and psi for given q_init
+    th2 = q_init[1]
+    GC2 = -1. if np.abs(th2) >= np.pi/2. else 1.
+    GC4 = np.sign(q_init.squeeze()[3])
+    GC6 = np.sign(q_init.squeeze()[5])
+
+    sf, psi_feasible_set, root_funcs = IK_anallytical(p07_d, R07_d, DH_model, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False)
+
+    root_list = [set(rf(mod2Pi(thi+j.offset))) for thi, rf, j in zip(q_init, root_funcs, DH_model.joints) if rf is not None]
+    u = set.intersection(*root_list[:])
+    if len(u) == 0:
+        u = root_list[-3]
+
+    assert len(u)==1, "This cannot happen! {}".format(root_list)
+    psi = u.pop()
+    # if np.linalg.norm(q_init-sf(psi)) > 1e-5:
+    #     sf, psi_feasible_set, root_funcs = IK_anallytical(p07_d, R07_d, DH_model, GC2=GC2, GC4=GC4, GC6=GC6, verbose=True)
+    #     print(q_init[2], sf(psi)[2])
+    #     pass
+
+    return psi, GC2, GC4, GC6, psi_feasible_set.max_range(), sf
+
 
 def plt_analIK(plot_params, psi_feasible_set):
     import matplotlib.pyplot as plt
@@ -632,7 +664,7 @@ def plt_analIK(plot_params, psi_feasible_set):
     fig.legend(liness, labelss, loc ="lower right",
             mode=None, borderaxespad=1, ncol=3, fontsize=12)
     fig.suptitle("Feasibility ranges for each joint")
-    plt.show()
+    plt.show(block=False)
 
 
 if __name__ == "__main__":
@@ -670,10 +702,10 @@ if __name__ == "__main__":
             # for GC2, GC4, GC6 in GCs:
             #     IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, GC2=1, GC4=GC4, GC6=GC6, verbose=False, p06=my_fk_dh.get_i_T_j(0,6,home_new.flatten())[:3, 3], p07=my_fk_dh.get_i_T_j(0,7,home_new.flatten())[:3, 3])
             # continue
-                # solu, feasible_set = IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False)  # , p06=my_fk_dh.get_i_T_j(0,6,home_new.flatten())[:3, 3]
+                # solu, feasible_set, root_funcs = IK_anallytical(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False)  # , p06=my_fk_dh.get_i_T_j(0,6,home_new.flatten())[:3, 3]
                 # solu, feasible_set = IK_heuristic1(p07_d=p07, R07_d=R07, DH_model=my_fk_dh, verbose=True)
             GC2, GC4, GC6, _, _ =  IK_heuristic2(p07_d=p07, R07_d=R07, DH_model=my_fk_dh)
-            solu, feasible_set = IK_anallytical(p07, R07, my_fk_dh, GC2, GC4, GC6, verbose=True)
+            solu, feasible_set, root_funcs = IK_anallytical(p07, R07, my_fk_dh, GC2, GC4, GC6, verbose=True)
 
             for f in np.arange(-1.0, 1.0, 0.02):
                 s = solu(f*np.pi)
