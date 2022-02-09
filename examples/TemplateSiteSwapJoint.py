@@ -21,16 +21,16 @@ print("juggling_apollo")
 ########################################################################################################
 ########################################################################################################
 ########################################################################################################
-FREQ_DOMAIN=True
+FREQ_DOMAIN=False
 NF=28
 
 SAVING = True
 UB = 6.5
 
 CARTESIAN_ERROR = False
-NOISE=0.0
+NOISE=0.2
 
-ILC_it = 20                                # number of ILC iteration
+ILC_it = 22                               # number of ILC iteration
 end_repeat = 0  if not FREQ_DOMAIN else 0 # repeat the last position value this many time
 
 # Learnable Joints
@@ -40,7 +40,7 @@ non_learnable_joints = list(set(range(N_joints)) - set(learnable_joints))
 
 # ILC Params
 n_ms  = np.ones((N_joints,))* 3e-3;   # covariance of noise on the measurment
-n_ms[:] = 2e-3
+#n_ms[:] = 2e-3
 # n_ms[[-1, -3]] = 9e-3
 # n_ms[:] = 1e-4
 n_ds  = [1e-3]*N_joints               # initial disturbance covariance
@@ -66,11 +66,27 @@ mu              = 0.35
 rArmInterface = ApolloInterface(r_arm=True)
 
 # B) KINEMATICS: create rArmInterface and go to home position
-rArmKinematics    = ApolloArmKinematics(r_arm=True, noise=NOISE)  ## kinematics with noise (used for its (wrong)IK calculations)
 rArmKinematics_nn = ApolloArmKinematics(r_arm=True)               ## kinematics without noise  (used to calculate measurments, plays the wrole of a localization system)
+rArmKinematics    = ApolloArmKinematics(r_arm=True, noise=NOISE)  ## kinematics with noise (used for its (wrong)IK calculations)
 
 # C) PLANNINGs
-q_traj_des, qv_traj_des, T_traj = SiteSwapJointPlanner.plan(dt, rArmKinematics, slower=2.7, verbose=True)
+_, _, T_traj = SiteSwapJointPlanner.plan(dt, rArmKinematics_nn, slower=2.7, verbose=False)
+q_traj_des, qv_traj_des, T_traj_noised = SiteSwapJointPlanner.plan(dt, rArmKinematics, slower=2.7, verbose=False)
+# T_traj = rArmKinematics_nn.seqFK(q_traj_des)
+# T_traj_noised = rArmKinematics.seqFK(q_traj_des)
+# errs2  = np.array([utilities.errorForJacobianInverse(T_i=T1, T_goal=T2) for T1, T2 in zip(T_traj_noised, T_traj)]).reshape(-1, 6)
+errs = np.array([utilities.errorForJacobianInverse(T_i=T1, T_goal=T2) for T1, T2 in zip(rArmKinematics_nn.seqFK(q_traj_des), T_traj)]).reshape(-1, 6)
+ls = ['x', 'y', 'z']
+print(          "j. -----------meters----------      L2-norm        L1-norm        e_end      <- unnormalized")
+for i in range(3):
+  print(ls[i] + ". Trajectory_track_error_norm: {:13.8f}  {:13.8f} {:13.8f}".format(np.linalg.norm(errs[:, i]),  # /d_xyz.shape[0],
+                                                                                    np.linalg.norm(errs[:, i], ord=1),  #/d_xyz.shape[0],
+                                                                                    np.abs(errs[-1, i])
+                                                                                    ))
+import matplotlib.pyplot as plt
+plt.plot(errs[:,:3])
+# plt.plot(errs2[:,:3], "--")
+plt.show()
 
 
 N = len(q_traj_des)
@@ -98,7 +114,7 @@ def kf_params(n_m=0.02, epsilon=1e-5, n_d=0.06, d0=None, P0=None):
     'P0': P0,                              # initial disturbance covariance
     'd0': d0,                              # initial disturbance value
     'epsilon0': epsilon,                   # covariance of noise on the disturbance
-    'epsilon_decrease_rate': 0.9          # the decreasing factor of noise on the disturbance
+    'epsilon_decrease_rate': 0.95          # the decreasing factor of noise on the disturbance
   }
   return kf_dpn_params
 
@@ -172,7 +188,7 @@ for j in range(ILC_it):
   # Update feed-forward signal
   for i in learnable_joints:
     if FREQ_DOMAIN:
-      u_ff[:,i] = my_ilcs[i].updateStep2(y_meas=delta_y_meas[:,i],  y_des=delta_q_traj_des_i[:, i],
+      u_ff[:,i] = my_ilcs[i].updateStep3(y_meas=delta_y_meas[:,i],  y_des=delta_q_traj_des_i[:, i],
                                         #  lb=-UB,ub=UB
                                         verbose=False)
     else:
@@ -214,7 +230,7 @@ for j in range(ILC_it):
     # Update desired trajectory
     q_start_i = q_traj_des_i[0]
     delta_q_traj_des_i = q_traj_des_i[1:] - q_start_i
-    mu = 0.95*mu
+    # mu = 0.95*mu
 
   if False and (j ==ILC_it-1 or j==0):
     plot_A([180./np.pi*q_extra, 180./np.pi*q_des_extra], labels=["observed", "desired"])
@@ -226,7 +242,11 @@ for j in range(ILC_it):
     plt.show()
 
   print_info(j, learnable_joints, joints_d_vec, d_xyz)
-
+  for iii in range(3):
+    print(ls[iii] + ". trajectory_track_error_norm: {:13.8f}  {:13.8f} {:13.8f}".format(np.linalg.norm(errs[:, iii]),  # /d_xyz.shape[0],
+                                                                                      np.linalg.norm(errs[:, iii], ord=1),  #/d_xyz.shape[0],
+                                                                                      np.abs(errs[-1, iii])
+                                                                                      ))
   if False and j%every_N==1:
     plot_info(dt, learnable_joints, joints_q_vec, q_traj_des_i[1:],
               u_ff_vec, q_v_traj,
@@ -242,15 +262,8 @@ for j in range(ILC_it):
     plt.suptitle("Desired Joint Trajectories")
     plt.show(block=False)
 
-  if False and j%every_N==0:  # Whether disturbance makes up for differences
-    y_no_d_s = np.array([ilc.lss.GF.dot(u_ff[:, indx:indx+1]) + ilc.lss.Gd0  + q_start_i[indx] for indx, ilc in enumerate(my_ilcs)]).transpose(1,0,2) # predicted y
-    y_with_d_s = np.array([ilc.lss.GF.dot(u_ff[:, indx:indx+1]) + ilc.lss.Gd0  + ilc.lss.GK.dot(ilc.d) + q_start_i[indx] for indx, ilc in enumerate(my_ilcs)]).transpose(1,0,2) # predicted y
-    fillbetween = [y_no_d_s, y_with_d_s]
-    plot_A([y_no_d_s, q_traj[1:]], labels=["aimed_trajectory", "realized_trajectory"], indexes_list=learnable_joints, fill_between=fillbetween)
-    plt.show()
 
-
-
+    # save("d_xyz_rpy_vec", axs)
 
 # After Main Loop has finished
 if False:
@@ -259,7 +272,23 @@ if False:
             u_ff_vec=u_ff_vec, q_v_traj=q_v_traj, cartesian_error_norms = cartesian_error_norms,
             disturbanc_vec=disturbanc_vec, d_xyz_rpy_vec=d_xyz_rpy_vec, joint_error_norms=joint_error_norms,
             v=True, p=False, dp=False, e_xyz=False, e=True, N=min(4, ILC_it-1))
+if True:
+  ls = ['x', 'y', 'z', 'roll', 'pitch' ,'yaw']
+  d_xyz_rpy_vec[:,:,3:] *= 180./np.pi
+  errs[:,3:] *= 180./np.pi
+  its = [0,-1]
 
+  trajs1 = [errs[:,:3]] + [ d_xyz_rpy_vec[it,:,:3] for it in its]
+  trajs2 = [errs[:,3:]] + [ d_xyz_rpy_vec[it,:,:3] for it in its]
+  label_its = ['best possible noised tracking error']+['it ' + str(i) for i in its]
+
+  axs = plot_A(trajs1, list(range(3)), label_its, dt=dt, xlabel=r"$t$ [s]", ylabel=r"d [$m$]",
+          index_labels=ls, degree=False, rows=1)
+  plt.suptitle("xyx Error Trajectories")
+  axs = plot_A(trajs2, list(range(3)), label_its, dt=dt, xlabel=r"$t$ [s]", ylabel=r"d [$degree$]",
+          index_labels=ls[3:], degree=False, rows=1)
+  plt.suptitle("rpy Error Trajectories")
+  plt.show()
 if SAVING:
   # Saving Results
   freq = 'freq_domain' if FREQ_DOMAIN else "time_domain"

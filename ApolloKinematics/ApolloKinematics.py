@@ -33,13 +33,16 @@ class ApolloArmKinematics():
         offsets = [0.0, 0.0, np.pi/6, 0.0, 0.0, 0.0, 0.0]
 
         # Create DH Robot
-        n_ds = [0.0]*7
+        n_ds = np.zeros(7)
         if noise is not None:
             for i in [0, 2, 4, 6]:
                 n_ds[i] = noise*(np.random.rand()-0.5)
+            print('Noise', n_ds)
         dh_rob = DH_revolut()
         for a, alpha, d, theta, name, offset, n_d in zip(a_s, alpha_s, d_s, theta_s, joints2Use, offsets, n_ds):
             dh_rob.add_joint(a, alpha, d+n_d, theta, JOINTS_LIMITS[name], JOINTS_V_LIMITS[name], name, offset)
+        if noise is not None:
+            print('Noise', dh_rob.joints)
         return dh_rob
 
     def FK(self, q):
