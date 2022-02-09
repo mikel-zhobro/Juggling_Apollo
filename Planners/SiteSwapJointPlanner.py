@@ -35,23 +35,28 @@ def plan(dt, kinematics, h=0.5, throw_height=0.35, swing_size=0.46, slower=1.0, 
         rep (int, optional): [description]. Defaults to 1.
     """
     jp = SiteSwapPlanner.JugglingPlanner()
-    pattern=(4,); h=0.6; r_dwell=0.45; throw_height=0.35; swing_size=0.16; w=0.4; slower=1.3; rep=1
+    pattern=(3,); h=0.6; r_dwell=0.45; throw_height=0.25; swing_size=0.16; w=0.4;  rep=1; # slower=1.5
     plan = jp.plan(dt, 2, pattern=pattern, h=h, r_dwell=r_dwell, throw_height=throw_height, swing_size=swing_size, w=w, rep=rep)
-    # dt = dt/slower
 
     # plan.plot()
     cts  = plan.hands[0].ct_period
+    ts = []
+    xs = []
+    vs = []
     for ct in cts:
-        ts = ct.traj.tt
-        xs = [xtmp.T.reshape(3,1) for xtmp in ct.traj.xx]
-        vs = [vtmp.T.reshape(3,1) for vtmp in ct.traj.vv]
+        ts += [t_ * slower for t_ in ct.traj.tt]
+        xs += [xtmp.T.reshape(3,1) for xtmp in ct.traj.xx]
+        vs += [vtmp.T.reshape(3,1)/slower for vtmp in ct.traj.vv]
 
     # Find home
     # dt = dt/slower
     q_init = np.array([0.2975, -0.9392, -0.5407,  1.4676,  1.35  , -0.4971, -0.4801]).reshape(7,1)
-    # q_init = np.array([0.1193, -1.0512, -0.1186,  1.1475, -0.4451,  0.2153,  1.3167]).reshape(7,1)
-    # q_init, qdot_init = findBestThrowPosition(FK=kinematics.FK, J=kinematics.J, q_init=np.zeros((7,1)), qdot_init=np.zeros((7,1)), vgoal=vs[1], R_des=T_home[:3,:3])
     T_home = kinematics.FK(q_init)
+    # q_init = np.array([0.1193, -1.0512, -0.1186,  1.1475, -0.4451,  0.2153,  1.3167]).reshape(7,1)
+    R_des = np.eye(3)
+    R_des[:,2:3] = vs[1]/ np.linalg.norm(vs[1])
+    R_des[:,0] = np.cross(R_des[:,1], R_des[:,2])
+    q_init, qdot_init = findBestThrowPosition(FK=kinematics.FK, J=kinematics.J, q_init=q_init, qdot_init=np.zeros((7,1)), vgoal=vs[1], R_des=R_des)
 
     # Joint Positions
     offset = xs[1]
@@ -80,7 +85,7 @@ def plan(dt, kinematics, h=0.5, throw_height=0.35, swing_size=0.46, slower=1.0, 
         # qv_s[i] = np.linalg.inv(H).dot(b)[:7]
         qv_s[i], vw = constrained_optim(Ji, np.zeros((7,1)), vs[i])
         print(i, vs[i].T, vw.T)
-    q_traj, qv_traj, qa_traj, qj_traj = MinJerk.get_multi_interval_multi_dim_minjerk(dt, ts, q_s, qv_s, smooth_acc=False, only_pos=False, i_a_end=None)
+    q_traj, qv_traj, qa_traj, qj_traj = MinJerk.get_multi_interval_multi_dim_minjerk(dt, ts, q_s, qv_s, smooth_acc=True, only_pos=False, i_a_end=True)
     # q_traj, qv_traj, qa_traj, qj_traj = MinJerk.get_multi_interval_minjerk_xyz(dt, ts, q_s, qv_s, smooth_acc=False, only_pos=False, i_a_end=0)
     T_traj = kinematics.seqFK(q_traj)
 
@@ -95,26 +100,26 @@ def plan(dt, kinematics, h=0.5, throw_height=0.35, swing_size=0.46, slower=1.0, 
     if verbose:
         plan.plot(orientation=True)
         # Cartesian Plan
-        plot_A(q_cartesian.reshape(1,-1,7,1), indexes_list=joint_list, dt=dt, limits=kinematics.limits, xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]", scatter_times=ts)
-        plt.suptitle("Angle positions [Cartesian space plan]")
-        # plt.savefig('Joint_Angle_Traj_joint.pdf')
-        plot_A(qv_cartesian.reshape(1,-1,7,1), indexes_list=joint_list, dt=dt, limits=kinematics.vlimits, index_labels=[r"$\dot{\theta}_%d$" %(i+1) for i in range(7)],
-                xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]", scatter_times=ts)
-        plt.suptitle("Angle velocities [Cartesian space plan]")
-        plt.show()
-        A = 1.
-        # A = 1.
+        if False:
+            plot_A(q_cartesian.reshape(1,-1,7,1), indexes_list=joint_list, dt=dt, limits=kinematics.limits, xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]", scatter_times=ts)
+            plt.suptitle("Angle positions [Cartesian space plan]")
+            # plt.savefig('Joint_Angle_Traj_joint.pdf')
+            plot_A(qv_cartesian.reshape(1,-1,7,1), indexes_list=joint_list, dt=dt, limits=kinematics.vlimits, index_labels=[r"$\dot{\theta}_%d$" %(i+1) for i in range(7)],
+                    xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]", scatter_times=ts)
+            plt.suptitle("Angle velocities [Cartesian space plan]")
+
         joint_list = [0,1,2,3,4,5,6]
-        plot_A(A*q_traj.reshape(1,-1,7,1), indexes_list=joint_list, dt=dt, limits=kinematics.limits, xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]", scatter_times=ts)
+        plot_A(q_traj.reshape(1,-1,7,1), indexes_list=joint_list, dt=dt, limits=kinematics.limits, xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]", scatter_times=ts)
         plt.suptitle("Angle Positions [Joint space plan]")
         # plt.savefig('Joint_Angle_Traj_joint.pdf')
-        plot_A(A*qv_traj.reshape(1,-1,7,1), indexes_list=joint_list, dt=dt, limits=kinematics.vlimits, index_labels=[r"$\dot{\theta}_%d$" %(i+1) for i in range(7)],
-               xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]", scatter_times=ts)
+        plot_A(qv_traj.reshape(1,-1,7,1), indexes_list=joint_list, dt=dt, limits=kinematics.vlimits, index_labels=[r"$\dot{\theta}_%d$" %(i+1) for i in range(7)],
+               xlabel=r"$t$ [s]", ylabel=r"[$\frac{grad}{s}$]", scatter_times=ts)
         plt.suptitle("Angle Velocities [Joint space plan]")
         # plt.savefig('Joint_Angle_Vel_Traj_joint.pdf')
         # plot_A(180./np.pi*qa_traj.reshape(1,-1,7,1))
         # plt.suptitle("Angle Accelerations")
         # plt.show()
+        plt.show()
 
         # 3D plot
         from mpl_toolkits.mplot3d import axes3d, Axes3D
@@ -204,9 +209,9 @@ def constrained_optim(J, q_init, vgoal, jac=None):
 
 def findBestThrowPosition(FK, J, q_init, qdot_init, vgoal, R_des, jac=None):
     con = lambda i: lambda qqd: J(qqd[:7])[i, :].dot(qqd[7:]) - vgoal[i]
-    con_R = lambda i, j: lambda qqd: FK(qqd[:7])[:3,:3].T.dot(R_des)[i,j]
+    con_R = lambda i, j: lambda qqd: FK(qqd[:7])[:3,:3].T.dot(R_des)[i,i]
 
-    cons = tuple({'type':'eq', 'fun': con(i)} for i in range(3)) + tuple({'type':'eq', 'fun': con_R(i, j)} for i in range(3) for j in range(3))
+    cons = tuple({'type':'eq', 'fun': con(i)} for i in range(3)) + tuple({'type':'eq', 'fun': con_R(i, 2)} for i in range(3)) # for j in range(3))
 
 
     bounds =  [utilities.JOINTS_LIMITS[j] for j in utilities.R_joints] + [utilities.JOINTS_V_LIMITS[j] for j in utilities.R_joints]

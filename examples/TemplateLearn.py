@@ -21,8 +21,8 @@ print("juggling_apollo")
 ########################################################################################################
 ########################################################################################################
 ########################################################################################################
-FREQ_DOMAIN=True
-NF=28
+FREQ_DOMAIN=False
+NF=12
 
 SAVING = True
 UB = 6.5
@@ -30,7 +30,7 @@ UB = 6.5
 CARTESIAN_ERROR = False
 NOISE=0.0
 
-ILC_it = 20                                # number of ILC iteration
+ILC_it = 25                                # number of ILC iteration
 end_repeat = 0  if not FREQ_DOMAIN else 0 # repeat the last position value this many time
 
 # Learnable Joints
@@ -40,8 +40,7 @@ non_learnable_joints = list(set(range(N_joints)) - set(learnable_joints))
 
 # ILC Params
 n_ms  = np.ones((N_joints,))* 3e-3;   # covariance of noise on the measurment
-n_ms[:] = 2e-3
-# n_ms[[-1, -3]] = 9e-3
+n_ms[:] = 3e-3
 # n_ms[:] = 1e-4
 n_ds  = [1e-3]*N_joints               # initial disturbance covariance
 ep_s  = [1e-3]*N_joints               # covariance of noise on the disturbance
@@ -70,10 +69,22 @@ rArmKinematics    = ApolloArmKinematics(r_arm=True, noise=NOISE)  ## kinematics 
 rArmKinematics_nn = ApolloArmKinematics(r_arm=True)               ## kinematics without noise  (used to calculate measurments, plays the wrole of a localization system)
 
 # C) PLANNINGs
-q_traj_des, qv_traj_des, T_traj = SiteSwapJointPlanner.plan(dt, rArmKinematics, slower=2.7, verbose=True)
+N = int(0.9//dt)*2
+q_traj_des = np.zeros((N, 7, 1))
 
+q1 = np.linspace(-0.1, -1.0, N/2)[:,np.newaxis]
+q2 = np.linspace(-1., -0.1, N/2)[:,np.newaxis]
 
-N = len(q_traj_des)
+q_traj_des[:N/2,:,0] = q1
+q_traj_des[N/2:,:,0] = q2
+
+T_traj = rArmKinematics.seqFK(q_traj_des)
+qv_traj_des = None
+# q_traj_des, qv_traj_des, T_traj = SiteSwapJointPlanner.plan(dt, rArmKinematics, verbose=True)
+
+plot_A([q_traj_des])
+plt.show()
+
 q_start = q_traj_des[0]
 T_home = T_traj[0]
 
@@ -98,7 +109,7 @@ def kf_params(n_m=0.02, epsilon=1e-5, n_d=0.06, d0=None, P0=None):
     'P0': P0,                              # initial disturbance covariance
     'd0': d0,                              # initial disturbance value
     'epsilon0': epsilon,                   # covariance of noise on the disturbance
-    'epsilon_decrease_rate': 0.9          # the decreasing factor of noise on the disturbance
+    'epsilon_decrease_rate': 0.95          # the decreasing factor of noise on the disturbance
   }
   return kf_dpn_params
 
@@ -147,7 +158,6 @@ for i in learnable_joints:
 # plt.savefig('Joint_Angle_Vel_Traj_joint.pdf')
 # plt.show()
 
-aa = 1 if FREQ_DOMAIN else 0
 for j in range(ILC_it):
   # Limit Input
   # u_ff = np.clip(u_ff,-UB,UB)
@@ -156,7 +166,7 @@ for j in range(ILC_it):
     plot_A([u_ff])
     plt.show()
   # Main Simulation
-  if True:
+  if FREQ_DOMAIN:
     q_traj, q_v_traj, q_a_traj, F_N_vec, _, q0 = rArmInterface.apollo_run_one_iteration_with_feedback(dt=dt, T=T_FULL, u=u_ff, thetas_des=q_traj_des_i, joint_home_config=q_start_i, repetitions=3 if FREQ_DOMAIN else 1, it=j)
   else:
     q_traj, q_v_traj, q_a_traj, F_N_vec, _, q0 = rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL, u=u_ff, joint_home_config=q_start_i, repetitions=3 if FREQ_DOMAIN else 1, it=j)
@@ -253,6 +263,14 @@ for j in range(ILC_it):
 
 
 # After Main Loop has finished
+if False:
+  from mpl_toolkits.mplot3d import axes3d, Axes3D  # noqa: F401
+  fig = plt.figure()
+  ax = fig.add_subplot(111, projection='3d')
+  ax.plot3D(ld.xyz_traj_des[:,0], ld.xyz_traj_des[:,1], ld.xyz_traj_des[:,2], 'gray')
+  plt.show()
+  
+
 if False:
   plot_info(dt, learnable_joints,
             joints_q_vec=joints_q_vec, q_traj_des=q_traj_des_i[1:],

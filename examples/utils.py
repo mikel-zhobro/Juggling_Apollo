@@ -127,7 +127,7 @@ def plot_info(dt, learnable_joints=list(range(7)),
 
   if joints_q_vec is not None and q_traj_des is not None and p:
     N_ = N if N is not None else len(joints_q_vec)
-    its = [0, 1, 12]
+    its = iters(N_)
 
     line_list = [q_traj_des] + list(joints_q_vec[its])
     label_list = ["des"] + ["it="+str(it) for it in its]
@@ -195,7 +195,7 @@ def plot_info(dt, learnable_joints=list(range(7)),
   if T_traj is not None and d_xyz_rpy_vec is not None and _3D:
     N_ = N if N is not None else len(d_xyz_rpy_vec)
     its = iters(N_)
-    its = [0, 1, 12]
+    # its = [0, 1, 5, N_-1]
     from mpl_toolkits.mplot3d import axes3d, Axes3D  # noqa: F401
     fig = plt.figure(figsize=(14,14))
     ax = fig.add_subplot(111, projection='3d')
