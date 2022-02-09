@@ -188,7 +188,7 @@ def plot_simulation(dt, u, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, x_p_des=None, t
   axs[1].plot(timesteps, u_p, 'r', label='Plate [m/s]')
   axs[2].plot(timesteps, dP_N_vec, label='dP_N')
   axs[3].plot(timesteps, gN_vec, label='g_{N_{vec}} [m]')
-  axs[4].plot(timesteps, u, 'b', label='F [N]')
+  axs[4].plot(timesteps[1:], u, 'b', label='F [N]')
   for ax in axs:
     ax = plot_intervals(ax, intervals, dt)
     if vertical_lines is not None:
@@ -198,4 +198,4 @@ def plot_simulation(dt, u, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, x_p_des=None, t
 
   if title is not None:
     fig.suptitle(title)
-  plt.show(block=False)
+  plt.show(block=True)
