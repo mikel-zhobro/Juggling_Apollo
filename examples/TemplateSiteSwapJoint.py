@@ -83,10 +83,9 @@ for i in range(3):
                                                                                     np.linalg.norm(errs[:, i], ord=1),  #/d_xyz.shape[0],
                                                                                     np.abs(errs[-1, i])
                                                                                     ))
-import matplotlib.pyplot as plt
-plt.plot(errs[:,:3])
-# plt.plot(errs2[:,:3], "--")
-plt.show()
+# import matplotlib.pyplot as plt
+# plt.plot(errs[:,:3])
+# plt.show()
 
 
 N = len(q_traj_des)
@@ -272,7 +271,7 @@ if False:
             u_ff_vec=u_ff_vec, q_v_traj=q_v_traj, cartesian_error_norms = cartesian_error_norms,
             disturbanc_vec=disturbanc_vec, d_xyz_rpy_vec=d_xyz_rpy_vec, joint_error_norms=joint_error_norms,
             v=True, p=False, dp=False, e_xyz=False, e=True, N=min(4, ILC_it-1))
-if True:
+if False:
   ls = ['x', 'y', 'z', 'roll', 'pitch' ,'yaw']
   d_xyz_rpy_vec[:,:,3:] *= 180./np.pi
   errs[:,3:] *= 180./np.pi
