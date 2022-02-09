@@ -33,7 +33,7 @@ def test1():
 
   # Simulation for N steps
   sim = Simulation(input_is_force, air_drag, x0)
-  [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, F_vec] = sim.simulate_one_iteration(dt, Tsim, x0, F_p, repetitions=1, d=dist)
+  [x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, F_vec] = sim.simulate_one_iteration(dt, Tsim, F_p, x0, repetitions=1, d=dist)
 
   # Plotting for Simulation Example
   plot_simulation(dt, F_vec, x_b, u_b, x_p, u_p, dP_N_vec, gN_vec)
