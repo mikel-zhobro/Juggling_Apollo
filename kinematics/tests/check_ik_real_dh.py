@@ -2,7 +2,7 @@ import path
 import numpy as np
 from fk_pin_local import PinRobot
 from DH import DH_revolut
-from AnalyticalIK import IK_anallytical
+from AnalyticalIK import IK_anallytical, IK_find_psi_and_GCs
 from utilities import R_joints, L_joints, JOINTS_LIMITS, pR2T, JOINTS_V_LIMITS
 from tqdm import tqdm
 
@@ -60,7 +60,7 @@ def check_IK():
         #                 [-1.0, 0.0, 0.0, -0.89],
         #                 [0.0,  0.0, 0.0,  1.0 ]], dtype='float')
         for GC2, GC4, GC6 in GCs:
-            solu, _ = IK_anallytical(p07_d=T_pin[:3,3:4], R07_d=T_pin[:3,:3], DH_model=dh_rob, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False)
+            solu, _, _ = IK_anallytical(p07_d=T_pin[:3,3:4], R07_d=T_pin[:3,:3], DH_model=dh_rob, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False)
             for f in np.arange(-1.0, 1.0, 0.2):
                 s = solu(f*np.pi)
                 nrr = np.linalg.norm(dh_rob.FK(s) - T_pin)
@@ -89,7 +89,30 @@ def check_get2Base():
             print(home_pose.T)
             assert False
 
+def check_IKWithQinit():
+    # Create poses with pinocchio FK and calculate the input with dh_IK
+    for i in tqdm(range(100000)):
+        home_pose = np.array([ j.limit_range.sample() for j in dh_rob.joints ]).reshape(7,1)
+        T_pin = pin_rob.FK(home_pose)
+        psi, GC2, GC4, GC6, feasible_set, sf = IK_find_psi_and_GCs(p07_d=T_pin[:3,3:4], R07_d=T_pin[:3,:3], q_init=home_pose, DH_model=dh_rob)
+
+        # solu, _, _ = IK_anallytical(p07_d=T_pin[:3,3:4], R07_d=T_pin[:3,:3], DH_model=dh_rob, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False)
+
+        q = sf(psi)
+        T = pin_rob.FK(q)
+
+        nrr = np.linalg.norm(home_pose - q)
+        if nrr >4e-3:
+            print(T_pin-T)
+            print('i', i)
+            print(home_pose.T)
+            print(q.T)
+            print('ERR', nrr)
+            print("GCs", GC2, GC4, GC6)
+            assert False
+
 if __name__ == "__main__":
-    check_FK()
-    check_get2Base()
-    check_IK()
+    # check_FK()
+    # check_get2Base()
+    # check_IK()
+    check_IKWithQinit()
