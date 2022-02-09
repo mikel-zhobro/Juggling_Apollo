@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import __add_path__
 from juggling_apollo.settings import dt
 from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal
-from apollo_interface.Apollo_It import ApolloInterface, plot_simulation
+from ApolloInterface.Apollo_It import ApolloInterface, plot_simulation
 from kinematics.ApolloKinematics import ApolloArmKinematics
 from utils import plot_A, load
 
@@ -33,7 +33,7 @@ print("-----------------")
 N_ILC = ld.joints_q_vec.shape[0]
 N_1   = ld.joints_q_vec.shape[1]
 
-plot_A([ld.u_arr, ld.joints_vq_vec[-1, 1:]], ld.learnable_joints, 
+plot_A([ld.u_arr, ld.joints_vq_vec[-1, 1:]], ld.learnable_joints,
         fill_between=[np.max(ld.u_ff_vec, axis=0)[1:], np.min(ld.u_ff_vec, axis=0)[1:]],
         labels=["desired", "real"], dt=dt, xlabel=r"$t$ [s]", ylabel=r" angle velocity [$\frac{rad}{s}$]")
 plt.suptitle("Angle Velocities")

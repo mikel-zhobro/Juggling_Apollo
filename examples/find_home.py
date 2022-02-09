@@ -7,7 +7,7 @@ import __add_path__
 from juggling_apollo.settings import dt
 from juggling_apollo.ILC import ILC
 from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal, ApolloDynSys, ApolloDynSysWithFeedback
-from apollo_interface.Apollo_It import ApolloInterface
+from ApolloInterface.Apollo_It import ApolloInterface
 from kinematics.ApolloKinematics import ApolloArmKinematics
 from kinematics import utilities
 from Planners import SiteSwapPlanner, OneBallThrowPlanner

@@ -7,7 +7,7 @@ import __add_path__
 from juggling_apollo.settings import dt
 from juggling_apollo.ILC import ILC
 from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal, ApolloDynSys, ApolloDynSysWithFeedback
-from apollo_interface.Apollo_It import ApolloInterface
+from ApolloInterface.Apollo_It import ApolloInterface
 from kinematics.ApolloKinematics import ApolloArmKinematics
 from kinematics import utilities
 from Planners import SiteSwapPlanner, OneBallThrowPlanner, SiteSwapJointPlanner
@@ -269,7 +269,7 @@ if False:
   ax = fig.add_subplot(111, projection='3d')
   ax.plot3D(ld.xyz_traj_des[:,0], ld.xyz_traj_des[:,1], ld.xyz_traj_des[:,2], 'gray')
   plt.show()
-  
+
 
 if False:
   plot_info(dt, learnable_joints,

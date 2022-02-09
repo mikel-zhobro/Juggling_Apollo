@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from apollo_interface.Apollo_It import ApolloInterface
+from ApolloInterface.Apollo_It import ApolloInterface
 from juggling_apollo.settings import alpha
 from math import sin
 

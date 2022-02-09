@@ -6,7 +6,7 @@ from juggling_apollo.utils import plt
 from juggling_apollo.settings import dt
 from juggling_apollo.ILC import ILC
 from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal
-from apollo_interface.Apollo_It import ApolloInterface
+from ApolloInterface.Apollo_It import ApolloInterface
 from kinematics.ApolloKinematics import ApolloArmKinematics
 from utils import plot_A, save, print_info, plot_info
 

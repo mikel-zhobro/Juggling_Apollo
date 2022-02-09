@@ -5,7 +5,7 @@ import os
 import __add_path__
 from examples.utils import plot_A
 from juggling_apollo.settings import dt
-from apollo_interface.Apollo_It import ApolloInterface
+from ApolloInterface.Apollo_It import ApolloInterface
 from kinematics.ApolloKinematics import ApolloArmKinematics
 from utils import save, plot_info
 import matplotlib.pyplot as plt

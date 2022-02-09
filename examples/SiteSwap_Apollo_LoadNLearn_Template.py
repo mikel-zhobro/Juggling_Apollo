@@ -7,7 +7,7 @@ from juggling_apollo.settings import dt
 from juggling_apollo.ILC import ILC
 from juggling_apollo.DynamicSystem import ApolloDynSys
 from Planners import SiteSwapPlanner
-from apollo_interface.Apollo_It import ApolloInterface
+from ApolloInterface.Apollo_It import ApolloInterface
 from kinematics.ApolloKinematics import ApolloArmKinematics
 from kinematics import utilities
 from utils import plot_A, save, load, print_info, plot_info
@@ -75,7 +75,7 @@ rArmKinematics_nn = ApolloArmKinematics(r_arm=True)               ## kinematics 
 # 1. Trajectory Planning
 jp = SiteSwapPlanner.JugglingPlanner()
 pattern=(1,); h=0.3; r_dwell=0.6; throw_height=0.15; swing_size=0.15; w=0.3; slower=1.0; rep=1
-plan = jp.plan(dt, 1, pattern=ld.pattern, h=ld.h, r_dwell=ld.r_dwell, throw_height=ld.throw_height, 
+plan = jp.plan(dt, 1, pattern=ld.pattern, h=ld.h, r_dwell=ld.r_dwell, throw_height=ld.throw_height,
                swing_size=ld.swing_size, w=ld.w, slower=ld.slower, rep=ld.rep)
 N, x0, v0, a0, j0, rot_traj_des = plan.hands[0].get(get_thetas=True)  # get plan for hand0
 

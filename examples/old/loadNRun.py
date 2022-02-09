@@ -9,7 +9,7 @@ import __add_path__
 from juggling_apollo.settings import dt
 from utils import plot_A
 from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal
-from apollo_interface.Apollo_It import ApolloInterface, plot_simulation
+from ApolloInterface.Apollo_It import ApolloInterface, plot_simulation
 from kinematics.ApolloKinematics import ApolloArmKinematics
 
 np.set_printoptions(precision=4, suppress=True)
@@ -72,17 +72,17 @@ for j in range(1):
                 n_ds             = np.load(f)
                 ep_s             = np.load(f)
 
-            
+
             if alpha != 16.0:
                 continue
-            
+
             title = filename.split('/')[-1].split("2021")[0][7:]
             print("-----------------")
             print(title)
             print("-----------------")
             N_ILC = joints_q_vec.shape[0]
             N_1 = joints_q_vec.shape[1]
-            
+
             plot_A([u_arr, joints_vq_vec[-1, 1:]], learnable_joints, fill_between=[np.max(u_ff_vec, axis=0)[1:], np.min(u_ff_vec, axis=0)[1:]],
                 labels=["desired", "real"], dt=dt, xlabel=r"$t$ [s]", ylabel=r" angle velocity [$\frac{rad}{s}$]")
             plt.suptitle("Angle Velocities")
