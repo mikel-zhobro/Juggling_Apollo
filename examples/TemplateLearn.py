@@ -10,7 +10,7 @@ from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal, Apoll
 from ApolloInterface.Apollo_It import ApolloInterface
 from ApolloKinematics.ApolloKinematics import ApolloArmKinematics
 from ApolloKinematics import utilities
-from Planners import SiteSwapPlanner, OneBallThrowPlanner, SiteSwapJointPlanner
+from ApolloPlanners import SiteSwapPlanner, OneBallThrowPlanner, SiteSwapJointPlanner
 
 from utils import plot_A, save, save_all, colors, line_types, print_info, plot_info
 

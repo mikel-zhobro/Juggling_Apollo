@@ -6,8 +6,8 @@ from juggling_apollo.utils import steps_from_time, plotIterations, plt, rtime
 from juggling_apollo.Simulation import Simulation, plot_simulation
 from juggling_apollo.settings import dt, ABS, g
 from juggling_apollo.ILC import ILC
-from Planners.JugglingPlanner import calc
-from Planners.MinJerk import plotMJ, get_multi_interval_minjerk_1D
+from ApolloPlanners.JugglingPlanner import calc
+from ApolloPlanners.MinJerk import plotMJ, get_multi_interval_minjerk_1D
 from juggling_apollo.DynamicSystem import BallAndPlateDynSys as DynamicSystem
 
 
