@@ -1,7 +1,7 @@
 import path_setter
 import numpy as np
-from juggling_apollo.LiftedStateSpace import LiftedStateSpace
-from juggling_apollo.OptimLss import OptimLss
+from ApolloILC.LiftedStateSpace import LiftedStateSpace
+from ApolloILC.OptimLss import OptimLss
 
 
 def test1():

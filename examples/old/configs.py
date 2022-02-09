@@ -2,9 +2,9 @@ from pickle import FALSE
 import numpy as np
 
 from utils import DotDict
-from juggling_apollo.utils import steps_from_time, plt, rtime
+from ApolloILC.utils import steps_from_time, plt, rtime
 from ApolloPlanners import JugglingPlanner, MinJerk
-from juggling_apollo import MinJerk
+from ApolloILC import MinJerk
 
 
 def get_minjerk_config(dt, end_repeat, plot=False):

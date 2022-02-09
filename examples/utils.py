@@ -5,7 +5,7 @@ import time
 import numpy as np
 import pickle
 
-from juggling_apollo.utils import DotDict, full_extent, set_axes_equal
+from ApolloILC.utils import DotDict, full_extent, set_axes_equal
 
 colors = ["r", 'g', 'b', 'k', 'c', 'm', 'y']
 line_types = ["-", "--", ":", '-.']

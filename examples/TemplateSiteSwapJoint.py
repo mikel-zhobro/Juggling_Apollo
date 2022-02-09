@@ -4,9 +4,9 @@ import matplotlib.pyplot as plt
 
 
 import __add_path__
-from juggling_apollo.settings import dt
-from juggling_apollo.ILC import ILC
-from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal, ApolloDynSys, ApolloDynSysWithFeedback
+from ApolloILC.settings import dt
+from ApolloILC.ILC import ILC
+from ApolloILC.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal, ApolloDynSys, ApolloDynSysWithFeedback
 from ApolloInterface.Apollo_It import ApolloInterface
 from ApolloKinematics.ApolloKinematics import ApolloArmKinematics
 from ApolloKinematics import utilities

@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 import __add_path__
 from utils import plot_info, load
-from juggling_apollo.MinJerk import plotMJ
+from ApolloILC.MinJerk import plotMJ
 
 np.set_printoptions(precision=4, suppress=True)
 

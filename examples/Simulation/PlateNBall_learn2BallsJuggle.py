@@ -2,13 +2,13 @@
 import numpy as np
 
 import __add_path__
-from juggling_apollo.utils import steps_from_time, plotIterations, plt, rtime
-from juggling_apollo.Simulation import Simulation, plot_simulation
-from juggling_apollo.settings import dt, ABS, g
-from juggling_apollo.ILC import ILC
+from ApolloILC.utils import steps_from_time, plotIterations, plt, rtime
+from ApolloILC.Simulation import Simulation, plot_simulation
+from ApolloILC.settings import dt, ABS, g
+from ApolloILC.ILC import ILC
 from ApolloPlanners.JugglingPlanner import calc
 from ApolloPlanners.MinJerk import plotMJ, get_multi_interval_minjerk_1D
-from juggling_apollo.DynamicSystem import BallAndPlateDynSys as DynamicSystem
+from ApolloILC.DynamicSystem import BallAndPlateDynSys as DynamicSystem
 
 
 # %%

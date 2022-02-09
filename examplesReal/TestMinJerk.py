@@ -3,12 +3,12 @@ import numpy as np
 import time
 
 import __add_path__
-from juggling_apollo.utils import steps_from_time, plt
+from ApolloILC.utils import steps_from_time, plt
 from ApolloPlanners.JugglingPlanner import calc
-from juggling_apollo.settings import dt
-from juggling_apollo.ILC import ILC
+from ApolloILC.settings import dt
+from ApolloILC.ILC import ILC
 from ApolloPlanners.MinJerk import plotMJ, get_multi_interval_minjerk_1D
-from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal
+from ApolloILC.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal
 from ApolloInterface.Apollo_It import ApolloInterface, plot_simulation
 from ApolloKinematics.ApolloKinematics import ApolloArmKinematics
 from utils import plot_A, save, colors, line_types, print_info, plot_info

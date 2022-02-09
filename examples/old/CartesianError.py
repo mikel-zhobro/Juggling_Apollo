@@ -3,7 +3,7 @@ import numpy as np
 
 import __add_path__
 import configs
-from juggling_apollo.settings import dt
+from ApolloILC.settings import dt
 from ApolloKinematics.ApolloKinematics import ApolloArmKinematics
 from ApolloKinematics import utilities
 

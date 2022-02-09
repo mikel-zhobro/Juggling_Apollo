@@ -3,8 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import __add_path__
-from juggling_apollo.settings import dt
-from juggling_apollo.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal
+from ApolloILC.settings import dt
+from ApolloILC.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal
 from ApolloInterface.Apollo_It import ApolloInterface, plot_simulation
 from ApolloKinematics.ApolloKinematics import ApolloArmKinematics
 from utils import plot_A, load

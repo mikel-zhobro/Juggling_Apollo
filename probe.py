@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from ApolloInterface.Apollo_It import ApolloInterface
-from juggling_apollo.settings import alpha
+from ApolloILC.settings import alpha
 from math import sin
 
 def main():

@@ -1,9 +1,9 @@
 #!/usr/bin/env python2
 import path_setter
 import numpy as np
-from juggling_apollo.utils import plan_ball_trajectory, steps_from_time
-from juggling_apollo.Simulation import Simulation, plot_simulation
-from juggling_apollo.settings import dt, m_p
+from ApolloILC.utils import plan_ball_trajectory, steps_from_time
+from ApolloILC.Simulation import Simulation, plot_simulation
+from ApolloILC.settings import dt, m_p
 
 
 def test1():

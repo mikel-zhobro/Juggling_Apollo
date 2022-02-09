@@ -1,6 +1,6 @@
 import path_setter
 import numpy as np
-from juggling_apollo.LiftedStateSpace import LiftedStateSpace
+from ApolloILC.LiftedStateSpace import LiftedStateSpace
 
 
 def test1():

@@ -3,7 +3,7 @@ import numpy as np
 
 import __add_path__
 import matplotlib.pyplot as plt
-from juggling_apollo.settings import dt
+from ApolloILC.settings import dt
 
 
 np.set_printoptions(precision=4, suppress=True)
@@ -91,8 +91,8 @@ for j in range(7):
 
             title = filename.split('/')[-1].split("2021")[0][7:]
             N_ILC = joints_q_vec.shape[0]
-            
-            
+
+
             if error_norms[:,j][-1] > 0.50:
                 continue
             # print(title)
@@ -100,8 +100,8 @@ for j in range(7):
             axs.flatten()[j].set_ylabel(r"Error [$rad$]")
             axs.flatten()[j].set_xlabel(r"Iteration [i]")
             axs.flatten()[j].legend()
-            
-            
+
+
             # Joint Velocity trajectories
             if False:
                 plot_A([u_arr, joints_vq_vec[-1, 1:]], learnable_joints, ["des", "it="+str(N_ILC)], dt=dt, xlabel=r"$t$ [s]", ylabel=r" angle velocity [$\frac{rad}{s}$]")
@@ -139,10 +139,10 @@ for j in range(7):
                     axs[ii].grid(True)
                     axs[ii].set_ylabel(ls[ii]+" error [m]")
                 axs[ii].set_xlabel("t [s]")
-                
+
                 plt.suptitle(r"Cartesian Space errors for: $\alpha={}, \epsilon={}$".format(alpha, ep_s[j]))
                 plt.show()
-            
+
     axs.flatten()[j].set_title(r"$\theta_{}$".format(j+1))
 plt.suptitle("Trajectories Error Norm")
 plt.legend()

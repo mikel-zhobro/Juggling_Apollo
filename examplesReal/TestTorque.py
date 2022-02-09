@@ -2,7 +2,7 @@ import numpy as np
 import time
 
 import __add_path__
-from juggling_apollo.settings import dt
+from ApolloILC.settings import dt
 from ApolloInterface.Apollo_It import ApolloInterface
 from ApolloKinematics.ApolloKinematics import ApolloArmKinematics
 from utils import save, plot_info
