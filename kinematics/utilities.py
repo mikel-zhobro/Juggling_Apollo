@@ -155,7 +155,8 @@ def invT(T):
     T_[:3,3:4] = -T_[:3,:3].dot(T[:3,3:4])
     return T_
 
-
+def mod2Pi(angle):
+    return math.atan(math.tan(angle)) if (np.abs(angle) > np.pi) else angle
 
 # T_i = np.array([[0.0, -1.0, 0.0,  0.32],  # uppword orientation(cup is up)
 #                 [0.0,  0.0, 1.0,  0.81],
