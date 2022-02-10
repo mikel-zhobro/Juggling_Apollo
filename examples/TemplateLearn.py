@@ -82,8 +82,8 @@ T_traj = rArmKinematics.seqFK(q_traj_des)
 qv_traj_des = None
 # q_traj_des, qv_traj_des, T_traj = SiteSwapJointPlanner.plan(dt, rArmKinematics, verbose=True)
 
-plot_A([q_traj_des])
-plt.show()
+# plot_A([q_traj_des])
+# plt.show()
 
 q_start = q_traj_des[0]
 T_home = T_traj[0]

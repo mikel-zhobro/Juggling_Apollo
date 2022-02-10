@@ -182,8 +182,8 @@ def plan2(dt, kinematics, h=0.5, throw_height=0.0, swing_size=0.46, slower=1.0, 
         # qv_s[i] = np.linalg.pinv(Ji).dot(vs[i])
         # qv_s[i,:4] = np.linalg.pinv(Ji[:, :4]).dot(vs[i])
         b[7:] = -vs[i]
-        # qv_s[i] = np.linalg.inv(H).dot(b)[:7]
-        qv_s[i] = constrained_optim(Ji, np.zeros((7,1)), vs[i])
+        qv_s[i] = np.linalg.inv(H).dot(b)[:7]
+        # qv_s[i] = constrained_optim(Ji, np.zeros((7,1)), vs[i])
 
         # findBestThrowPosition(kinematics.FK, kinematics.J, q_s[i], qv_s[i], vs[i], T_home[:3,:3])
 

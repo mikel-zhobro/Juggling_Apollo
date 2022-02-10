@@ -76,7 +76,7 @@ rArmKinematics    = ApolloArmKinematics(r_arm=True, noise=NOISE)  ## kinematics 
 rArmKinematics_nn = ApolloArmKinematics(r_arm=True)               ## kinematics without noise  (used to calculate measurments, plays the wrole of a localization system)
 
 # C) PLANNINGs
-q_traj_des, T_traj = OneBallThrowPlanner.plan2(dt, kinematics=rArmKinematics, verbose=True)
+q_traj_des, T_traj = OneBallThrowPlanner.plan(dt, kinematics=rArmKinematics, verbose=False)
 
 
 N = len(q_traj_des)
