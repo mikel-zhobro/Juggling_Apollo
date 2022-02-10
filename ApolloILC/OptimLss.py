@@ -12,19 +12,20 @@ class OptimLss:
     # delta_u = argmin_u |Weight[delta_ydes - (GKd + Gd0) - GFdelta_u]|_2 + sigma*|delta_u|_2 + mu*|(I-I_1) delta_u|_2
     # Which corresponds in setting the first gradient to 0, i.e. solving
     # (GF^T*W*GF + sigma*I + mu*(I-I_1)) * delta_u = GF^T* W * (delta_ydes - (GKd + Gd0))  <=> Au = b
-    N = delta_y_des.shape[0]
-    N_impo = N//4
-    Weight = np.eye(N)
-    # Weight[N-N_impo:, N-N_impo:] *= 10.0
+    N_y = delta_y_des.shape[0]
+    N_u = self.lss.GF.shape[1]
+
+    N_impo = N_y//4
+    Weight = np.eye(N_y)
+    # Weight[N_y-N_impo:, N_y-N_impo:] *= 10.0
 
     if lb is None and ub is None:
-      P = (self.lss.GF.T).dot(Weight).dot(self.lss.GF)   # close to the desired output
-      Q = 0.00001*np.eye(N)                              # possibly small inputs
-      S = 0.0000001*(np.eye(N)-np.eye(N, k=1))           # slow changes
+      P = (self.lss.GF.T).dot(Weight).dot(self.lss.GF)   # close to the desired output N_u x N_u
+      Q = 0.0000*np.eye(N_u)                             # possibly small inputs  N_u x N_u
+      S = 0.000000*(np.eye(N_u)-np.eye(N_u, k=1))        # slow changes  N_u x N_u
       A = P + Q + S
       b = self.lss.GF.T.dot(Weight).dot(delta_y_des - self.lss.GK.dot(d) - self.lss.Gd0)
       delta_u_des = np.linalg.inv(A).dot(b)
-
     else:
       from scipy.optimize import minimize
       def loss(x):

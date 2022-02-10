@@ -28,7 +28,7 @@ class ILC:
     self._u_ff = None  # keeps the learned feed forward signal(Fourier coeficients in FreqDomain))
     self._delta_u_ff = None
     self.y_des_feedback = 0.  # keeps the feedback part that has to be substracted from desired traj(Fourier Coef in FreqDomin)
-    self.lss              = LiftedStateSpace(sys=sys, T=self.T, N=self.N, freq_domain=freq_domain, **lss_params)
+    self.lss              = LiftedStateSpace(sys=sys, N=self.N, T=self.T, freq_domain=freq_domain, **lss_params)
     self.kf_dpn           = KalmanFilter(lss=self.lss, freqDomain=freq_domain, **kf_dpn_params)  # dpn estimator
     self.quad_input_optim = OptimLss(self.lss, **optim_params)
 

@@ -3,7 +3,7 @@ from math import e
 
 class LiftedStateSpace:
   # Constructor
-  def __init__(self, sys, T, N, freq_domain, **kwargs):
+  def __init__(self, sys, N, T=None, freq_domain=False, **kwargs):
     self.sys = sys
     self.N = N  # length of traj (Nf if fre_domain)
     self.T = T  # time length of traj
