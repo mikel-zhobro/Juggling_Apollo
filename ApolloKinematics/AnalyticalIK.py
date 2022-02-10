@@ -1,11 +1,10 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from math import sin, cos, acos, sqrt, atan2, asin, atan ,tan
+from random import random
 
 from DH import DH_revolut
 from utilities import R_joints, L_joints, JOINTS_LIMITS
 from utilities import skew, vec, mod2Pi#, clip_c
-from random import random
 from Sets import ContinuousSet
 
 clip_c = mod2Pi
@@ -181,6 +180,18 @@ def IK_shoulder(DH_model, x0sw, d_se, d_ew, GC2, GC4, verbose):
 
 
 def IK_wrist(DH_model, R07_d, R34, As, Bs, Cs, GC6, verbose):
+    """ Computes th5 th6 th7 as functions of psi, which describe the rotation of elbow around sholder-wrist axis with psi.
+
+    Args:
+        R07_d ([np.array(3,3)]): desired end-effector rotation matrix
+        R34 ([np.array(3,3)]): elbow rotation matrix
+        As, Bs, Cs ([type]): reference cos and sin matrix of the rotation around shoulder wrist axis
+        GC6 ([type]): branch of solutions
+
+    Returns:
+        th5 th6 th7 as functions of psi
+    """
+
     # Wrist R47(psi) = Aw*sin(psi) + Bw*cos(psi) + C_w
     Aw = np.matmul(R34.T, As.T.dot(R07_d))
     Bw = np.matmul(R34.T, Bs.T.dot(R07_d))
