@@ -10,7 +10,6 @@ class ILC:
     # kwargs can be {impact_timesteps: [True/False]*N} for timedomain
     # and must be {T:Float} for freqdomain
     self.timeDomain = not freq_domain
-    self.firstTime = True
 
     # Time domain
     self.dt = sys.dt
@@ -18,18 +17,18 @@ class ILC:
     self.T = utils.time_from_step(self.Nt, self.dt)  # periode
 
     # Freq domain
-    self.Nf      = Nf
+    self.Nf = Nf # nr of fourier coeffizients to use for the frequency-domain ILC.
     assert not freq_domain or (Nf is not None and Nf < int(0.5*self.Nt)), "Make sure that Nf{} is small enough{} to satisfy the Nyquist criterium.".format(Nf, int(0.5*self.Nt))
     assert kf_dpn_params['d0'].size == self.N, "Size of disturbance ({}) and that of N ({}) don't match.".format(kf_dpn_params['d0'].size, self.N)
 
-    # Components of ilc
+    # Components of ILC
     self.y_des = None  # keeps the time domain desired trajectory
-    self.c_s_ = None
-    self._u_ff = None  # keeps the learned feed forward signal(Fourier coeficients in FreqDomain))
-    self._delta_u_ff = None
+    self.c_s_ = None   # keeps the Fourier coefficients for the cos() and sin() terms of Fourier series
+    self._u_ff = None  # keeps the initial feed forward signal(Fourier coeficients in FreqDomain))
+    self._delta_u_ff = None  # the actual
     self.y_des_feedback = 0.  # keeps the feedback part that has to be substracted from desired traj(Fourier Coef in FreqDomin)
     self.lss              = LiftedStateSpace(sys=sys, N=self.N, T=self.T, freq_domain=freq_domain, **lss_params)
-    self.kf_dpn           = KalmanFilter(lss=self.lss, freqDomain=freq_domain, **kf_dpn_params)  # dpn estimator
+    self.kf_dpn           = KalmanFilter(lss=self.lss, freqDomain=freq_domain, **kf_dpn_params)  # disturbance estimator
     self.quad_input_optim = OptimLss(self.lss, **optim_params)
 
     # Init
@@ -37,21 +36,26 @@ class ILC:
     self.resetILC()
 
   def resetILC(self, d=None, P=None):
-    self.kf_dpn.resetKF(d, P) # reset KFs
+    self.kf_dpn.resetKF(d, P) # resets the Kalman Filter
 
   @property
   def N(self):
-    return self.Nt if self.timeDomain else self.Nf
+    return self.Nt if self.timeDomain else self.Nf  # length of the learned signal / nr of fourier coefs
 
   @property
   def d(self):
-    return self.kf_dpn.d
+    return self.kf_dpn.d  # learned disturbance
 
   @property
   def P(self):
-    return self.kf_dpn.P
+    return self.kf_dpn.P  # covariance for the learned disturbance
 
   def update_y_des(self, y_des):
+    """ Function to update the time-domain desired trajectory.
+
+    Args:
+        y_des ([np.array(Nt, 1)]): The new time-domain desired trajectory
+    """
     assert y_des.size == self.Nt, "Make sure the new y_des has the same size as the input ILC was initialized with."
     self.y_des = y_des.copy().reshape(-1,1)
 
@@ -71,10 +75,24 @@ class ILC:
 
   def get_delta_y(self, y_meas):
     """ Computes the input deviation trajectory in the right format.
+    Args:
+        y_meas ([np.array(Nt, 1)]): Measured time-domain output for which to calculate delta_y
+
+    Returns:
+        [np.array(Nt(Nf), 1)]: delta_y in the right format(time- or freq-domain)
     """
     return self.y_des-y_meas if self.timeDomain else fourier_series_coeff(self.y_des-y_meas-self.y_des_feedback, self.N).reshape(-1,1)
 
-  def init_uff_from_lin_model(self, verbose=False, lb=None, ub=None):
+  def init_uff_from_lin_model(self, lb=None, ub=None, verbose=False):
+    """Initialize the feeedforward input for the first iteration
+
+    Args:
+        lb ([float], optional): lower and upper bounds when calculating the feedforward input(used only for the time-domain ILC)
+        verbose (bool, optional): Whether to print verbose information.
+
+    Returns:
+        [np.array(Nt(Nf), 1)]: Feedforward input in either time-domain or freq-domain format
+    """
     if not self.timeDomain:
       assert lb is None and ub is None, "No constraint optimization possible in freqDomain."
 
@@ -85,6 +103,7 @@ class ILC:
       self._u_ff = np.linalg.pinv(self.lss.GF).dot(self.get_delta_y(0))
     return self.transf_uff(self._u_ff)
 
+  # Different ILC
   def updateStep(self, y_meas, y_des=None, verbose=False, lb=None, ub=None):
     """ Updates learned feedforward input and disturbance according to (self._u_ff, y_meas) tuple.
 
@@ -105,9 +124,9 @@ class ILC:
       self.update_y_des(y_des)
 
     if self._u_ff is None:
-      return self.init_uff_from_lin_model(verbose, lb, ub)
+      return self.init_uff_from_lin_model(lb, ub, verbose)
 
-    # estimate dpn disturbance
+    # estimate first delta_u as 0 and use the above uff computed from the lin_model
     if self._delta_u_ff is None:
       self._delta_u_ff = self._u_ff.copy()*0.
 
@@ -117,7 +136,6 @@ class ILC:
     # self._u_ff = self._delta_u_ff
 
     return self.transf_uff(self._u_ff - self._delta_u_ff)
-
 
   def updateStep2(self, y_meas, y_des=None, verbose=False, lb=None, ub=None):
       """ Updates learned feedforward input and disturbance according to (self._u_ff, y_meas) tuple.
@@ -141,7 +159,7 @@ class ILC:
         self.update_y_des(y_des)
 
       if self._u_ff is None:
-        return self.init_uff_from_lin_model(verbose, lb, ub)
+        return self.init_uff_from_lin_model(lb, ub, verbose)
 
       # update uff
       self._u_ff += 0.363 *np.linspace(1.0, 0.2, self._u_ff.size).reshape(self._u_ff.shape)*(np.linalg.pinv(self.lss.GF).dot(delta_y))
@@ -170,7 +188,7 @@ class ILC:
         self.update_y_des(y_des)
 
       if self._u_ff is None:
-        return self.init_uff_from_lin_model(verbose, lb, ub)
+        return self.init_uff_from_lin_model(lb, ub, verbose)
 
       if self.c_s_ is None:
         cks = delta_y.real[0:self.Nf]
@@ -210,6 +228,9 @@ class ILC:
       # return self.transf_uff(self._u_ff)
       return series_real_coeff3(self.c_s_[:,0], self.c_s_[:,1], t=np.arange(0, self.Nt)*self.dt, T=self.T).reshape(-1,1)
 
+
+
+# Helper functions to calculate frequency domain components
 def fourier_series_coeff(f, Nf, complex=False):
   return fourier_series_coeff2(f, Nf+1, True)[1:]
 

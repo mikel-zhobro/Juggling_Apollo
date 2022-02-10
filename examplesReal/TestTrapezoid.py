@@ -5,7 +5,7 @@ import __add_path__
 from ApolloILC.utils import plt
 from ApolloILC.settings import dt
 from ApolloILC.ILC import ILC
-from ApolloILC.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal
+from ApolloILC.DynamicSystem import ApolloDynSys
 from ApolloInterface.Apollo_It import ApolloInterface
 from ApolloKinematics.ApolloKinematics import ApolloArmKinematics
 from utils import plot_A, save, print_info, plot_info

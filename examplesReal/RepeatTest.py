@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import __add_path__
 from ApolloILC.settings import dt
 from ApolloILC.ILC import ILC
-from ApolloILC.DynamicSystem import ApolloDynSys, ApolloDynSysIdeal, ApolloDynSys, ApolloDynSysWithFeedback
+from ApolloILC.DynamicSystem import ApolloDynSys, ApolloDynSysWithFeedback
 from ApolloPlanners import SiteSwapPlanner, OneBallThrowPlanner
 from ApolloInterface.Apollo_It import ApolloInterface
 from ApolloKinematics.ApolloKinematics import ApolloArmKinematics
