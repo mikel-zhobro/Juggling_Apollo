@@ -30,7 +30,7 @@ UB = 6.5
 CARTESIAN_ERROR = False
 NOISE=0.2
 
-ILC_it = 22                               # number of ILC iteration
+ILC_it = 5                               # number of ILC iteration
 end_repeat = 0  if not FREQ_DOMAIN else 0 # repeat the last position value this many time
 
 # Learnable Joints
@@ -171,7 +171,7 @@ for j in range(ILC_it):
     plot_A([u_ff])
     plt.show()
   # Main Simulation
-  if True:
+  if FREQ_DOMAIN:
     q_traj, q_v_traj, q_a_traj, F_N_vec, _, q0 = rArmInterface.apollo_run_one_iteration_with_feedback(dt=dt, T=T_FULL, u=u_ff, thetas_des=q_traj_des_i, joint_home_config=q_start_i, repetitions=3 if FREQ_DOMAIN else 1, it=j)
   else:
     q_traj, q_v_traj, q_a_traj, F_N_vec, _, q0 = rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL, u=u_ff, joint_home_config=q_start_i, repetitions=3 if FREQ_DOMAIN else 1, it=j)
@@ -231,38 +231,13 @@ for j in range(ILC_it):
     delta_q_traj_des_i = q_traj_des_i[1:] - q_start_i
     # mu = 0.95*mu
 
-  if False and (j ==ILC_it-1 or j==0):
-    plot_A([180./np.pi*q_extra, 180./np.pi*q_des_extra], labels=["observed", "desired"])
-    plt.suptitle("{}. Joint angles it({})".format("freq" if FREQ_DOMAIN else "time", j))
-    plt.savefig("/home/apollo/Desktop/Investigation/{}_Joint_angles_it{}.png".format("Freq" if FREQ_DOMAIN else "Time", j))
-    plot_A([180./np.pi*qv_extra, 180./np.pi*qv_des_extra], labels=["observed", "desired"])
-    plt.suptitle("{}. Joint velocities it({})".format("freq" if FREQ_DOMAIN else "time", j))
-    # plt.savefig("/home/apollo/Desktop/Investigation/{}_Joint_velocities_it{}.png".format("Freq" if FREQ_DOMAIN else "Time", j))
-    plt.show()
-
   print_info(j, learnable_joints, joints_d_vec, d_xyz)
   for iii in range(3):
     print(ls[iii] + ". trajectory_track_error_norm: {:13.8f}  {:13.8f} {:13.8f}".format(np.linalg.norm(errs[:, iii]),  # /d_xyz.shape[0],
                                                                                       np.linalg.norm(errs[:, iii], ord=1),  #/d_xyz.shape[0],
                                                                                       np.abs(errs[-1, iii])
                                                                                       ))
-  if False and j%every_N==1:
-    plot_info(dt, learnable_joints, joints_q_vec, q_traj_des_i[1:],
-              u_ff_vec, q_v_traj,
-              joint_torque_vec,
-            #  disturbanc_vec,
-            #  d_xyz,
-              joint_error_norms=joint_error_norms, cartesian_error_norms=cartesian_error_norms,
-              v=False, p=True, dp=False, e_xyz=False, e=True, torque=False, N=j+1)
-    plt.show()
 
-  if False and j%every_N==0:  # How desired  trajectory changes
-    plot_A([q_traj_des_nn, q_traj_des_vec[j], q_traj_des_vec[j-1], q_traj_des_vec[0]], learnable_joints, ["des", "it="+str(j), "it="+str(j-1), "it=0"], dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
-    plt.suptitle("Desired Joint Trajectories")
-    plt.show(block=False)
-
-
-    # save("d_xyz_rpy_vec", axs)
 
 # After Main Loop has finished
 if False:

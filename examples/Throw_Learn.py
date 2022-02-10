@@ -208,40 +208,7 @@ for j in range(ILC_it):
     delta_q_traj_des_i = q_traj_des_i[1:] - q_start_i
     mu = 0.95*mu
 
-  if False and (j ==ILC_it-1 or j==0):
-    plot_A([180./np.pi*q_extra, 180./np.pi*q_des_extra], labels=["observed", "desired"])
-    plt.suptitle("{}. Joint angles it({})".format("freq" if FREQ_DOMAIN else "time", j))
-    plt.savefig("/home/apollo/Desktop/Investigation/{}_Joint_angles_it{}.png".format("Freq" if FREQ_DOMAIN else "Time", j))
-    plot_A([180./np.pi*qv_extra, 180./np.pi*qv_des_extra], labels=["observed", "desired"])
-    plt.suptitle("{}. Joint velocities it({})".format("freq" if FREQ_DOMAIN else "time", j))
-    # plt.savefig("/home/apollo/Desktop/Investigation/{}_Joint_velocities_it{}.png".format("Freq" if FREQ_DOMAIN else "Time", j))
-    plt.show()
-
   print_info(j, learnable_joints, joints_d_vec, d_xyz)
-
-  if False and j%every_N==0:
-    plot_info(dt, learnable_joints, joints_q_vec, q_traj_des_i[1:],
-              u_ff_vec, q_v_traj,
-              joint_torque_vec,
-            #  disturbanc_vec,
-            #  d_xyz,
-              joint_error_norms=joint_error_norms, cartesian_error_norms=cartesian_error_norms,
-              v=True, p=False, dp=False, e_xyz=False, e=True, torque=False, N=j+1, kinematics=rArmKinematics)
-    plt.show()
-
-  if False and j%every_N==0:  # How desired  trajectory changes
-    plot_A([q_traj_des_nn, q_traj_des_vec[j], q_traj_des_vec[j-1], q_traj_des_vec[0]], learnable_joints, ["des", "it="+str(j), "it="+str(j-1), "it=0"], dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
-    plt.suptitle("Desired Joint Trajectories")
-    plt.show(block=False)
-
-  if False and j%every_N==0:  # Whether disturbance makes up for differences
-    y_no_d_s = np.array([ilc.lss.GF.dot(u_ff[:, indx:indx+1]) + ilc.lss.Gd0  + q_start_i[indx] for indx, ilc in enumerate(my_ilcs)]).transpose(1,0,2) # predicted y
-    y_with_d_s = np.array([ilc.lss.GF.dot(u_ff[:, indx:indx+1]) + ilc.lss.Gd0  + ilc.lss.GK.dot(ilc.d) + q_start_i[indx] for indx, ilc in enumerate(my_ilcs)]).transpose(1,0,2) # predicted y
-    fillbetween = [y_no_d_s, y_with_d_s]
-    plot_A([y_no_d_s, q_traj[1:]], labels=["aimed_trajectory", "realized_trajectory"], indexes_list=learnable_joints, fill_between=fillbetween)
-    plt.show()
-
-
 
 
 # After Main Loop has finished
