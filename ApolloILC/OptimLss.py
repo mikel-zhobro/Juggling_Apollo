@@ -21,8 +21,8 @@ class OptimLss:
 
     if lb is None and ub is None:
       P = (self.lss.GF.T).dot(Weight).dot(self.lss.GF)   # close to the desired output N_u x N_u
-      Q = 0.0000*np.eye(N_u)                             # possibly small inputs  N_u x N_u
-      S = 0.000000*(np.eye(N_u)-np.eye(N_u, k=1))        # slow changes  N_u x N_u
+      Q = 0.00001*np.eye(N_u)                             # possibly small inputs  N_u x N_u
+      S = 0.0000001*(np.eye(N_u)-np.eye(N_u, k=1))        # slow changes  N_u x N_u
       A = P + Q + S
       b = self.lss.GF.T.dot(Weight).dot(delta_y_des - self.lss.GK.dot(d) - self.lss.Gd0)
       delta_u_des = np.linalg.inv(A).dot(b)
