@@ -2,15 +2,16 @@ import numpy as np
 from math import e
 
 class LiftedStateSpace:
-  # Constructor
+  # Unroll the state space equations of the dynamic system to build the mappings on iteration level.
+    #    x[1:] = Fu + Kdu_p + d0 + F_feedback*ydes,
+    #    y[1:] = Gx,
   def __init__(self, sys, N, T=None, freq_domain=False, **kwargs):
-    self.sys = sys
-    self.N = N  # length of traj (Nf if fre_domain)
-    self.T = T  # time length of traj
+    self.sys = sys  # dynamic system
+    self.N = N      # length of traj (Nf if fre_domain)
+    self.T = T      # time length of traj
 
     # Time domain
-    self.timeDomain = False
-    self.x0  = np.array(sys.x0).reshape(-1, 1)
+    self.x0  = np.array(sys.x0).reshape(-1, 1) # initial state
     self.GF  = None          # G * F  <- u
     self.GK  = None          # G * k  <- d
     self.Gd0 = None          # G * d0 <- x0
@@ -28,7 +29,7 @@ class LiftedStateSpace:
       self.updateQuadrProgMatrixesTimeDomain(**kwargs)
 
   def updateQuadrProgMatrixesFreqDomain(self, **kwargs):
-    """[summary]
+    """ Updates the matrixes describing the liftes state space equations
     Args:
         T ([type]): periode of the periodic output
         Nf ([type]): number of samples in freq domain
@@ -134,6 +135,7 @@ class LiftedStateSpace:
     if self.sys.with_feedback:
       self.GF_feedback = G.dot(F_feedback)
 
+  # Used only in case the dynamic system includes impacts and impact_timesteps is provided
   def get_Ad(self, impact):
     return self.sys.Ad_impact if impact else self.sys.Ad
 
