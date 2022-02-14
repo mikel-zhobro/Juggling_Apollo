@@ -1,5 +1,6 @@
-from sortedcontainers import SortedList, SortedSet
+from sortedcontainers import SortedList
 from random import random
+
 
 class ContinuousRange():
     def __init__(self, start, end, start_include=True, end_include=True):

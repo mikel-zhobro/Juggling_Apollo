@@ -1,7 +1,5 @@
 import numpy as np
-import time
 import matplotlib.pyplot as plt
-
 
 import __add_path__
 from ApolloILC.settings import dt
@@ -15,6 +13,7 @@ from ApolloPlanners import SiteSwapPlanner, OneBallThrowPlanner, SiteSwapJointPl
 from utils import plot_A, save, save_all, colors, line_types, print_info, plot_info
 
 np.set_printoptions(precision=4, suppress=True)
+
 
 # PARAMS
 print("juggling_apollo")

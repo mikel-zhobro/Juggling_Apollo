@@ -2,7 +2,6 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 
-
 import __add_path__
 from ApolloILC.settings import dt
 from ApolloILC.ILC import ILC
@@ -14,6 +13,7 @@ from ApolloKinematics import utilities
 from utils import plot_A, save_all, colors, line_types, print_info, plot_info
 
 np.set_printoptions(precision=4, suppress=True)
+
 
 # PARAMS
 print("juggling_apollo")

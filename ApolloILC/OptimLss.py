@@ -1,6 +1,7 @@
 import numpy as np
 from utils import plt
 
+
 class OptimLss:
   def __init__(self, lifted_state_space):
     self.lss = lifted_state_space

@@ -1,19 +1,18 @@
 
-from pickle import FALSE
-import path
 import numpy as np
-from fk import J, FK, FK_DH
-from scipy.optimize import approx_fprime
-from DHFK import DH_revolut
 from tqdm import tqdm
+from scipy.optimize import approx_fprime
+
+from fk import J, FK, FK_DH
+from ApolloKinematics.utilities import R_joints, JOINTS_LIMITS, JOINTS_V_LIMITS
+from DHFK import DH_revolut
 
 np.set_printoptions(precision=3, suppress=True)
 
-eps = np.sqrt(np.finfo(float).eps)
 
 J_  = lambda q: J(*q)
+eps = np.sqrt(np.finfo(float).eps)
 
-from ApolloKinematics.utilities import R_joints, JOINTS_LIMITS, JOINTS_V_LIMITS
 pi2 = np.pi/2
 th3_offset = np.pi/6
 d_bs = 0.378724; d_se = 0.4; d_ew = 0.39; d_wt = 0.186

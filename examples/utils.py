@@ -7,6 +7,7 @@ import pickle
 
 from ApolloILC.utils import DotDict, full_extent, set_axes_equal
 
+
 colors = ["r", 'g', 'b', 'k', 'c', 'm', 'y']
 line_types = ["-", "--", ":", '-.']
 

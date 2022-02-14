@@ -1,12 +1,10 @@
 # %%
 import numpy as np
+np.set_printoptions(precision=4, suppress=True)
 
 import __add_path__
 import matplotlib.pyplot as plt
 from ApolloILC.settings import dt
-
-
-np.set_printoptions(precision=4, suppress=True)
 
 
 colors = ["r", 'g', 'b', 'k', 'c', 'm', 'y']

@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 
 from utils import plot_intervals, steps_from_time, plot_lines_coord
 
+
 ##### Helper Functions for multi-interval multi-dimensional minjerk
 
 ### 1.Straight forward approach

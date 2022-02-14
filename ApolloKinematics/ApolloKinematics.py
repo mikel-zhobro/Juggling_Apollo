@@ -7,6 +7,7 @@ from utilities import invT
 from PinFK import PinRobot
 from AnalyticalIK import IK_anallytical, IK_heuristic2, IK_heuristic3, IK_find_psi_and_GCs
 
+
 class ApolloArmKinematics():
     def __init__(self, r_arm=True, noise=None):
         self.r_arm = r_arm

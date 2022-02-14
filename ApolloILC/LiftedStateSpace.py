@@ -1,6 +1,7 @@
 import numpy as np
 from math import e
 
+
 class LiftedStateSpace:
   # Unroll the state space equations of the dynamic system to build the mappings on iteration level.
     #    x[1:] = Fu + Kdu_p + d0 + F_feedback*ydes,

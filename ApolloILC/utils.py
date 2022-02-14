@@ -8,6 +8,7 @@ from matplotlib.transforms import Bbox
 # mpl.use('TkAgg')
 np.set_printoptions(precision=3, suppress=True)
 
+
 class DotDict(dict):
     """dot.notation access to dictionary attributes"""
     __getattr__ = dict.get

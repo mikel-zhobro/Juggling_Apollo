@@ -13,6 +13,8 @@ from ApolloKinematics import utilities
 from utils import plot_A, save, load, print_info, plot_info
 
 np.set_printoptions(precision=4, suppress=True)
+
+
 # PARAMS
 print("juggling_apollo")
 ########################################################################################################
