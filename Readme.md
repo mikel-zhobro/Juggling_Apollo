@@ -8,12 +8,22 @@ This tutorial assumes that the Apollo software is installed successfully.
 If that is not done, look into [Apollo : start here](https://atlas.is.localnet/confluence/display/AMDW/Apollo+%3A+start+here) and [MPI System Apollo - Getting Started](https://atlas.is.localnet/confluence/display/AMDW/MPI+System+Apollo+-+Getting+Started) or contact [Vincent Berenz](https://ei.is.mpg.de/person/vberenz).
 Once you do that, you should be able to start the simulation and run simple scripts to read the state of Apollo's arms or send position/velocity commands.
 
-
 We then clone this repo and install its dependencies:
 ```
 git clone https://gitlab.com/learning-and-dynamical-systems/juggling_apollo.git
 pip install -r /path/to/requirements.txt
 ```
+
+
+The routine for running an iterative learning procedure on Apollo consist of:
+1. Use KUKA computer to bring Apollo to home position(ready state) or skip this step if you are using the simulation. Follow [How to start Apollo](https://atlas.is.localnet/confluence/pages/viewpage.action?spaceKey=AMDW&title=How+to+start+Apollo+and+control+it+from+SL) and use [GravComp](https://atlas.is.localnet/confluence/pages/viewpage.action?spaceKey=AMDW&title=GravComp+Mode+illigal+state), [Validate Loaddata](https://atlas.is.localnet/confluence/pages/viewpage.action?spaceKey=AMDW&title=Validate+Loaddata+%24TORQUE_AXIS_EST+limit+exceeded) if you face difficulties with the gravity compensation.
+2. Source the above software.
+3. Create the corresponding launch file
+4. Roslaunch the created launch file
+5. Activate the O8o interface
+6. Run a training template as shown in examples/
+
+
 
 ## Directory Structure
 The essential parts of the code are organized as follows:
@@ -35,7 +45,7 @@ ApolloILC
 
 
 ApolloInterface
-├── Apollo_It.py                    # loader for the something-something v2 dataset
+├── Apollo_It.py                    # defines the interface to the real robot (adapted for ILC)
 ├── display_robot_state.py          # exampe 1: print out the state information of Apollo
 ├── position_control.py             # exampe 2: send position control commands
 ├── velocity_control.py             # exampe 3: send velocity control commands
