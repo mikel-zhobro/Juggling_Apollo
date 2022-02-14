@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from math import sin, cos, acos, sqrt, atan2, asin
 
 from DHFK import DH_revolut
 from utilities import R_joints, L_joints, JOINTS_LIMITS, JOINTS_V_LIMITS
