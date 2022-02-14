@@ -1,6 +1,3 @@
-from email import header
-
-
 #!/usr/bin/env python
 # -*-coding:utf-8 -*-
 '''
