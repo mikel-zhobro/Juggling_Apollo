@@ -1,3 +1,18 @@
+from email import header
+
+
+#!/usr/bin/env python
+# -*-coding:utf-8 -*-
+'''
+@File    :   Sets.py
+@Time    :   2022/02/14
+@Author  :   Mikel Zhobro
+@Version :   1.0
+@Contact :   zhobromikel@gmail.com
+@License :   (C)Copyright 2021-2022, Mikel Zhobro
+@Desc    :   defines helper classes(ContinuousRange and ContinuousSet) required in AnalyticalIK
+'''
+
 from sortedcontainers import SortedList
 from random import random
 

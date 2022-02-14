@@ -1,3 +1,15 @@
+#!/usr/bin/env python
+# -*-coding:utf-8 -*-
+'''
+@File    :   ApolloKinematics.py
+@Time    :   2022/02/14
+@Author  :   Mikel Zhobro
+@Version :   1.0
+@Contact :   zhobromikel@gmail.com
+@License :   (C)Copyright 2021-2022, Mikel Zhobro
+@Desc    :   defines class with Apollo's kinematics(fk, ik, seq_ik, seq_fk, etc.)
+'''
+
 import numpy as np
 import matplotlib.pyplot as plt
 

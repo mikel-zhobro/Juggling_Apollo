@@ -1,3 +1,15 @@
+#!/usr/bin/env python
+# -*-coding:utf-8 -*-
+'''
+@File    :   DHFK.py
+@Time    :   2022/02/14
+@Author  :   Mikel Zhobro
+@Version :   1.0
+@Contact :   zhobromikel@gmail.com
+@License :   (C)Copyright 2021-2022, Mikel Zhobro
+@Desc    :   defines class for Denavit-Hartenberg forward kinematics
+'''
+
 import numpy as np
 from Sets import ContinuousSet
 from utilities import JOINTS_LIMITS, pR2T, invT

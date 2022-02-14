@@ -1,3 +1,15 @@
+#!/usr/bin/env python
+# -*-coding:utf-8 -*-
+'''
+@File    :   LiftedStateSpace.py
+@Time    :   2022/02/14
+@Author  :   Mikel Zhobro
+@Version :   1.0
+@Contact :   zhobromikel@gmail.com
+@License :   (C)Copyright 2021-2022, Mikel Zhobro
+@Desc    :   unrolls the state space equations and creates the LSS mappings for the ILC
+'''
+
 import numpy as np
 from math import e
 

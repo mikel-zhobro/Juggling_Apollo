@@ -1,7 +1,14 @@
-"""
-Here we define the dynamic system to be used with ILC. It should be a subclass of DynamicSystem.
-"""
-
+#!/usr/bin/env python
+# -*-coding:utf-8 -*-
+'''
+@File    :   DynamicSystem.py
+@Time    :   2022/02/14
+@Author  :   Mikel Zhobro
+@Version :   1.0
+@Contact :   zhobromikel@gmail.com
+@License :   (C)Copyright 2021-2022, Mikel Zhobro
+@Desc    :   Here we define the dynamic system to be used with ILC. It should be a subclass of DynamicSystem.
+'''
 
 import numpy as np
 from settings import m_b, m_p, g, k_c, alpha

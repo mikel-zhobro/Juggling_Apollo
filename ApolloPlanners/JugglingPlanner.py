@@ -1,3 +1,15 @@
+#!/usr/bin/env python
+# -*-coding:utf-8 -*-
+'''
+@File    :   JugglingPlanner.py
+@Time    :   2022/02/14
+@Author  :   Mikel Zhobro
+@Version :   1.0
+@Contact :   zhobromikel@gmail.com
+@License :   (C)Copyright 2021-2022, Mikel Zhobro
+@Desc    :   None
+'''
+
 from utils import flyTime2HeightAndVelocity
 from MinJerk import plotMinJerkTraj, get_multi_interval_minjerk_1D
 

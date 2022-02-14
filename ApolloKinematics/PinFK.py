@@ -1,4 +1,15 @@
-from numpy.core.defchararray import join
+#!/usr/bin/env python
+# -*-coding:utf-8 -*-
+'''
+@File    :   PinFK.py
+@Time    :   2022/02/14
+@Author  :   Mikel Zhobro
+@Version :   1.0
+@Contact :   zhobromikel@gmail.com
+@License :   (C)Copyright 2021-2022, Mikel Zhobro
+@Desc    :   defines class for Pinocchio based forward and inverse kinematics
+'''
+
 import pinocchio as pin
 import numpy as np
 from numpy.linalg import norm, solve

@@ -1,3 +1,15 @@
+#!/usr/bin/env python
+# -*-coding:utf-8 -*-
+'''
+@File    :   SiteSwapPlanner.py
+@Time    :   2022/02/14
+@Author  :   Mikel Zhobro
+@Version :   1.0
+@Contact :   zhobromikel@gmail.com
+@License :   (C)Copyright 2021-2022, Mikel Zhobro
+@Desc    :   defines a juggling pattern parser for arbitrary patterns and hands
+'''
+
 import numpy as np
 import matplotlib.pyplot as plt
 import math

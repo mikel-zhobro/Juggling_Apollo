@@ -70,10 +70,10 @@ ApolloKinematics
 ├── DHFK.py                         # defines class for Denavit-Hartenberg forward kinematics
 ├── PinFK.py                        # defines class for Pinocchio based forward and inverse kinematics
 ├── AnalyticalIK.py                 # defines class for the analytical inverse kinematics
-├── Sets.py                         # defines helper classes(range and set) required in AnalyticalIK
+├── Sets.py                         # defines helper classes(ContinuousRange and ContinuousSet) required in AnalyticalIK
 ├── utilities.py                    # contains helper functions
 ├── settings.py                     # contains Apollo-related information(names of joints, limits etc.)
-└── tests                           # contains tests for jacobian computations and inverse kinematics computations
+└── tests                           # contains tests for Jacobian computations and inverse kinematics computations
     ├── check_jac.py
     └── check_ik_real_dh.py
 
@@ -87,12 +87,12 @@ ApolloPlanners
 
 
 examples
-├── TemplateLearn.py                                            # the full dataset
-├── SiteSwap_Apollo_Learn_Template.py                           # the full dataset
-├── SiteSwap_Apollo_LoadNLearn_Template.py                      # the full dataset
+├── TemplateLearn.py                                            # 
+├── SiteSwap_Apollo_Learn_Template.py                           # 
+├── SiteSwap_Apollo_LoadNLearn_Template.py                      # 
 ├── Throw_Learn.py
 ├── Throw_LoadNLearn.py
-└── utils.py                                                    #
+└── utils.py                                                    # includes tools for plotting and printing the ILC metrics
 
 tests
 └── test_LiftedStateSpace.py        # test LSS

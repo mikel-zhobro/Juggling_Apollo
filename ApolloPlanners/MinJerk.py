@@ -1,8 +1,17 @@
-# MINJERKTRAJECTORY Used to do min-jerk trajectory computation
-# Since any free start- or end-state puts a constraint on the constate
-# the equations stay the same and only the coefficients change.
-# This allows us to call get_trajectories() to create paths of
-# different constraints.
+#!/usr/bin/env python
+# -*-coding:utf-8 -*-
+'''
+@File    :   MinJerk.py
+@Time    :   2022/02/14
+@Author  :   Mikel Zhobro
+@Version :   1.0
+@Contact :   zhobromikel@gmail.com
+@License :   (C)Copyright 2021-2022, Mikel Zhobro
+@Desc    :   Used to do min-jerk trajectory computation.
+             Since any free start- or end-state puts a constraint on the constate
+             the equations stay the same and only the coefficients change.
+             This allows us to call get_trajectories() to create paths of different constraints.
+'''
 
 import numpy as np
 import matplotlib.pyplot as plt

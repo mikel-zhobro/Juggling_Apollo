@@ -1,3 +1,15 @@
+#!/usr/bin/env python
+# -*-coding:utf-8 -*-
+'''
+@File    :   AnalyticalIK.py
+@Time    :   2022/02/14
+@Author  :   Mikel Zhobro
+@Version :   1.0
+@Contact :   zhobromikel@gmail.com
+@License :   (C)Copyright 2021-2022, Mikel Zhobro
+@Desc    :   defines class for the analytical inverse kinematics
+'''
+
 import numpy as np
 from math import sin, cos, acos, sqrt, atan2, asin, atan ,tan
 from random import random

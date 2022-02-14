@@ -1,3 +1,15 @@
+#!/usr/bin/env python
+# -*-coding:utf-8 -*-
+'''
+@File    :   start_apollo.py
+@Time    :   2022/02/14
+@Author  :   Mikel Zhobro
+@Version :   1.0
+@Contact :   zhobromikel@gmail.com
+@License :   (C)Copyright 2021-2022, Mikel Zhobro
+@Desc    :   script to start the simulation in different modes
+'''
+
 import subprocess
 import sys
 
@@ -37,10 +49,10 @@ apollo.set_bursting(globs.bursting)
 # Some Warning Prints
 if not IK_dynamics:
     print("O8O Apollo (thread) task will be started without inverse dynamics")
-    
+
 if bursting:
     print("\nnext O8O Apollo (thread) task will be started in bursting mode")
     print("-- !! do *not* start on real robot !! --\n")
- 
-    
+
+
 subprocess.call(['/bin/bash', '-i', '-c', "sa"])

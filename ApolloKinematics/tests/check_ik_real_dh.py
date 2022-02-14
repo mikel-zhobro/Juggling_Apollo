@@ -1,4 +1,16 @@
-import path
+#!/usr/bin/env python
+# -*-coding:utf-8 -*-
+'''
+@File    :   check_ik_real_dh.py
+@Time    :   2022/02/14
+@Author  :   Mikel Zhobro
+@Version :   1.0
+@Contact :   zhobromikel@gmail.com
+@License :   (C)Copyright 2021-2022, Mikel Zhobro
+@Desc    :   contains tests for the inverse kinematic computations
+'''
+
+import path # do not remove!
 import numpy as np
 from PinFK import PinRobot
 from DHFK import DH_revolut
