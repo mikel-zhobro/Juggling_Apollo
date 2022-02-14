@@ -1,3 +1,4 @@
+
 # Juggling Apollo
 
 
@@ -14,14 +15,25 @@ git clone https://gitlab.com/learning-and-dynamical-systems/juggling_apollo.git
 pip install -r /path/to/requirements.txt
 ```
 
-
+## Running training script
 The routine for running an iterative learning procedure on Apollo consist of:
-1. Use KUKA computer to bring Apollo to home position(ready state) or skip this step if you are using the simulation. Follow [How to start Apollo](https://atlas.is.localnet/confluence/pages/viewpage.action?spaceKey=AMDW&title=How+to+start+Apollo+and+control+it+from+SL) and use [GravComp](https://atlas.is.localnet/confluence/pages/viewpage.action?spaceKey=AMDW&title=GravComp+Mode+illigal+state), [Validate Loaddata](https://atlas.is.localnet/confluence/pages/viewpage.action?spaceKey=AMDW&title=Validate+Loaddata+%24TORQUE_AXIS_EST+limit+exceeded) if you face difficulties with the gravity compensation.
-2. Source the above software.
-3. Create the corresponding launch file
-4. Roslaunch the created launch file
-5. Activate the O8o interface
-6. Run a training template as shown in examples/
+1. Use KUKA computer to bring Apollo to the home position(ready state) or skip this step if you are using the simulation. Follow [How to start Apollo](https://atlas.is.localnet/confluence/pages/viewpage.action?spaceKey=AMDW&title=How+to+start+Apollo+and+control+it+from+SL) and use [GravComp](https://atlas.is.localnet/confluence/pages/viewpage.action?spaceKey=AMDW&title=GravComp+Mode+illigal+state), [Validate Loaddata](https://atlas.is.localnet/confluence/pages/viewpage.action?spaceKey=AMDW&title=Validate+Loaddata+%24TORQUE_AXIS_EST+limit+exceeded) if you face difficulties with the gravity compensation.
+
+2. Prepare the software backend
+   a.  Source the SL/O8o code.
+   b.  Create the corresponding launch file
+   c.  Roslaunch the created launch file
+   To simplify this step, we have created a list of aliases that are printed every time the ```.bashrc``` file is sourced:
+   ![aliases](Readme.assets/aliases.png)
+
+3. Activate the O8o interface
+   a. Click enter on the pink(motor) terminal
+
+   ![pink_terminal](Readme.assets/pink_terminal.png)
+   c. Enter ```st``` followed by ```8``` in the blue(task) terminal
+   ![blue_terminal](Readme.assets/blue_terminal.png)
+
+4. Run a training template as shown in examples/
 
 
 
