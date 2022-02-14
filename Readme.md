@@ -26,13 +26,12 @@ The routine for running an iterative learning procedure on Apollo consist of:
    To simplify this step, we have created a list of aliases that are printed every time the ```.bashrc``` file is sourced:  
    ![aliases](Readme.assets/aliases.png)
 
-3. Activate the O8o interface
+3. Activate the O8o interface  
    a. Click enter on the pink(motor) terminal  
-   ![pink_terminal](Readme.assets/pink_terminal.png)
+   ![pink_terminal](Readme.assets/pink_terminal.png)  
    c. Enter ```st``` followed by ```8``` in the blue(task) terminal  
    ![blue_terminal](Readme.assets/blue_terminal.png)
-
-4. Run a training template as shown in examples/
+4. Run a training template as shown in ```examples/..```
 
 
 
@@ -46,11 +45,11 @@ config.py                           # file with all the parameters used across a
 Requirements.py                     # file with the dependencies
 
 ApolloILC
-├── ILC.py                          # defines class to put ilc components together and define the update steps
+├── ILC.py                          # defines class that puts ILC components together and defines the update steps
 ├── DynamicSystem.py                # defines the state space equations of the plant we want to use in ILC
 ├── LiftedStateSpace.py             # unrolls the state space equations and creates the LSS mappings for the ILC
 ├── KalmanFilter.py                 # implementation of a simple KF for disturbance estimation
-├── OptimLss.py                     # the optimization problem to compute feedforward input for next iteration
+├── OptimLss.py                     # the optimization problem to compute feedforward input for the next iteration
 ├── settings.py                     # contains physical parameters used in ILC
 └── utils.py                        # contains helper functions
 
@@ -66,12 +65,12 @@ ApolloInterface
 
 ApolloKinematics
 ├── ApolloKinematics.py             # defines class with Apollo's kinematics(fk, ik, seq_ik, seq_fk, etc.)
-├── DHFK.py                         # defines class for denavit-hartenberg forward kinematics
-├── PinFK.py                        # defines class for pinocchio based forward and inverse kinematics
+├── DHFK.py                         # defines class for Denavit-Hartenberg forward kinematics
+├── PinFK.py                        # defines class for Pinocchio based forward and inverse kinematics
 ├── AnalyticalIK.py                 # defines class for the analytical inverse kinematics
 ├── Sets.py                         # defines helper classes(range and set) required in AnalyticalIK
 ├── utilities.py                    # contains helper functions
-├── settings.py                     # contains Apollo related information(names of joints, limits etc.)
+├── settings.py                     # contains Apollo-related information(names of joints, limits etc.)
 └── tests                           # contains tests for jacobian computations and inverse kinematics computations
     ├── check_jac.py
     └── check_ik_real_dh.py
@@ -81,7 +80,7 @@ ApolloPlanners
 ├── SiteSwapPlanner.py              # defines a juggling pattern parser for arbitrary patterns and hands
 ├── SiteSwapJointPlanner.py         # transforms plans for usage in Apollo
 ├── JugglingPlanner.py              # transforms plans for usage in Apollo
-├── OneBallThrowPlanner.py          # trajectory genneration for simple catch-throw
+├── OneBallThrowPlanner.py          # trajectory generation for simple catch-throw
 └── utils.py                        # contains helper functions
 
 

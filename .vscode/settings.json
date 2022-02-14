@@ -1,4 +1,23 @@
 {
     // "python.pythonPath": "C:\\Users\\Mikel\\anaconda3\\envs\\apollo_modeling\\python.exe",
-    "python.linting.enabled": true
+    "python.linting.enabled": true,
+    "grammarly.overrides": [
+        {
+            "files": [
+                "**/Readme.md"
+            ],
+            "config": {
+                "audience": "general",
+                "dialect": "american",
+                "domain": "technical",
+                "emotions": [
+                    "optimistic"
+                ],
+                "goals": [
+                    "inform",
+                    "describe"
+                ]
+            }
+        }
+    ]
 }
