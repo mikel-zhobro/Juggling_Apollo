@@ -1,2 +1,11 @@
+backports-abc==0.5
+backports.functools-lru-cache==1.6.4
+backports.shutil-get-terminal-size==1.0.0
 numpy==1.16.6
-matplotlib==2.2.3
+matplotlib==2.2.5
+scikit-learn==0.20.4
+scipy==1.2.3
+subprocess32==3.5.4
+sortedcontainers==2.4.0
+pickleshare==0.7.5
+Pillow==6.2.2
