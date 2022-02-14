@@ -2,10 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from math import sin, cos, acos, sqrt, atan2, asin
 
-from DH import DH_revolut
+from DHFK import DH_revolut
 from utilities import R_joints, L_joints, JOINTS_LIMITS, JOINTS_V_LIMITS
 from utilities import invT
-from fk_pin_local import PinRobot
+from PinFK import PinRobot
 from AnalyticalIK import IK_anallytical, IK_heuristic2, IK_heuristic3, IK_find_psi_and_GCs
 
 class ApolloArmKinematics():

@@ -4,7 +4,7 @@ import path
 import numpy as np
 from fk import J, FK, FK_DH
 from scipy.optimize import approx_fprime
-from DH import DH_revolut
+from DHFK import DH_revolut
 from tqdm import tqdm
 
 np.set_printoptions(precision=3, suppress=True)

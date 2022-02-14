@@ -2,7 +2,7 @@ import numpy as np
 from math import sin, cos, acos, sqrt, atan2, asin, atan ,tan
 from random import random
 
-from DH import DH_revolut
+from DHFK import DH_revolut
 from utilities import R_joints, L_joints, JOINTS_LIMITS
 from utilities import skew, vec, mod2Pi#, clip_c
 from Sets import ContinuousSet

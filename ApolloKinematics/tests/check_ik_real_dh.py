@@ -1,7 +1,7 @@
 import path
 import numpy as np
-from fk_pin_local import PinRobot
-from DH import DH_revolut
+from PinFK import PinRobot
+from DHFK import DH_revolut
 from AnalyticalIK import IK_anallytical, IK_find_psi_and_GCs
 from utilities import R_joints, L_joints, JOINTS_LIMITS, pR2T, JOINTS_V_LIMITS
 from tqdm import tqdm
