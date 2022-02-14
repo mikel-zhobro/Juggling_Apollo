@@ -1,10 +1,10 @@
-
+import path
 import numpy as np
 from tqdm import tqdm
 from scipy.optimize import approx_fprime
 
-from fk import J, FK, FK_DH
-from ApolloKinematics.utilities import R_joints, JOINTS_LIMITS, JOINTS_V_LIMITS
+from utilities import R_joints, JOINTS_LIMITS, JOINTS_V_LIMITS
+from other.fk import J, FK, FK_DH
 from DHFK import DH_revolut
 
 np.set_printoptions(precision=3, suppress=True)
@@ -100,10 +100,10 @@ check_J_position(fk_dh(False), J_dh(False))
 print("-- b) rBase --")  # REFERENCE IS RIGHT-HAND BASE
 check_J_position(fk_dh(True), J_dh(True))
 
-# print("\n2. Analytical Jacobian Test\n")
-# check_J_position(FK, J_)
-# print("\n-- Position fk-fk_dh --\n")
-# check_FK_FKDH()
+print("\n2. Analytical Jacobian Test\n")
+check_J_position(FK, J_)
+print("\n-- Position fk-fk_dh --\n")
+check_FK_FKDH()
 
 print("\n3. Hessian Test")
 print("-- a) Not rBase --")  # REFERENCE IS SIM-APOLLO'S BASE
