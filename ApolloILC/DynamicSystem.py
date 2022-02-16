@@ -7,7 +7,15 @@
 @Version :   1.0
 @Contact :   zhobromikel@gmail.com
 @License :   (C)Copyright 2021-2022, Mikel Zhobro
-@Desc    :   Here we define the dynamic system to be used with ILC. It should be a subclass of DynamicSystem.
+@Desc    :   In this file we implement a class to describe the dynamic system.
+             That is done by saving the state space equation in the form
+             x_k = Ad*x_k-1 + Bd*u_k-1 + S*d_k + c
+             y_k = Cd*x_k + n_k
+             where Ad, Bd, Cd are the standard ss matrixes,
+             S describes how we model the disturbance (how it enters the plant)
+             and c is some constant(e.g. gravity).
+             In addition to that we allow impact dynamics
+to be used with ILC. It should be a subclass of DynamicSystem.
 '''
 
 import numpy as np
