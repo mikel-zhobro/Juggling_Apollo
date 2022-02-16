@@ -7,7 +7,10 @@
 @Version :   1.0
 @Contact :   zhobromikel@gmail.com
 @License :   (C)Copyright 2021-2022, Mikel Zhobro
-@Desc    :   defines class that puts ILC components together and defines the update steps
+@Desc    :   In this file we define the class that puts the ILC components (LSS, KF) together
+             and defines the update steps(OptimLSS).
+             The method performing the update for time-domain ILC is ILC.updateStep(..),
+             the methods performing the update for freq-domain ILC are ILC.updateStep2(..) and ILC.updateStep3(..).
 '''
 
 import numpy as np
@@ -18,12 +21,21 @@ from KalmanFilter import KalmanFilter
 
 
 class ILC:
-  def __init__(self, sys, y_des, freq_domain=False, Nf=None, lss_params={}, optim_params={}, kf_dpn_params={}):
-    # kwargs can be {impact_timesteps: [True/False]*N} for timedomain
-    # and must be {T:Float} for freqdomain
-    self.timeDomain = not freq_domain
+  def __init__(self, sys, y_des, freq_domain=False, Nf=None, lss_params={}, kf_dpn_params={}):
+    """_summary_
+
+    Args:
+        sys (DynamicSystem): The estimated state space equations of the plant.
+        y_des (np.array(Nt, 1)): The desired output trajectory for which we want to learn the feedforward input.
+        freq_domain (bool, optional): Whether we are doing time- or freq-domain ILC. Defaults to False.
+        Nf (int, optional): The number of fourier coefficients to be used in case of freq-domain ILC.
+        lss_params (dict, optional): Dictionary with parameters for the Lifted State Space
+                                     can be {impact_timesteps: [True/False]*N} for timedomain and must be {T:Float} for freqdomain
+        kf_dpn_params (dict, optional): Dictionary with parameters for the Kalman Filter {M:, d0:, P0:, epsilon0:, epsilon_decrease_rate:}
+    """
 
     # Time domain
+    self.timeDomain = not freq_domain
     self.dt = sys.dt
     self.Nt = y_des.size
     self.T = utils.time_from_step(self.Nt, self.dt)  # periode
@@ -36,12 +48,12 @@ class ILC:
     # Components of ILC
     self.y_des = None  # keeps the time domain desired trajectory
     self.c_s_ = None   # keeps the Fourier coefficients for the cos() and sin() terms of Fourier series
-    self._u_ff = None  # keeps the initial feed forward signal(Fourier coeficients in FreqDomain))
+    self._u_ff = None  # keeps the initial feedforward signal (Fourier coeficients in FreqDomain)
     self._delta_u_ff = None  # the actual
-    self.y_des_feedback = 0.  # keeps the feedback part that has to be substracted from desired traj(Fourier Coef in FreqDomin)
+    self.y_des_feedback = 0.  # keeps the feedback part that has to be substracted from the desired traj (Fourier Coef in FreqDomin)
     self.lss              = LiftedStateSpace(sys=sys, N=self.N, T=self.T, freq_domain=freq_domain, **lss_params)
     self.kf_dpn           = KalmanFilter(lss=self.lss, freqDomain=freq_domain, **kf_dpn_params)  # disturbance estimator
-    self.quad_input_optim = OptimLss(self.lss, **optim_params)
+    self.quad_input_optim = OptimLss(self.lss)
 
     # Init
     self.update_y_des(y_des)
@@ -121,8 +133,9 @@ class ILC:
 
     Args:
         y_meas ([np.array(Nt, 1)]): measured output for the previously calculated u_ff
-        y_des ([np.array(Nt, 1)], optional): A new desired desired trajectory in time domain. Defaults to None.
-        verbose (bool, optional): whether to print out verbose info
+        y_des ([np.array(Nt, 1)], optional): A new desired desired trajectory in time domain.
+                                             If we intend to slightly change the desired trajectory during learning.
+        verbose (bool, optional): Whether to print out verbose info
         lb, ub ([type], optional): Whether to inforce upper and lower bounds onthe input. Only valid for timeDomain usage.
 
     Returns:
@@ -154,8 +167,9 @@ class ILC:
 
       Args:
           y_meas ([np.array(Nt, 1)]): measured output for the previously calculated u_ff
-          y_des ([np.array(Nt, 1)], optional): A new desired desired trajectory in time domain. Defaults to None.
-          verbose (bool, optional): whether to print out verbose info
+          y_des ([np.array(Nt, 1)], optional): A new desired desired trajectory in time domain.
+                                               If we intend to slightly change the desired trajectory during learning.
+          verbose (bool, optional): Whether to print out verbose info
           lb, ub ([type], optional): Whether to inforce upper and lower bounds onthe input. Only valid for timeDomain usage.
 
       Returns:
@@ -183,8 +197,9 @@ class ILC:
 
       Args:
           y_meas ([np.array(Nt, 1)]): measured output for the previously calculated u_ff
-          y_des ([np.array(Nt, 1)], optional): A new desired desired trajectory in time domain. Defaults to None.
-          verbose (bool, optional): whether to print out verbose info
+          y_des ([np.array(Nt, 1)], optional): A new desired desired trajectory in time domain.
+                                               If we intend to slightly change the desired trajectory during learning.
+          verbose (bool, optional): Whether to print out verbose info
           lb, ub ([type], optional): Whether to inforce upper and lower bounds onthe input. Only valid for timeDomain usage.
 
       Returns:
