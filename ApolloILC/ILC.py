@@ -22,7 +22,14 @@ from KalmanFilter import KalmanFilter
 
 class ILC:
   def __init__(self, sys, y_des, freq_domain=False, Nf=None, kf_dpn_params={}):
-    """_summary_
+    """ILC tries to estimate the disturbance(which we model by choosing S) along a desired trajectory
+       by learning from previous executions and iteratively improving the estimation of disturbance.
+       If we learn the optimal disturbance d, we should be able to compute the optimal feedforward input
+       from the estimated linear lifted space equations:
+       y-y_des = GF (u-u_des) + GK d + G d0 + GF_feedback ydes.
+
+       In this implementation we learn the deviations from the initial feedforward input
+       that is we learn delta_u = u_des where  y_des = GF u_des + GF_feedback ydes + Gd0
 
     Args:
         sys (DynamicSystem): The estimated state space equations of the plant.
@@ -43,12 +50,16 @@ class ILC:
     assert not freq_domain or (Nf is not None and Nf < int(0.5*self.Nt)), "Make sure that Nf{} is small enough{} to satisfy the Nyquist criterium.".format(Nf, int(0.5*self.Nt))
     assert kf_dpn_params['d0'].size == self.N, "Size of disturbance ({}) and that of N ({}) don't match.".format(kf_dpn_params['d0'].size, self.N)
 
+    # To perform the iteration-level update we use the LSS equation:
+    #   y-y_des = GF (u-u_des) + GK d + G d0 + GF_feedback ydes,
+    # where y_des = GF u_des is how we initialize u_des (akka _u_ff)
+    self.y_des            = None  # keeps the time domain desired trajectory
+    self.c_s_             = None  # keeps the Fourier coefficients for the cos() and sin() terms of Fourier series
+    self._u_ff            = None  # keeps the initial feedforward signal (Fourier coeficients in FreqDomain)
+    self._delta_u_ff      = None  # the actual deviation from the initial feedforward input computed by the estimated linear model (Fourier coeficients in FreqDomain)
+    self.y_des_feedback   = 0.    # keeps the feedback part that has to be substracted from the desired traj (Fourier Coef in FreqDomin)
+
     # Components of ILC
-    self.y_des = None  # keeps the time domain desired trajectory
-    self.c_s_ = None   # keeps the Fourier coefficients for the cos() and sin() terms of Fourier series
-    self._u_ff = None  # keeps the initial feedforward signal (Fourier coeficients in FreqDomain)
-    self._delta_u_ff = None  # the actual
-    self.y_des_feedback = 0.  # keeps the feedback part that has to be substracted from the desired traj (Fourier Coef in FreqDomin)
     self.lss              = LiftedStateSpace(sys=sys, N=self.N, T=self.T, freq_domain=freq_domain)
     self.kf_dpn           = KalmanFilter(lss=self.lss, freqDomain=freq_domain, **kf_dpn_params)  # disturbance estimator
     self.quad_input_optim = OptimLss(self.lss)
@@ -129,6 +140,12 @@ class ILC:
   def updateStep(self, y_meas, y_des=None, verbose=False, lb=None, ub=None):
     """ Updates learned feedforward input and disturbance according to (self._u_ff, y_meas) tuple.
 
+      y-y_des = GF (u-u_des) + GK d + G d0 + GF_feedback ydes, where y_des = GF u_des is how we initialize u_des (akka _u_ff)
+      <=> delta_y = GF delta_u + GK d + G d0 + GF_feedback ydes
+
+      this means that for y=y_des => ((((delta_y=0)))), which means that the optimLSS has to optimize for
+      min_{delta_u} ||GF delta_u + GK d + G d0 + GF_feedback ydes||_2
+
     Args:
         y_meas ([np.array(Nt, 1)]): measured output for the previously calculated u_ff
         y_des ([np.array(Nt, 1)], optional): A new desired desired trajectory in time domain.
@@ -153,7 +170,7 @@ class ILC:
       self._delta_u_ff = self._u_ff.copy()*0.
 
     disturbance = self.kf_dpn.updateStep(self._delta_u_ff, self.get_delta_y(y_meas))
-    # update uff
+    # update uff (delta_y=0, se documentation of this method to find out why)
     self._delta_u_ff = self.quad_input_optim.calcDesiredInput(disturbance, self.get_delta_y(y_meas)*0., print_norm=verbose, lb=lb, ub=ub)
     # self._u_ff = self._delta_u_ff
 
