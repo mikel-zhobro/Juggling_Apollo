@@ -19,14 +19,24 @@ class OptimLss:
     self.lss = lifted_state_space
 
   def calcDesiredInput(self, d, delta_y_des, print_norm=False, lb=None, ub=None):
-    # The LSS dictates what we want to optimize on:
-    #       delta_y = GF delta_u + GK d + G d0 + GF_feedback ydes
-    # min_{delta_u} ||GF delta_u + GK d + G d0 + GF_feedback ydes||_2
-    # after adding a scaling matrix(weigt), penalty input's amplitude(sigma), and loss for fast changes of input(mu)
-    # we can write the minimization problem in its general form:
-    #       delta_u_des = argmin_u ||Weight[(GKd + Gd0 - delta_y_des) + GFdelta_u]||_2 + sigma*||delta_u||_2 + mu*||(I-I_1) delta_u||_2
-    # Which corresponds in setting the first gradient to 0, i.e. solving
-    #       (GF^T*W*GF + sigma*I + mu*(I-I_1)) * delta_u = GF^T* W * (delta_y_des - GKd - Gd0)  <=> Au = b
+    """ The LSS dictates what we want to optimize on:
+              delta_y = GF delta_u + GK d + G d0 + GF_feedback ydes
+        min_{delta_u} ||GF delta_u + GK d + G d0 + GF_feedback ydes||_2
+        after adding a scaling matrix(weigt), penalty input's amplitude(sigma), and loss for fast changes of input(mu)
+        we can write the minimization problem in its general form:
+              delta_u_des = argmin_u ||Weight[(GKd + Gd0 - delta_y_des) + GFdelta_u]||_2 + sigma*||delta_u||_2 + mu*||(I-I_1) delta_u||_2
+        Which corresponds in setting the first gradient to 0, i.e. solving
+              (GF^T*W*GF + sigma*I + mu*(I-I_1)) * delta_u = GF^T* W * (delta_y_des - GKd - Gd0)  <=> Au = b
+
+    Args:
+        d (np.array(N,1)): disturbance trajectory
+        delta_y_des (np.array(N,1)): deviation(is non-zero only the first time) trajectory
+        print_norm (bool, optional): verbose . Defaults to False.
+        lb, ub (float, optional): Lower and upper bounds for the input.
+
+    Returns:
+        np.array(N,1): input deviation trajectory (from the initial input trajectory)
+    """
     N_y = delta_y_des.shape[0]
     N_u = self.lss.GF.shape[1]
 
