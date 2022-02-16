@@ -15,10 +15,21 @@ import numpy as np
 
 class KalmanFilter:
   def __init__(self, lss, M, d0, P0, epsilon0, freqDomain=False, epsilon_decrease_rate=0.9):
-    ## Prediction model
-    # d_{j+1} = d_{j} + n_d_{j} with d_{0}~N(0,P0) and n_d_{j}~N(0,Dj) where Dj = epsilon_{j}*eye(N)
-    ## Measurment model
-    # y_{j} = GFu_{j} + Gd0  + ((( GKd_{j} ))) + n_y  with n_y ~ N(0, M)
+    """
+        Prediction model
+          d_{j+1} = d_{j} + n_d_{j} with d_{0}~N(0,P0) and n_d_{j}~N(0,Dj) where Dj = epsilon_{j}*eye(N)
+        Measurment model
+          y_{j} = GFu_{j} + Gd0  + ((( GKd_{j} ))) + n_y  with n_y ~ N(0, M)
+
+    Args:
+        lss (LiftedStateSpace): Lifted state space equations
+        M (int): size of measurements
+        d0 (np.array(N,1)): initial disturbance value
+        P0 (np.array(N,N)): initial disturbance covariance
+        epsilon0 (float): covariance of noise on the disturbance
+        freqDomain (bool, optional): _description_. Defaults to False.
+        epsilon_decrease_rate (float, optional): _description_. Defaults to 0.9.
+    """
 
     # Size of the state
     self.N = d0.size
