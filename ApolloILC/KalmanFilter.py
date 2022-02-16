@@ -7,7 +7,7 @@
 @Version :   1.0
 @Contact :   zhobromikel@gmail.com
 @License :   (C)Copyright 2021-2022, Mikel Zhobro
-@Desc    :   implementation of a simple KF for disturbance estimation
+@Desc    :   Implementation of a simple KF for disturbance estimation
 '''
 
 import numpy as np
@@ -18,7 +18,7 @@ class KalmanFilter:
     ## Prediction model
     # d_{j+1} = d_{j} + n_d_{j} with d_{0}~N(0,P0) and n_d_{j}~N(0,Dj) where Dj = epsilon_{j}*eye(N)
     ## Measurment model
-    # y_{j} = Fu_{j} + Gd0  + ((( GKd_{j} ))) + n_y  with n_y ~ N(0, M)
+    # y_{j} = GFu_{j} + Gd0  + ((( GKd_{j} ))) + n_y  with n_y ~ N(0, M)
 
     # Size of the state
     self.N = d0.size
@@ -72,7 +72,7 @@ class KalmanFilter:
     # In this case
     # d0 ~ N(P0)
     # d = d + n_d                        with n_d ~ N(eps*I)
-    # y = Fu + Gd0  + ((( GKd ))) + n_y  with n_y ~ N(0, M)
+    # y = GFu + Gd0  + ((( GKd ))) + n_y  with n_y ~ N(0, M)
     P1_0 = self._Pj + self._Dj
     Theta = self.lss.GK.dot(P1_0).dot(self.lss.GK.T.conj()) + self.M
     K = P1_0.dot(self.lss.GK.T.conj()).dot(np.linalg.pinv(Theta))
