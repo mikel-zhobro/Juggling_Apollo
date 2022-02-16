@@ -22,6 +22,13 @@ from AnalyticalIK import IK_anallytical, IK_heuristic2, IK_heuristic3, IK_find_p
 
 class ApolloArmKinematics():
     def __init__(self, r_arm=True, noise=None):
+        """ Class that holds all kinematic functionalities about Apollo
+            such as FK, IK, seqIK, seqFK, J, etc.
+
+        Args:
+            r_arm (bool):  True if we are using the right arm(left arm not used, small changes required on the DH table)
+            noise (float): The amplitude of noise to add to the DH parameters(for testing purposes, e.g. cartesian error propogation)
+        """
         self.r_arm = r_arm
         self.dh_rob = self.init_dh(noise)
         try:
@@ -59,22 +66,41 @@ class ApolloArmKinematics():
 
     def FK(self, q):
         """
-        returns the Transformationsmatrix base_T_tcp
+        returns the Transformationsmatrix base_T_tcp ((np.array(4,4)))
         """
         # return self.pin_rob.FK(q.reshape(7, 1)).homogeneous
         return self.dh_rob.FK(q)
 
     def J(self, q):
         """
-        returns the Transformationsmatrix base_T_tcp
+        returns the Transformationsmatrix base_T_tcp (np.array(6,7))
         """
         return self.dh_rob.J(q.reshape(7, 1))
 
     def seqFK(self, qs):
+        """ Calculates the forward kinematics for the input joint trajectory
+
+        Args:
+            qs (np.array(N,7,1)): trajectory of joint configurations
+
+        Returns:
+            T_traj: (np.array(N,4,4))
+        """
         assert len(qs.shape)>2, "make sure you give a seq of joint states as input"
         return np.array([self.FK(q) for q in qs]).reshape(-1, 4, 4)
 
     def IK(self, T_d, q_init=None, for_seqik=False, considered_joints=list(range(7))):
+        """ Computes inverse kinematics.
+
+        Args:
+            T_d (np.array(4,4)):        Desired homogenous transformation for the end effector
+            q_init (np.array(7,1)):     Initial joint configuraion(used to set the initial value for the redundant degree of freedom(arm-angle)). Defaults to None.
+            for_seqik (bool):           Whether it is needed for sequential inverse kinematics. Defaults to False.
+            considered_joints (list):   List of joints whose limits should be considered. If it is an empty list, we ignore all joint limits.
+
+        Returns:
+            q_joints (np.array(7,1)):   The joint configuration for inverse solution
+        """
         # Returns joint configuration that correspond to the IK solutions with biggest PSI feasible set
         # PSI is choosen from the middle of the set
         if q_init is None:
@@ -93,16 +119,15 @@ class ApolloArmKinematics():
             return q_joints
 
     def seqIK(self, T_dhTCP_traj, q_init=None, considered_joints=list(range(7)), verbose=False):
-        """
+        """ Calculates the sequental inverse kinematics
         Args:
-            T_traj_TCP           ([np.array((N, 4,4))]): relative movements from start_position
-            position_traj        ([np.array((N, 3))]): relative movements from start_position
-            thetas_traj          ([np.array(N)])     : relative rotations around z axis from start orientation of TCP (x-down, y-left, z-forward) <- upright position
-            T_start              ([np.array((4, 4))]): decides start position/orientation from where everything unfolds
-            verbose (bool, optional)                 : Ploting for verbose reasons. Defaults to False.
+            T_dhTCP_traj ([np.array((N, 4,4))]):    Desired homogenous transformation trajectory for the end effector
+            q_init (np.array(7,1)):                 Initial joint configuraion(used to set the initial value for the redundant degree of freedom(arm-angle)). Defaults to None.
+            considered_joints (list):               List of joints whose limits should be considered. If it is an empty list, we ignore all joint limits.
+            verbose (bool, optional):               Ploting for verbose reasons. Defaults to False.
 
         Returns:
-            [np.array((N, 7))]: Joint trajectories
+            [np.array((N, 7))]:                     Joint trajectories
         """
         mu = 0.02
 
@@ -138,8 +163,15 @@ class ApolloArmKinematics():
         return joint_trajs, q_joint_state_start, (psis, psi_mins, psi_maxs)
 
     def transform_in_dh_frames(self, T_dhTCP_TCP, T_TCP):
-        # T can be a trajectory of homogenous transformations (N, 4, 4) or one single homogenous transformation
-        # T is gives T_base_TCP, i.e. the transformation for the TCP. Where the connection to the dhTCP is given by T_dhTCP_TCP.
+        """ Returns the end effector homogenous transformation of the end effector(TCP) as modeled by the DH
+
+        Args:
+            T_dhTCP_TCP (np.array(..,4,4)): homogenous transformation between the TCP as modeled by DH and the real TCP (a transformation in top of the dh computations)
+            T_TCP (..,4,4):                 can be a trajectory of homogenous transformations (N, 4, 4) or one single homogenous transformation
+
+        Returns:
+            T_dhTCP: (..,4,4)
+        """
         T_shape = T_TCP.shape
         TT = T_TCP.reshape(-1, 4, 4 ).copy()
         T_TCP_dhTCP = invT(T_dhTCP_TCP)
@@ -155,6 +187,7 @@ class ApolloArmKinematics():
     def vlimits(self):
         return [j.vlimit_range for j in self.dh_rob.joints]
 
+    # helper functions for plotting
     def plot(self, joint_trajs=None, psis=None, psi_mins=None, psi_maxs=None, dt=1, rad=False):
         if psis is None:
             self.plot_joints(joint_trajs, dt, rad=rad)
