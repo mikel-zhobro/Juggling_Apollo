@@ -21,7 +21,13 @@ from settings import m_b, m_p, g, k_c, alpha
 from abc import ABCMeta, abstractmethod
 
 class DynamicSystem:
-  """An abstract base-class implementation for dynamic systems.
+  """ An abstract base-class implementation for dynamic systems.
+      It saves the state space equation matrixes described by:
+        x_k = Ad*x_k-1 + Bd*u_k-1 + S*d_k + c
+        y_k = Cd*x_k + n_k
+      where Ad, Bd, Cd are the standard ss matrixes,
+      S describes how we model the disturbance (how it enters the plant),
+      and c is some constant(e.g. gravity).
   """
   __metaclass__ = ABCMeta
   def __init__(self, dt, x0, freq_domain=False, **kwargs):
