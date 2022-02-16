@@ -109,7 +109,7 @@ kf_dpn_params = {
   'epsilon0': 0.3,                          # initial variance of noise on the disturbance
   'epsilon_decrease_rate': 1              # the decreasing factor of noise on the disturbance
 }
-my_ilc = ILC(sys, y_des=y_des[1:N_1+1], kf_dpn_params=kf_dpn_params, lss_params={'impact_timesteps': [False]*N_1}) # ignore the ball
+my_ilc = ILC(sys, y_des=y_des[1:N_1+1], kf_dpn_params=kf_dpn_params) # ignore the ball
 
 
 extra_rep = 2

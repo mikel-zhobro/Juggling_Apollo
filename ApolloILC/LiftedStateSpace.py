@@ -18,7 +18,7 @@ class LiftedStateSpace:
   # Unroll the state space equations of the dynamic system to build the mappings on iteration level.
     #    x[1:] = Fu + Kdu_p + d0 + F_feedback*ydes,
     #    y[1:] = Gx,
-  def __init__(self, sys, N, T=None, freq_domain=False, **kwargs):
+  def __init__(self, sys, N, T=None, freq_domain=False):
     self.sys = sys  # dynamic system
     self.N = N      # length of traj (Nf if fre_domain)
     self.T = T      # time length of traj
@@ -34,14 +34,14 @@ class LiftedStateSpace:
     self.freqDomain = freq_domain
     self.updateQuadrProgMatrixes(self.freqDomain)
 
-  def updateQuadrProgMatrixes(self, freqDomain, **kwargs):
+  def updateQuadrProgMatrixes(self, freqDomain):
     self.freqDomain = freqDomain
     if freqDomain:
-      self.updateQuadrProgMatrixesFreqDomain(**kwargs)
+      self.updateQuadrProgMatrixesFreqDomain()
     else:
-      self.updateQuadrProgMatrixesTimeDomain(**kwargs)
+      self.updateQuadrProgMatrixesTimeDomain()
 
-  def updateQuadrProgMatrixesFreqDomain(self, **kwargs):
+  def updateQuadrProgMatrixesFreqDomain(self):
     """ Updates the matrixes describing the liftes state space equations
     Args:
         T ([type]): periode of the periodic output
@@ -56,21 +56,9 @@ class LiftedStateSpace:
     if self.sys.with_feedback:
       self.GF_feedback = np.diag([self.sys.H_feedback(complex(0.0,k*w0)) for k in range(1, self.N+1)])
 
-  def updateQuadrProgMatrixesTimeDomain(self, impact_timesteps=None, **kwargs):
+  def updateQuadrProgMatrixesTimeDomain(self):
     """ Updates the lifted state space matrixes G, GF, GK, Gd0
-
-    Args:
-        N[(int)]: nr of steps
-        impact_timesteps ([tuple]): ith element is 1/True if there is an impact at timestep i
     """
-     #TODO: update Lifted Space to allow delay
-    # impact_timesteps{t} = False if no impact, = True if impact for the timesteps 0 -> N-1
-    # sizes
-    if impact_timesteps is not None:
-      assert self.N == len(impact_timesteps)
-    else:
-      impact_timesteps = [False]*self.N
-
     N    = self.N
     nx   = self.sys.Ad.shape[1]
     ny   = self.sys.Cd.shape[0]
@@ -81,7 +69,7 @@ class LiftedStateSpace:
     A_power_holder    = [None] * N
     A_power_holder[0] = np.eye(nx, dtype='float')
     for i in range(N-1):
-        A_power_holder[i+1] = self.get_Ad(impact_timesteps[i+1]).dot(A_power_holder[i])
+        A_power_holder[i+1] = self.sys.Ad.dot(A_power_holder[i])
 
     # Create lifted-space matrixes F, K, G, M:
     #    x[1:] = F u + K d + d0 + F_feedback ydes,
@@ -126,19 +114,19 @@ class LiftedStateSpace:
     #      0   0    ..   AN-1AN-2..A0]
     L = np.zeros((nx*N, nx*N), dtype='float')
 
-    A_0 = self.get_Ad(impact_timesteps[0])
+    A_0 = self.sys.Ad
     for ll in range(N):
       G[ll*ny:(ll+1)*ny, ll*nx:(ll+1)*nx]  = self.sys.Cd
       L[ll*nx:(ll+1)*nx, ll*nx:(ll+1)*nx]       = A_power_holder[ll]*A_0
       for m in range(ll+1):
         M[ll*nx:(ll+1)*nx, m*nx:(m+1)*nx]       = A_power_holder[ll-m]
-        F[ll*nx:(ll+1)*nx, m*nu:(m+1)*nu]       = A_power_holder[ll-m].dot(self.get_Bd(impact_timesteps[m]))  # F_lm
+        F[ll*nx:(ll+1)*nx, m*nu:(m+1)*nu]       = A_power_holder[ll-m].dot(self.sys.Bd)  # F_lm
         K[ll*nx:(ll+1)*nx, m*ndup:(m+1)*ndup]   = A_power_holder[ll-m].dot(self.sys.S)
         if self.sys.with_feedback:
           F_feedback[ll*nx:(ll+1)*nx, m*ny:(m+1)*ny] = A_power_holder[ll-m].dot(self.sys.B_feedback)  # F_lm
 
     # Create d0 = L*x0_N-1 + M*c0_N-1
-    c_vec = np.vstack([self.get_c(impact) for impact in impact_timesteps])
+    c_vec = np.vstack([self.sys.c for _ in range(self.N)])
     d0    = L.dot(np.tile(self.x0, [N, 1])) + M.dot(c_vec)
 
     # Prepare matrixes needed for the quadratic problem and KF
@@ -147,13 +135,3 @@ class LiftedStateSpace:
     self.Gd0 = G.dot(d0)
     if self.sys.with_feedback:
       self.GF_feedback = G.dot(F_feedback)
-
-  # Used only in case the dynamic system includes impacts and impact_timesteps is provided
-  def get_Ad(self, impact):
-    return self.sys.Ad_impact if impact else self.sys.Ad
-
-  def get_Bd(self, impact):
-    return self.sys.Bd_impact if impact else self.sys.Bd
-
-  def get_c(self, impact):
-    return self.sys.c_impact if impact else self.sys.c

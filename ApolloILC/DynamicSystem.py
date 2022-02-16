@@ -14,8 +14,6 @@
              where Ad, Bd, Cd are the standard ss matrixes,
              S describes how we model the disturbance (how it enters the plant)
              and c is some constant(e.g. gravity).
-             In addition to that we allow impact dynamics
-to be used with ILC. It should be a subclass of DynamicSystem.
 '''
 
 import numpy as np
@@ -33,12 +31,9 @@ class DynamicSystem:
 
     self.Ad = None
     self.Bd = None
-    self._Ad_impact = None # [nx, nx]
-    self.Bd_impact = None  # [nx, nu]
-    self.c_impact = None   # constants from gravity ~ dt, g, mp mb
     self.Cd = None         # [ny, nx]
     self.S = None          # [nx, ndup]
-    self.c = None
+    self.c = None          # constants from gravity ~ dt, g, mp mb
 
     # FreqDomain
     self.Hu = None  # C(sI - A)^-1 B
@@ -63,11 +58,6 @@ class DynamicSystem:
     assert False, "The 'initDynSys' abstract method is not implemented for the used subclass."
 
   @property
-  def Ad_impact(self):
-    assert self._Ad_impact is not None, "Impact dynamics are not implemented."
-    return self._Ad_impact
-
-  @property
   def with_feedback(self):
     return self.B_feedback is not None
 
@@ -83,10 +73,8 @@ class BallAndPlateDynSys(DynamicSystem):
   def initDynSys(self, dt, input_is_velocity=True):
     if input_is_velocity:
       self.Ad, self.Bd, self.Cd, self.S, self.c = self.getSystemMarixesVelocityControl(dt)
-      self._Ad_impact, self.Bd_impact, self.Cd, self.S, self.c_impact = self.getSystemMarixesVelocityControl(dt, True)
     else:
       self.Ad, self.Bd, self.Cd, self.S, self.c = self.getSystemMarixesForceControl(dt)
-      self.Ad_impact, self.Bd_impact, self.Cd, self.S, self.c_impact = self.getSystemMarixesForceControl(dt, True)
 
   def getSystemMarixesVelocityControl(self, dt, contact_impact=False):
     # x_k = Ad*x_k-1 + Bd*u_k-1 + S*d_k + c

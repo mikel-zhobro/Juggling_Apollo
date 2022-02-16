@@ -21,7 +21,7 @@ from KalmanFilter import KalmanFilter
 
 
 class ILC:
-  def __init__(self, sys, y_des, freq_domain=False, Nf=None, lss_params={}, kf_dpn_params={}):
+  def __init__(self, sys, y_des, freq_domain=False, Nf=None, kf_dpn_params={}):
     """_summary_
 
     Args:
@@ -29,8 +29,6 @@ class ILC:
         y_des (np.array(Nt, 1)): The desired output trajectory for which we want to learn the feedforward input.
         freq_domain (bool, optional): Whether we are doing time- or freq-domain ILC. Defaults to False.
         Nf (int, optional): The number of fourier coefficients to be used in case of freq-domain ILC.
-        lss_params (dict, optional): Dictionary with parameters for the Lifted State Space
-                                     can be {impact_timesteps: [True/False]*N} for timedomain and must be {T:Float} for freqdomain
         kf_dpn_params (dict, optional): Dictionary with parameters for the Kalman Filter {M:, d0:, P0:, epsilon0:, epsilon_decrease_rate:}
     """
 
@@ -51,7 +49,7 @@ class ILC:
     self._u_ff = None  # keeps the initial feedforward signal (Fourier coeficients in FreqDomain)
     self._delta_u_ff = None  # the actual
     self.y_des_feedback = 0.  # keeps the feedback part that has to be substracted from the desired traj (Fourier Coef in FreqDomin)
-    self.lss              = LiftedStateSpace(sys=sys, N=self.N, T=self.T, freq_domain=freq_domain, **lss_params)
+    self.lss              = LiftedStateSpace(sys=sys, N=self.N, T=self.T, freq_domain=freq_domain)
     self.kf_dpn           = KalmanFilter(lss=self.lss, freqDomain=freq_domain, **kf_dpn_params)  # disturbance estimator
     self.quad_input_optim = OptimLss(self.lss)
 
@@ -141,7 +139,6 @@ class ILC:
     Returns:
         [np.array(Nt, 1)]: new feed forward input
     """
-    print(np.linalg.norm(self.get_delta_y(y_meas)))
     if not self.timeDomain:
       assert lb is None and ub is None, "No constraint optimization possible in freqDomain."
 
