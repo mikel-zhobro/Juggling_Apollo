@@ -7,7 +7,7 @@
 @Version :   1.0
 @Contact :   zhobromikel@gmail.com
 @License :   (C)Copyright 2021-2022, Mikel Zhobro
-@Desc    :   unrolls the state space equations and creates the LSS mappings for the ILC
+@Desc    :   Unrolls the state space equations and creates the LSS mapping matrixes(GF, GK, Gd0, GF_feedback) for the ILC
 '''
 
 import numpy as np
@@ -71,49 +71,54 @@ class LiftedStateSpace:
     for i in range(N-1):
         A_power_holder[i+1] = self.sys.Ad.dot(A_power_holder[i])
 
-    # Create lifted-space matrixes F, K, G, M:
+    # Create lifted-state-space matrixes F, K, G, M:
     #    x[1:] = F u + K d + d0 + F_feedback ydes,
     #    y[1:] = Gx,
     # where the constant part
     #    d0 = L*x0_N-1 + M*c0_N-1
 
+    # Warn: The comments below describe the general case where the state space equations are time variant.
+    #       That is, for steps 0,..,N the system matrixes are A0,..,AN, B0,..,BN etc.
+    # ----------------------------------------------------------------------------------------------
     # F = [B0          0        0  .. 0
     #      A1B0        B1       0  .. 0
     #      A2A1B0      A1B1     B2 .. 0
     #        ..         ..         ..
-    #      AN-1..A1B0  AN-2..A1B1  .. B0N-1]
+    #      AN-1..A1B0  AN-2..A1B1  .. B0]
     F = np.zeros((nx*N, nu*N), dtype='float')
-    # F = [B_feedback0          0                 0             ..  0
-    #      A1B_feedback0        B_feedback1       0             ..  0
-    #      A2A1B_feedback0      A1B_feedback1     B_feedback2   ..  0
-    #        ..         ..         ..
-    #      AN-1..A1B_feedback  AN-2..A1B1  .. B0N-1]
+    # F_feedback = [B_feedback0          0                 0             ..  0
+    #               A1B_feedback0        B_feedback1       0             ..  0
+    #               A2A1B_feedback0      A1B_feedback1     B_feedback2   ..  0
+    #                     ..                  ..               ..
+    #               AN-1..A1B_feedback   AN-2..A1B1            ..         B0]
     F_feedback = np.zeros((nx*N, ny*N), dtype='float')
-    # ---------- uncomment if dup is disturbance on dPN -----------
+    # ----------------------------------------------------------------------------------------------
     # K = [S          0       0 .. 0
     #      A1S        S       0 .. 0
     #      A2A1S      A1S     S .. 0
     #        ..       ..        ..
     #      AN-1..A1S AN-2..A1S  .. S]
     K = np.zeros((nx*N, ndup*N), dtype='float')
-    # -------------------------------------------------------------
+    # ----------------------------------------------------------------------------------------------
     # G = [C  0  .  .  0
     #      0  C  0  .  0
     #      .  .  .  .  .
     #      0  0  0  .  C]
     G = np.zeros((ny*N, nx*N), dtype='float')
+    # ----------------------------------------------------------------------------------------------
     # M = [I         0      0 .. 0
     #      A1        I      0 .. 0
     #      A2A1      A1     I .. 0
     #       ..       ..       ..
     #      AN-1..A1 AN-2..A1  .. I]
+    # ----------------------------------------------------------------------------------------------
     M = np.zeros((nx*N, nx*N), dtype='float')
     # L = [A0 0     ..        0
     #      0  A1A0  ..        0
     #      ..  ..   ..
     #      0   0    ..   AN-1AN-2..A0]
     L = np.zeros((nx*N, nx*N), dtype='float')
-
+    # ----------------------------------------------------------------------------------------------
     A_0 = self.sys.Ad
     for ll in range(N):
       G[ll*ny:(ll+1)*ny, ll*nx:(ll+1)*nx]  = self.sys.Cd
@@ -135,3 +140,5 @@ class LiftedStateSpace:
     self.Gd0 = G.dot(d0)
     if self.sys.with_feedback:
       self.GF_feedback = G.dot(F_feedback)
+
+# TODO: upgrade it for time variant state space equations(see comments in updateQuadrProgMatrixesTimeDomain)
