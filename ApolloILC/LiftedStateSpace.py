@@ -15,10 +15,17 @@ from math import e
 
 
 class LiftedStateSpace:
-  # Unroll the state space equations of the dynamic system to build the mappings on iteration level.
-    #    x[1:] = Fu + Kdu_p + d0 + F_feedback*ydes,
-    #    y[1:] = Gx,
   def __init__(self, sys, N, T=None, freq_domain=False):
+    """ Unrolls the state space equations of the dynamic system
+        to build the mappings on iteration level, described by:
+        y = GFu + GKd + d0 + F_feedback*ydes,
+
+    Args:
+        sys (DynamicSystem): dynamic system
+        N (int): length of traj (Nf if fre_domain)
+        T (float, optional): time length of traj
+        freq_domain (bool, optional): _description_. Defaults to False.
+    """
     self.sys = sys  # dynamic system
     self.N = N      # length of traj (Nf if fre_domain)
     self.T = T      # time length of traj
