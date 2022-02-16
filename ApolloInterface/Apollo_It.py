@@ -93,6 +93,9 @@ JOINTS_V_LIMITS = {
 # A6 (J7) |     +/-170   (-169.59, 169.59)  |   184,0 degree/s   |     38 Nm
 
 
+# O8o helper functions
+# ----------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------
 def ref_name_to_index(posture):
     """Transforms {joint_name: joint_posture} to {joint_index: joint_posture}
 
@@ -169,10 +172,20 @@ def read(nb_iterations=None):
     else:
         observation = apollo.read()
     return observation
+# ----------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------
 
 
 class ApolloInterface:
     def __init__(self, r_arm=True):
+        """ An interface for Apollo that simplifies the ILC related operations.
+            More precisely, it implements feed forward control for whole trajectories
+            (see apollo_run_one_iteration and apollo_run_one_iteration2 for the 1DOF control loop
+             and apollo_run_one_iteration_with_feedback for the 2DOF control loop )
+
+        Args:
+            r_arm (bool, optional): _description_. Defaults to True.
+        """
         self.r_arm = r_arm
         if r_arm:
             self.joints_list = R_joints
@@ -375,6 +388,16 @@ class ApolloInterface:
         return thetas_s, vel_s, acc_s, dP_N_vec, u, real_homes
 
     def measure_extras(self, dt, time):
+        """ A simple function that takes measurements for a certain time interval without sending any input.
+
+        Args:
+            dt (float): timestep to set the control frequency
+            time (float): time interval we want to measure for
+
+        Returns:
+            thetas_s, vel_s (np.array(N,1)):        the actual position, velocity trajecytories during this time
+            thetas_dess, vel_dess (np.array(N,1)):  the desired position, velocity that Apollo sees during this time
+        """
         N_extra = int(time/dt)
         thetas_s = np.zeros((N_extra, 7, 1))
         vel_s    = np.zeros((N_extra, 7, 1))
@@ -418,6 +441,22 @@ class ApolloInterface:
         return obs_np
 
     def go_to_home_position(self, home_pose=None, it_time=4000, eps=3., wait=2000, zero_speed=True, verbose=True, reset_PID=True):
+        """Method that brings the arm to the home position.
+           It uses inverse dynamics to compute feed forward control to go close to the desired position.
+           Finally it uses a PID feedback controller to improve the accuracy.
+
+        Args:
+            home_pose (np.array(7,1)):  Joint configuration describing the home position.
+            it_time (int):              nr of iteration the inverse dynamics should optimize for
+            eps (float):                accuracy described in degree
+            wait (int):                 nr of iterations the arm should stay in the desired configuration before calling it a day
+            zero_speed (bool):          If set we sent zero desired joint velocities after achieving the goal configuration.
+            verbose (bool):             Whether to print verbose information
+            reset_PID (bool):           Whether to reset the PID controller in the beginning
+
+        Returns:
+            _type_: _description_
+        """
         # eps: degree
         if home_pose is None:
             home_pose = np.zeros((7,1))
