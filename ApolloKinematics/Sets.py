@@ -7,7 +7,7 @@
 @Version :   1.0
 @Contact :   zhobromikel@gmail.com
 @License :   (C)Copyright 2021-2022, Mikel Zhobro
-@Desc    :   defines helper classes(ContinuousRange and ContinuousSet) required in AnalyticalIK
+@Desc    :   Defines helper classes(ContinuousRange and ContinuousSet) required in AnalyticalIK
 '''
 
 from sortedcontainers import SortedList
@@ -15,6 +15,10 @@ from random import random
 
 
 class ContinuousRange():
+    """ This class implements a continuous range, where the start and end values
+        can be included or not. ( [a, b], (a,b], and so on).
+        The class is otherwise self-explainatory.
+    """
     def __init__(self, start, end, start_include=True, end_include=True):
         correct = start < end  # sort the range if given out of order
         if correct:
@@ -53,6 +57,12 @@ class ContinuousRange():
         return   self.a <= val <= self.b
 
 class ContinuousSet():
+    """ This class implements a continuous set.
+        In general such a set consists of several continuous ranges.
+        Here we model different methods to operate with such continuous sets,
+        such as union, intersection, set-inverse etc.
+        The method names and the input parameters make the methods self-explainatory.
+    """
     def __init__(self, start=None, end=None, start_include=True, end_include=True):
         self.c_ranges = SortedList()  # set of ContinuousRanges
 
