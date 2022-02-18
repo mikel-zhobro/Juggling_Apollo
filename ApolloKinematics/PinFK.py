@@ -41,13 +41,18 @@ class PinRobot():
         # Use "BASE" instead of 'universe' as base coordinate frame (Set the BASE Frame)
         self.SE3_base_origin = self.FK_f2f(pin.neutral(self.model), BASE, WORLD, homog=False)
 
-    def limit_joints(self, Q):
+    def clip_limit_joints(self, Q):
+        """ Clipps Q according to the joint limits
+
+        Args:
+            Q (np.array(7,1)): joint angles
+
+        Returns:
+            Q_clipped (np.array(7,1)): clipped joint angles
+        """
         for i, name in enumerate(self.joints_list):
             Q[i, 0] = np.clip(Q[i, 0], *JOINTS_LIMITS[name])
         return Q
-
-    def frames(self):
-        pass
 
     def FK(self, q, frameName=TCP, homog=True):
         """
@@ -126,7 +131,7 @@ class PinRobot():
             # Update joint_states
             Q_i = pin.integrate(self.model, Q_i, qv*DT)
             Q_i = modrad(Q_i)
-            # Q_i = self.limit_joints(Q_i)
+            # Q_i = self.clip_limit_joints(Q_i)
 
             i += 1
             pos_norm_err = np.linalg.norm(err[:3])
