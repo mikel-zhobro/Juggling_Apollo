@@ -21,6 +21,13 @@ spi6 = 0.5
 cpi6 = cos(np.pi/6)
 
 class DH_revolut():
+    """ Implementation of DH kinematics and other methods
+        to compute FK, Jacobian and Hessian matrix at given joint configuraton.
+
+        The main methods are unit-tested in:
+            1. tests/check_jac.py  (test jacobian and hessian computations)
+            2. tests/check_ik_real_dh.py (test get to (dh)base and get to (dh)TCP frame)
+    """
     T_base_rbase = np.array([  # Sets the Arm to the correct(main) base frame
         [-spi6,  cpi6,  0.0, 0.0],
         [ cpi6,  spi6,  0.0, 0.0],
@@ -42,6 +49,13 @@ class DH_revolut():
                 #                  [0.0,  0.0, 0.0,  1.0]], dtype='float'))
     class Joint():
         def __init__(self, a, alpha, d, theta, index, limit=(-np.pi, np.pi), vlimit=(-10., 10.), name="", offset=0.0):
+            """ Class that keeps the DH parameters for a single joint.
+            Args:
+                a , alpha, d, theta (float):            DH params
+                index, name (int, string):              index and name of the joint
+                limit, vlimit (tuple(float, float)):    Angle and velocity limits
+                offset (float):                         offset angle of the joint
+            """
             self.a = a
             self.alpha = alpha
             self.d = d
@@ -92,6 +106,15 @@ class DH_revolut():
                 [0.0,    0.0,       0.0,       1.0]], dtype='float')
 
     def FK(self, Q, rbase_frame=False):
+        """ Computes the forward kinematics
+
+        Args:
+            Q (np.array(7,1)):  Joint configuration
+            rbase_frame (bool): Whether we want to use the right base frame as reference frame.
+
+        Returns:
+            T0_7 (np.array(7,1)): homogenous transformation for the endeffector
+        """
         Q = Q.copy().reshape(-1, 1)
         T0_7 = np.eye(4)
         for j, theta_j in zip(self.joints, Q):
@@ -104,6 +127,15 @@ class DH_revolut():
         return T0_7
 
     def get_i_R_j(self, i, j, Qi_j):
+        """ Computes the relative rotation between two joints
+
+        Args:
+            i, j (int, int): Joint indexes between which we compute the relative rotation
+            Qi_j (np.array(j-i, 1)): angles of joints from i to j
+
+        Returns:
+            i_R_j (np.array(3, 3)): rotation matrix
+        """
         # Qi_j: angles of joints from i to j
         assert i != j, 'i:{} and j:{} cannot be equal'.format(i,j)
         transpose_at_end = False
@@ -122,6 +154,15 @@ class DH_revolut():
         return i_R_j
 
     def get_i_T_j(self, i, j, Qi_j):
+        """ Computes the relative transformation between two joints
+
+        Args:
+            i, j (int, int): Joint indexes between which we compute the relative rotation
+            Qi_j (np.array(j-i, 1)): angles of joints from i to j
+
+        Returns:
+            i_T_j (np.array(4, 4)): homogenous tranformation matrix
+        """
         assert i < j, 'i:{} and j:{} cannot be equal'.format(i,j)
 
         i_T_j = np.eye(4)
@@ -129,28 +170,55 @@ class DH_revolut():
             i_T_j = i_T_j.dot(self.getT(joint, th_j))
         return i_T_j
 
-    def get_goal_in_dh_base_frame(self, p_base, R_base):
-        T_base = pR2T(p_base, R_base).squeeze()
+    def get_goal_in_dh_base_frame(self, p_base_x, R_base_x):
+        """ Makes up for a different base than the one used for DH model.
+            Used to bring the homogenous transformation
+            from the base(origin) to the (dh)base frame of DH.
+
+        Args:
+            p_base (np.array(3,1)): _description_
+            R_base (np.array(3,3)): _description_
+
+        Returns:
+            R_dhbase_x, p_dhbase_x: rotation and position in (dh)base frame
+        """
+        T_base_x = pR2T(p_base_x, R_base_x).squeeze()
         # base-> rbase
         T_rbase_base = invT(self.T_base_rbase)
-        T_ret = T_rbase_base.dot(T_base)
-        # R_ret = T_rbase_base[:3,:3].dot(R_base)
-        # p_ret = T_rbase_base[:3,:3].dot(p_base) + T_rbase_base[:3,3:4]
+        T_rbase_x = T_rbase_base.dot(T_base_x)
 
         # rbase -> dh_base
         T_dhbase_rbase = invT(self.T_rbase_dhbase)
-        # R_ret = T_dhbase_rbase[:3,:3].dot(R_ret)
-        # p_ret = T_dhbase_rbase[:3,:3].dot(p_ret) + T_dhbase_rbase[:3,3:4]
-        T_ret = T_dhbase_rbase.dot(T_ret)
+        T_dhbase_x = T_dhbase_rbase.dot(T_rbase_x)
 
-        return T_ret[:3,3:4], T_ret[:3,:3]
+        return T_dhbase_x[:3,3:4], T_dhbase_x[:3,:3]
 
-    def get_goal_in_dhtcp_frame(self, p, R):
-        T_0_tcp = pR2T(p, R).squeeze()
-        T_0_dhtcp = T_0_tcp.dot(invT(self.T_dhtcp_tcp))
+    def get_goal_in_dhtcp_frame(self, p_0_tcp, R_0_tcp):
+        """ Makes up for different tcp frame than the one used for DH model.
+            Used to compute the (dh)TCP homogenous transformation from
+            the real TCP(endeffector) homogenous transformation.
+
+        Args:
+            p_0_tcp (np.array(3,1)): position of TCP
+            R_0_tcp (np.array(3,3)): rotation matrix of TCP
+
+        Returns:
+           T_0_dhtcp np.array(4,4): homogenous transformation matrix for (dh)TCP
+        """
+        T_0_tcp = pR2T(p_0_tcp, R_0_tcp).squeeze()
+        T_0_dhtcp = T_0_tcp.dot(invT(self.T_dhtcp_tcp))  # T_0_7
         return T_0_dhtcp[:3,3:4], T_0_dhtcp[:3,:3]
 
     def i_J_j(self, i, j, Qi_j):
+        """ Computes Jacobian between two joints
+
+        Args:
+            i, j (int, int): joint indexes
+            Qi_j (np.array(j-i, 1)): : angles of joints from i to j
+
+        Returns:
+            i_J_j (np.array(6, j-i)): Jacobian matrix between joints i and j
+        """
         # J = [zi(x)delta(pi), .., zk(x)delta(pk), .., zj(x)delta(pj)
         #      zi            , .., zk            , .., zj            ] where delta(pk) = pj -pk
         assert i < j, 'i:{} and j:{} cannot be equal'.format(i,j)
@@ -174,10 +242,21 @@ class DH_revolut():
         return J
 
     def J(self, q, rbase_frame=False):
-        # In order to tranfsorm the jacobian in the right base frame we have to premultiply with
-        #  [R_base_base_dh    0
-        #   0                 R_base_base_dh]
-        # jacobian expresses the cartesian velocities caused byz joint velocities. We want the cartesian velocities in the right base.
+        """ Computes the jacobian matrix given a joint configuration.
+            Jacobian expresses the cartesian velocities caused by joint velocities.
+            We want the cartesian velocities in the right base.
+            In order to tranfsorm the jacobian in the right base frame we have to premultiply with
+            [R_base_base_dh    0
+            0                 R_base_base_dh]
+
+        Args:
+            q (np.array(7,1)): joint angles
+            rbase_frame (bool): Whether we want to use the right base frame as reference frame.
+
+        Returns:
+            J (np.array(6,7)) : Jacobian matrix
+        """
+
 
         # dh_base -> rbase
         T_base_dhbase = self.T_rbase_dhbase.copy()
@@ -191,10 +270,17 @@ class DH_revolut():
         return TMP.dot(self.i_J_j(0, 7, q))
 
     def H(self, q, rbase_frame=False):
-        """
+        """ Computes the Hessian matrix for a given joint configurtion.
             Implementation from paper: "A Systematic Approach to Computing the Manipulator Jacobian and Hessian
-                                       using the Elementary Transform Sequence"
+                                        using the Elementary Transform Sequence"
             Jesse Haviland, Peter Corke, Fellow, IEEE, https://arxiv.org/pdf/2010.08696.pdf
+
+        Args:
+            q (np.array(7,1)): joint angles
+            rbase_frame (bool): Whether we want to use the right base frame as reference frame.
+
+        Returns:
+            H (np.array(6,7,7)): Hessian matrix
         """
         n = self.n_joints
 
@@ -209,13 +295,6 @@ class DH_revolut():
                 if i != j:
                     H[:3, j, i] = H[:3, i, j]
         return H
-
-    def plot(self):
-        T0wshoulder = self.get_i_T_j(0, 2)
-        T0wselbo    = self.get_i_T_j(0, 4)
-        T0wswrist   = self.get_i_T_j(0, 6)
-        pass
-
 
 if __name__ == "__main__":
     from ApolloKinematics.utilities import R_joints
