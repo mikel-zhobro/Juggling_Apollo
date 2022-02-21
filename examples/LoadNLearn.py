@@ -1,16 +1,26 @@
+#!/usr/bin/env python
+# -*-coding:utf-8 -*-
+'''
+@File    :   LoadNLearn.py
+@Time    :   2022/02/21
+@Author  :   Mikel Zhobro
+@Version :   1.0
+@Contact :   zhobromikel@gmail.com
+@License :   (C)Copyright 2021-2022, Mikel Zhobro
+@Desc    :   A script that loads an already learned trajectory and continues learning on top.
+'''
+
 import numpy as np
-import time
 import matplotlib.pyplot as plt
 
 import __add_path__
 from ApolloILC.settings import dt
 from ApolloILC.ILC import ILC
-from ApolloILC.DynamicSystem import ApolloDynSys
-from ApolloPlanners import SiteSwapPlanner
+from ApolloILC.DynamicSystem import ApolloDynSys, ApolloDynSysWithFeedback
 from ApolloInterface.Apollo_It import ApolloInterface
 from ApolloKinematics.ApolloKinematics import ApolloArmKinematics
 from ApolloKinematics import utilities
-from utils import plot_A, save, load, print_info, plot_info
+from utils import plot_A, save, load, save_all, print_info, plot_info
 
 np.set_printoptions(precision=4, suppress=True)
 
@@ -20,20 +30,21 @@ print("juggling_apollo")
 ########################################################################################################
 ########################################################################################################
 ########################################################################################################
-FREQ_DOMAIN = True
-NF=18
+FREQ_DOMAIN=False
+NF=6
 
 SAVING = True
-UB = 3.87
+UB = 6.5
 
 CARTESIAN_ERROR = False
 NOISE=0.0
 
-
-ILC_it = 1                                # number of ILC iteration
+ILC_it = 3                                # number of ILC iteration
 end_repeat = 0  if not FREQ_DOMAIN else 0 # repeat the last position value this many time
 
-FILENAME= "examples/data/AllJoints3/2021_12_09-16_59_04siteswap_joint_[0, 1, 2, 3, 5]_alpha_[18. 18. 18. 18. 18. 18. 18.]_eps_0.001_freq_domain_cart_err_off"
+# add filename from  '/home/apollo/Desktop/Investigation/..'
+FILENAME= "/home/apollo/Desktop/Investigation/2022_02_21/16_39_28/siteswap_[0, 1, 2, 3, 4, 5, 6]_alpha_[17. 17. 17. 17. 17. 17. 17.]_eps_0.001_time_domain_cart_err_off.data"
+
 ld = load(FILENAME)
 
 
@@ -50,23 +61,18 @@ alpha = ld.alpha
 syss  = [ApolloDynSys(dt, x0=np.zeros((2,1)), alpha_=a, freq_domain=FREQ_DOMAIN) for a in alpha]
 
 # Cartesian Error propogation params
-# rArmKinematics_nn:  kinematics without noise  (used to calculate measurments, plays the wrole of a localization system)
-# rArmKinematics:     kinematics with noise (used for its (wrong)IK calculations)
 damp            = 1e-12
 mu              = 0.35
-CARTESIAN_ERROR = False
+########################################################################################################
+########################################################################################################
+########################################################################################################
 
-
-
+########################################################################################################
 # 0. Create Apollo objects
 T_home = ld.T_home
 T_dhtcp_tcp = np.eye(4)
 T_dhtcp_tcp[:3,:3] = T_home[:3,:3].T
-########################################################################################################
-########################################################################################################
-########################################################################################################
 
-# 0. Create Apollo objects
 # A) INTERFACE: create rArmInterface and go to home position
 rArmInterface = ApolloInterface(r_arm=True)
 
@@ -74,30 +80,18 @@ rArmInterface = ApolloInterface(r_arm=True)
 rArmKinematics    = ApolloArmKinematics(r_arm=True, noise=NOISE)  ## kinematics with noise (used for its (wrong)IK calculations)
 rArmKinematics_nn = ApolloArmKinematics(r_arm=True)               ## kinematics without noise  (used to calculate measurments, plays the wrole of a localization system)
 
-# 1. Trajectory Planning
-jp = SiteSwapPlanner.JugglingPlanner()
-pattern=(1,); h=0.3; r_dwell=0.6; throw_height=0.15; swing_size=0.15; w=0.3; slower=1.0; rep=1
-plan = jp.plan(dt, 1, pattern=ld.pattern, h=ld.h, r_dwell=ld.r_dwell, throw_height=ld.throw_height,
-               swing_size=ld.swing_size, w=ld.w, slower=ld.slower, rep=ld.rep)
-N, x0, v0, a0, j0, rot_traj_des = plan.hands[0].get(get_thetas=True)  # get plan for hand0
+# C) PLANNINGs
+# q_traj_des, T_traj = OneBallThrowPlanner.plan(dt, T_home, IK=rArmKinematics.IK, J=rArmKinematics.J, seqFK=rArmKinematics.seqFK, verbose=True)
 
-# Transform to dh frames and do IK
-T_traj = utilities.pR2T(x0-x0[0]+T_home[:3, -1], rot_traj_des)
-T_traj = rArmKinematics.transform_in_dh_frames(T_dhtcp_tcp, T_traj)
-T_home = T_traj[0].copy()
-q_traj_des, q_start, psi_params = rArmKinematics.seqIK(T_traj, considered_joints=learnable_joints)  # [N, 7]
-# Remove trajectories we are not learning
-q_traj_des[:,non_learnable_joints] = 0
+T_traj = ld.T_traj
+# q_traj_des = np.concatenate((ld.q_traj_des_vec[-1], ld.q_traj_des_vec[0:1,0]))  # only needed for old backups
+q_traj_des = ld.q_traj_des_vec[-1]
 
+N = len(q_traj_des)
+q_start = q_traj_des[0]
+T_home = T_traj[0]
 
-print("T_Home\n",T_traj[0])
-print("FLIGHT TIMES: ", plan.getFlightTimes())
-print("1.Start: ", q_start.T)
-print()
-plan.plot()
-if False:
-  aa = plan.getBallNPlatte()
-  rArmKinematics.plot(q_traj_des, *psi_params)
+########################################################################################################
 
 # INIT ILC
 # ILC Works on differences(ie delta)
@@ -105,7 +99,6 @@ q_traj_des_i       = q_traj_des.copy()
 q_start_i          = q_start.copy()
 # q_start_i = q_traj_des_i[1]; #q_start_i[-1,0] = np.pi/4.
 delta_q_traj_des_i = q_traj_des_i[1:] - q_traj_des_i[1]
-
 
 # B. Initialize ILC
 Nf = NF if FREQ_DOMAIN else N-1
@@ -127,13 +120,11 @@ my_ilcs = [
   for i in range(N_joints)]
 
 
-
-
 # C. LEARN BY ITERATING
 T_FULL = N*dt - 0.002
 N_1 = N-1
 # Data collection
-q_traj_des_vec        = np.zeros([ILC_it, N_1, N_joints, 1], dtype='float')
+q_traj_des_vec        = np.zeros([ILC_it, N, N_joints, 1], dtype='float')
 # a. Measurments
 joints_q_vec          = np.zeros([ILC_it, N_1, N_joints, 1], dtype='float')
 joints_vq_vec         = np.zeros([ILC_it, N_1, N_joints, 1], dtype='float')
@@ -150,11 +141,8 @@ d_xyz_rpy_vec         = np.zeros([ILC_it, N, 6], dtype='float')
 
 
 
-
-
-
 # D. Main Loop
-every_N = 5
+every_N = 1
 
 # Use linear model to compute first input
 u_ff   = np.zeros([N-1, N_joints, 1], dtype='float')
@@ -163,18 +151,15 @@ for i in learnable_joints:
 
 for j in range(ILC_it):
   # Limit Input
-  u_ff = np.clip(u_ff,-UB,UB)
-  if True and j%every_N==0: plot_info(dt, j, learnable_joints,
-                             joints_q_vec, q_traj_des_i[1:],
-                            #  u_ff_vec, q_v_traj[1:],
-                             joint_torque_vec,
-                            #  disturbanc_vec,
-                            #  d_xyz,
-                             joint_error_norms, cartesian_error_norms,
-                             v=False, p=True, dp=False, e_xyz=False, e=True, torque=False)
+  # u_ff = np.clip(u_ff,-UB,UB)
 
+  if False:
+    plot_A([u_ff])
+    plt.show()
   # Main Simulation
+  # q_traj, q_v_traj, q_a_traj, F_N_vec, _, q0 = rArmInterface.apollo_run_one_iteration_with_feedback(dt=dt, T=T_FULL, u=u_ff, thetas_des=q_traj_des_i, joint_home_config=q_start_i, repetitions=3 if FREQ_DOMAIN else 1, it=j)
   q_traj, q_v_traj, q_a_traj, F_N_vec, _, q0 = rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL, u=u_ff, joint_home_config=q_start_i, repetitions=3 if FREQ_DOMAIN else 1, it=j)
+  # q_extra, qv_extra, q_des_extra, qv_des_extra = rArmInterface.measure_extras(dt, 2.3)
   q_traj   = np.average(  q_traj[0:], axis=0)
   q_v_traj = np.average(q_v_traj[0:], axis=0)
   q_a_traj = np.average(q_a_traj[0:], axis=0)
@@ -208,7 +193,7 @@ for j in range(ILC_it):
   # b. ILC
   u_ff_vec[j]           = u_ff
   disturbanc_vec[j]     = np.squeeze([ilc.d for ilc in my_ilcs]).T  # learned joint space disturbances
-  q_traj_des_vec[j]     = q_traj_des_i[1:]
+  q_traj_des_vec[j]     = q_traj_des_i
   # c. Errors
   d_xyz_rpy_vec[j]      = delta   # actual cartesian errors
   joints_d_vec[j]       = delta_q_traj_des_i-delta_y_meas         # actual joint space error
@@ -230,10 +215,26 @@ for j in range(ILC_it):
     delta_q_traj_des_i = q_traj_des_i[1:] - q_start_i
     mu = 0.95*mu
 
-
+  if False and (j ==ILC_it-1 or j==0):
+    plot_A([180./np.pi*q_extra, 180./np.pi*q_des_extra], labels=["observed", "desired"])
+    plt.suptitle("{}. Joint angles it({})".format("freq" if FREQ_DOMAIN else "time", j))
+    plt.savefig("/home/apollo/Desktop/Investigation/{}_Joint_angles_it{}.png".format("Freq" if FREQ_DOMAIN else "Time", j))
+    plot_A([180./np.pi*qv_extra, 180./np.pi*qv_des_extra], labels=["observed", "desired"])
+    plt.suptitle("{}. Joint velocities it({})".format("freq" if FREQ_DOMAIN else "time", j))
+    # plt.savefig("/home/apollo/Desktop/Investigation/{}_Joint_velocities_it{}.png".format("Freq" if FREQ_DOMAIN else "Time", j))
+    plt.show()
 
   print_info(j, learnable_joints, joints_d_vec, d_xyz)
 
+  if False and j%every_N==0:
+    plot_info(dt, learnable_joints, joints_q_vec, q_traj_des_i[1:],
+              u_ff_vec, q_v_traj,  # uncomment after trials
+              joint_torque_vec,
+            #  disturbanc_vec,
+            #  d_xyz,
+              joint_error_norms, cartesian_error_norms,
+              v=True, p=True, dp=False, e_xyz=False, e=False, torque=False, N=j+1)
+    plt.show()
 
   if False and j%every_N==0:  # How desired  trajectory changes
     plot_A([q_traj_des_nn, q_traj_des_vec[j], q_traj_des_vec[j-1], q_traj_des_vec[0]], learnable_joints, ["des", "it="+str(j), "it="+str(j-1), "it=0"], dt=dt, xlabel=r"$t$ [s]", ylabel=r"angle [$rad$]")
@@ -250,42 +251,39 @@ for j in range(ILC_it):
 
 
 
-
-
-
-
 # After Main Loop has finished
-if True:
+if False:
   plot_info(dt, j, learnable_joints,
             joints_q_vec=joints_q_vec, q_traj_des=q_traj_des_i[1:],
             u_ff_vec=u_ff_vec, q_v_traj=q_v_traj, cartesian_error_norms = cartesian_error_norms,
             disturbanc_vec=disturbanc_vec, d_xyz_rpy_vec=d_xyz_rpy_vec, joint_error_norms=joint_error_norms,
-            v=True, p=True, dp=False, e_xyz=True, e=True, N=min(4, ILC_it-1))
+            v=True, p=False, dp=False, e_xyz=False, e=True, N=min(4, ILC_it-1))
 
 if SAVING:
   # Saving Results
   freq = 'freq_domain' if FREQ_DOMAIN else "time_domain"
   cartesian_err = 'cart_err_on' if CARTESIAN_ERROR else "cart_err_off"
-  filename = "examples/data/AllJoints3/" + time.strftime("%Y_%m_%d-%H_%M_%S") + "siteswap_joint_{}_alpha_{}_eps_{}_{}_{}".format(learnable_joints, alpha, ep_s[0], freq, cartesian_err)
-  save(filename,
+  filename = "one_throw_joint_{}_alpha_{}_eps_{}_{}_{}".format(learnable_joints, alpha, ep_s[0], freq, cartesian_err)
+  save_all(filename, special='REPEATABILITY_TEST',
        dt=dt,
        q_start=q_start_i, T_home=T_home,                                                 # Home
        T_traj=T_traj, q_traj_des_vec=q_traj_des_vec,                                     # Desired Trajectories
        joints_q_vec=joints_q_vec, joints_vq_vec=joints_vq_vec,                           # Joint Informations
        joints_aq_vec=joints_aq_vec, joint_torque_vec=joint_torque_vec,                   #        =|=
-       disturbanc_vec=disturbanc_vec, u_ff_vec=u_ff_vec,                                 # Learned Trajectories (uff and disturbance)
+       disturbanc_vec=disturbanc_vec, u_ff_vec=joints_vq_vec,                                 # Learned Trajectories (uff and disturbance)
        d_xyz_rpy_vec=d_xyz_rpy_vec, joints_d_vec=joints_d_vec,                                   # Progress Measurments
        joint_error_norms=joint_error_norms, cartesian_error_norms=cartesian_error_norms,
-       pattern=pattern, h=h, r_dwell=r_dwell, throw_height=throw_height,                 # SiteSwap Params
-       swing_size=swing_size, w=w, slower=slower, rep=rep,
+    #    pattern=pattern, h=h, r_dwell=r_dwell, throw_height=throw_height,                 # SiteSwap Params
+    #    swing_size=swing_size, w=w, slower=slower, rep=rep,
        ilc_learned_params = [(ilc.d, ilc.P) for ilc in my_ilcs],
        learnable_joints=learnable_joints, alpha=alpha, n_ms=n_ms, n_ds=n_ds, ep_s=ep_s)  # ILC parameters
-
-  with open('examples/data/AllJoints3/list_files_all.txt', 'a') as f:
-      f.write(filename + "\n")
 
 
 
 # Run Simulation with several repetition
-rArmInterface.apollo_run_one_iteration2(dt=dt, T=end_repeat*dt, u=u_ff[:end_repeat], joint_home_config=q_start_i, repetitions=1, it=j)
-rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL-end_repeat*dt, u=u_ff[end_repeat:], repetitions=5, it=j)
+if False:
+  if end_repeat!=0:
+    rArmInterface.apollo_run_one_iteration2(dt=dt, T=end_repeat*dt, u=u_ff[:end_repeat], joint_home_config=q_start_i, repetitions=1, it=j)
+    rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL-end_repeat*dt, u=u_ff[end_repeat:], repetitions=5, it=j)
+  else:
+    rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL, u=u_ff, joint_home_config=q_start_i, repetitions=5, it=j)

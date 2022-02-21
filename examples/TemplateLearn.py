@@ -1,3 +1,15 @@
+#!/usr/bin/env python
+# -*-coding:utf-8 -*-
+'''
+@File    :   TemplateLearn.py
+@Time    :   2022/02/21
+@Author  :   Mikel Zhobro
+@Version :   1.0
+@Contact :   zhobromikel@gmail.com
+@License :   (C)Copyright 2021-2022, Mikel Zhobro
+@Desc    :   A basic template for learning a simple triangular trajectory
+'''
+
 import numpy as np
 import matplotlib.pyplot as plt
 

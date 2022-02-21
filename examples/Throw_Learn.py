@@ -1,3 +1,16 @@
+#!/usr/bin/env python
+# -*-coding:utf-8 -*-
+'''
+@File    :   Throw_Learn.py
+@Time    :   2022/02/21
+@Author  :   Mikel Zhobro
+@Version :   1.0
+@Contact :   zhobromikel@gmail.com
+@License :   (C)Copyright 2021-2022, Mikel Zhobro
+@Desc    :   A template for learning a simple catch and throw trick
+'''
+
+
 import numpy as np
 import matplotlib.pyplot as plt
 

@@ -1,3 +1,15 @@
+#!/usr/bin/env python
+# -*-coding:utf-8 -*-
+'''
+@File    :   find_home.py
+@Time    :   2022/02/21
+@Author  :   Mikel Zhobro
+@Version :   1.0
+@Contact :   zhobromikel@gmail.com
+@License :   (C)Copyright 2021-2022, Mikel Zhobro
+@Desc    :   Script to manually/visually search for a good home position
+'''
+
 import numpy as np
 
 
@@ -12,22 +24,17 @@ np.set_printoptions(precision=4, suppress=True)
 print("juggling_apollo")
 
 # Home Configuration
-T_home = np.array([[0.0, -1.0, 0.0,  0.32],  # uppword orientation(cup is up)
-                   [0.0,  0.0, 1.0,  0.41],
-                   [-1.0, 0.0, 0.0, -0.69],
-                   [0.0,  0.0, 0.0,  1.0 ]], dtype='float')
-T_home = np.array([[0.0, -1.0, 0.0,  0.47],  # uppword orientation(cup is up)
-                   [0.0,  0.0, 1.0,  0.52],
-                   [-1.0, 0.0, 0.0, -0.7],
-                   [0.0,  0.0, 0.0,  1.0 ]], dtype='float')
+T_home = np.array([[1.0, 0.0, 0.0,  0.47],  # uppword orientation(cup is up)
+                   [0.0, 1.0, 0.0,  0.52],
+                   [0.0, 0.0, 1.0, -0.7],
+                   [0.0, 0.0, 0.0,  1.0 ]], dtype='float')
 
 # 0. Create Apollo objects
 # A) INTERFACE: create rArmInterface and go to home position
 rArmInterface = ApolloInterface(r_arm=True)
 
 # B) KINEMATICS: create rArmInterface and go to home position
-rArmKinematics    = ApolloArmKinematics(r_arm=True, noise=NOISE)  ## kinematics with noise (used for its (wrong)IK calculations)
-rArmKinematics_nn = ApolloArmKinematics(r_arm=True)               ## kinematics without noise  (used to calculate measurments, plays the wrole of a localization system)
+rArmKinematics = ApolloArmKinematics(r_arm=True)               ## kinematics without noise  (used to calculate measurments, plays the wrole of a localization system)
 
 # C) PLANNINGs
 if False:

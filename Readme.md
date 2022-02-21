@@ -86,13 +86,10 @@ ApolloPlanners
 
 
 examples
-├── TemplateLearn.py                                            # 
-├── SiteSwap_Apollo_Learn_Template.py                           # 
-├── SiteSwap_Apollo_LoadNLearn_Template.py                      # 
-├── Throw_Learn.py
-├── Throw_LoadNLearn.py
+├── TemplateLearn.py                                            # Template script for learning a triangle like trajectory
+├── TemplateSiteSwapJoint.py                                    # Main template for learning juggling patterns
+├── Throw_Learn.py                                              # Template to learn a simple catch-throw
+├── LoadNLearn.physical                                         # A script that loads an already learned trajectory and continues learning on top.
 └── utils.py                                                    # includes tools for plotting and printing the ILC metrics
 
-tests
-└── test_LiftedStateSpace.py        # test LSS
 ```

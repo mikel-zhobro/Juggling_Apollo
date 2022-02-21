@@ -21,10 +21,10 @@ import MinJerk
 import utils
 
 
-T_home = np.array([[0.0, -1.0, 0.0,  0.3],  # uppword orientation(cup is up)
-                   [0.0,  0.0, 1.0,  0.9],
-                   [-1.0, 0.0, 0.0, -0.5],
-                   [0.0,  0.0, 0.0,  1.0 ]], dtype='float')
+T_home = np.array([[1.0, 0.0, 0.0,  0.3],  # uppword orientation(cup is up)
+                   [0.0, 1.0, 0.0,  0.9],
+                   [0.0, 0.0, 1.0, -0.5],
+                   [0.0, 0.0, 0.0,  1.0 ]], dtype='float')
 
 def plan(dt, kinematics, h=0.65, throw_height=0.25, swing_size=0.46, slower=1.0, rep=1, verbose=False):
     """ Plan trajectory generation for simple catch-throw and use T_home as the position to perform the throw

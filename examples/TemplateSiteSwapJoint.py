@@ -1,3 +1,15 @@
+#!/usr/bin/env python
+# -*-coding:utf-8 -*-
+'''
+@File    :   TemplateSiteSwapJoint.py
+@Time    :   2022/02/21
+@Author  :   Mikel Zhobro
+@Version :   1.0
+@Contact :   zhobromikel@gmail.com
+@License :   (C)Copyright 2021-2022, Mikel Zhobro
+@Desc    :   A template for learning a juggling pattern.
+'''
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -266,7 +278,7 @@ if SAVING:
   # Saving Results
   freq = 'freq_domain' if FREQ_DOMAIN else "time_domain"
   cartesian_err = 'cart_err_on' if CARTESIAN_ERROR else "cart_err_off"
-  filename = "one_throw_joint_{}_alpha_{}_eps_{}_{}_{}".format(learnable_joints, alpha, ep_s[0], freq, cartesian_err)
+  filename = "siteswap_{}_alpha_{}_eps_{}_{}_{}".format(learnable_joints, alpha, ep_s[0], freq, cartesian_err)
   save_all(filename,
        dt=dt,
        q_start=q_start_i, T_home=T_home,                                                 # Home
