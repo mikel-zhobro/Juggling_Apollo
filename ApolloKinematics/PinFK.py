@@ -18,7 +18,7 @@ np.set_printoptions(precision=4, suppress=True)
 pin.switchToNumpyArray()  # https://github.com/stack-of-tasks/pinocchio/issues/802
 
 import utilities
-
+import settings
 
 # inv kinematics params
 IT_MAX     = 10200
@@ -32,13 +32,13 @@ class PinRobot():
         """ Initialize pinocchio dependent models/variables: model, data, joint_states
             filename ([str]): path to the urdf file
         """
-        self.joints_list = utilities.R_joints if r_arm else utilities.L_joints
-        self.model = utilities.reduce_model(utilities.FILENAME, jointsToUse=self.joints_list)
+        self.joints_list = settings.R_joints if r_arm else settings.L_joints
+        self.model = utilities.reduce_model(settings.FILENAME, jointsToUse=self.joints_list)
         self.data = self.model.createData()  # information that changes according to joint configuration etc
                                              # Only used as internal state(still all functions should be called with certain joint_state as input)
 
         # Use "BASE" instead of 'universe' as base coordinate frame (Set the BASE Frame)
-        self.SE3_base_origin = self.FK_f2f(pin.neutral(self.model), utilities.BASE, utilities.WORLD, homog=False)
+        self.SE3_base_origin = self.FK_f2f(pin.neutral(self.model), settings.BASE, settings.WORLD, homog=False)
 
     def clip_limit_joints(self, Q):
         """ Clipps Q according to the joint limits
@@ -50,10 +50,10 @@ class PinRobot():
             Q_clipped (np.array(7,1)): clipped joint angles
         """
         for i, name in enumerate(self.joints_list):
-            Q[i, 0] = np.clip(Q[i, 0], *utilities.JOINTS_LIMITS[name])
+            Q[i, 0] = np.clip(Q[i, 0], *settings.JOINTS_LIMITS[name])
         return Q
 
-    def FK(self, q, frameName=utilities.TCP, homog=True):
+    def FK(self, q, frameName=settings.TCP, homog=True):
         """
         returns the SE3_base_frame(R,p) of frameName in base coordinates
         """
@@ -62,7 +62,7 @@ class PinRobot():
         ret = self.SE3_base_origin * pin.updateFramePlacement(self.model, self.data, frameId)
         return ret.homogeneous if homog else ret  # updates data and returns T_base_frame
 
-    def FK_f2f(self, q, baseName=utilities.BASE, frameName=utilities.TCP, homog=True):
+    def FK_f2f(self, q, baseName=settings.BASE, frameName=settings.TCP, homog=True):
         """
         returns the SE3_baseName_frameName(R,p) of frameName in baseName coordinates
         """
@@ -73,7 +73,7 @@ class PinRobot():
         T_origin_frame = pin.updateFramePlacement(self.model, self.data, frameId)
         return (T_origin_base.inverse() * T_origin_frame).homogeneous if homog else T_origin_base.inverse() * T_origin_frame
 
-    def J(self, q, frameName=utilities.TCP):
+    def J(self, q, frameName=settings.TCP):
         """
         returns SE3(R,p) and J of TCP in BASE frame
         """
@@ -83,7 +83,7 @@ class PinRobot():
         J_local = pin.computeFrameJacobian(self.model, self.data, q, frameId)
         return J_local, self.SE3_base_origin * SE3_origin_tcp
 
-    def ik_apollo(self, Q_start, goal_p, goal_R=None, frameName=utilities.TCP, plot=False):
+    def ik_apollo(self, Q_start, goal_p, goal_R=None, frameName=settings.TCP, plot=False):
         """ Inverse Kinematics
 
         Args:
@@ -185,14 +185,14 @@ if __name__ == "__main__":
     if False:
         print_FK("R_SFE", "R_EB")  # Shoulder -> Elbow
         print_FK("R_EB", "R_WFE")  # Elbow -> Wrist
-        print_FK("R_WFE", utilities.TCP)     # Wrist -> TCP
-        print_FK(utilities.BASE, utilities.TCP)        # Base -> TCP
+        print_FK("R_WFE", settings.TCP)     # Wrist -> TCP
+        print_FK(settings.BASE, settings.TCP)        # Base -> TCP
 
 
 
-    print_FK("universe", utilities.BASE) # World -> TCP
-    print_FK(utilities.BASE, "R_BASE")   # Base  -> TCP
+    print_FK("universe", settings.BASE) # World -> TCP
+    print_FK(settings.BASE, "R_BASE")   # Base  -> TCP
 
-    print_FK("universe", utilities.TCP) # World  -> TCP
-    print_FK(utilities.BASE, utilities.TCP)       # R_Base -> TCP
-    print_FK("R_BASE", utilities.TCP)   # R_Base -> TCP
+    print_FK("universe", settings.TCP) # World  -> TCP
+    print_FK(settings.BASE, settings.TCP)       # R_Base -> TCP
+    print_FK("R_BASE", settings.TCP)   # R_Base -> TCP
