@@ -20,6 +20,16 @@ import utils
 
 
 def vel_from_position(qtraj, qv0, dt):
+    """ Compute velocities from positions using a simple discretization approach.
+
+    Args:
+        qtraj (np.array(N,7,1)): joint positions
+        qv0 (np.array(7,1)): initial velocity
+        dt (float): time step
+
+    Returns:
+        qvtraj (np.array(N,7,1)): joint velocities
+    """
     qvtraj = np.zeros_like(qtraj)
 
     qvtraj[0] = qv0.reshape(-1,1)
@@ -29,24 +39,35 @@ def vel_from_position(qtraj, qv0, dt):
     return qvtraj
 
 
-def plan(dt, kinematics, h=0.5, throw_height=0.35, swing_size=0.46, slower=1.0, rep=1, verbose=False):
+def plan(dt, kinematics, joint_space=True, pattern=(3,), h=0.6, throw_height=0.25, swing_size=0.16, slower=1.0, rep=1, verbose=False, r_dwell=0.45, w=0.4):
     """
-    TODO: incorporate it in the siteswap planner (or no)
+
+    check `SiteSwapPlanner.JugglingPlanner().plan()` for a better documentation of the parameters.
+
     Args:
-        dt ([type]): [description]
-        IK ([type]): function to calc IK
-        J ([type]): function that calc jacobi given joint state
-        h (float, optional): Height the ball should achieve
-        throw_height (float, optional): at what height we perform the throw
-        swing_size (float, optional): how much we can swing
-        slower (float, optional):
-        rep (int, optional): [description]. Defaults to 1.
+        dt (float): time step
+        kinematics (ApolloKinematics): kinematics for apollo to compute IK, seqIK, FK, seqFK, Jacobian..
+        verbose (bool): whether to plan in joint-space or in cartesian-space
+        pattern (tuple): siteswap pattern
+        h (float): height of the standard 3-throw
+        throw_height (float): at what height we perform the throw
+        swing_size (float): how much we can swing
+        slower (float): how many times slower we want to perform the juggling trajectory
+        rep (int): number of repitation of the juggling period
+        verbose (bool): whether to print/plot verbose information
+        r_dwell (float): dwell ratio
+        w (float): side length of the regular polygon the hands are positioned at
+
+    Returns:
+        q_traj (np.array(N,7,1)): joint position trajectory
+        qv_traj (np.array(N,7,1)): joint velocity trajectory
+        T_traj (np.array(N,4,4)):  the corresponding cartesian trajectory
     """
     jp = SiteSwapPlanner.JugglingPlanner()
-    pattern=(3,); h=0.6; r_dwell=0.45; throw_height=0.25; swing_size=0.16; w=0.4;  rep=1; # slower=1.5
     plan = jp.plan(dt, 2, pattern=pattern, h=h, r_dwell=r_dwell, throw_height=throw_height, swing_size=swing_size, w=w, rep=rep)
-
     # plan.plot()
+
+    # 1. Get CTs(edge conditions) for the first hand
     cts  = plan.hands[0].ct_period
     ts = []
     xs = []
@@ -56,7 +77,10 @@ def plan(dt, kinematics, h=0.5, throw_height=0.35, swing_size=0.46, slower=1.0, 
         xs += [xtmp.T.reshape(3,1) for xtmp in ct.traj.xx]
         vs += [vtmp.T.reshape(3,1)/slower for vtmp in ct.traj.vv]
 
-    # Find home
+    # 2. Find best position to perform the throw at
+
+    # a. Joint space plan
+    ########################################################################################################
     # dt = dt/slower
     q_init = np.array([0.2975, -0.9392, -0.5407,  1.4676,  1.35  , -0.4971, -0.4801]).reshape(7,1)
     T_home = kinematics.FK(q_init)
@@ -66,7 +90,9 @@ def plan(dt, kinematics, h=0.5, throw_height=0.35, swing_size=0.46, slower=1.0, 
     R_des[:,0] = np.cross(R_des[:,1], R_des[:,2])
     q_init, qdot_init = findBestThrowPosition(FK=kinematics.FK, J=kinematics.J, q_init=q_init, qdot_init=np.zeros((7,1)), vgoal=vs[1], R_des=R_des)
 
-    # Joint Positions
+
+    # 3. Compute the joint space correspondigs of the CTs
+    #    used for joint-space planning
     offset = xs[1]
     q_s = np.zeros((len(xs),7,1))
     Tmp = T_home.copy()
@@ -77,65 +103,77 @@ def plan(dt, kinematics, h=0.5, throw_height=0.35, swing_size=0.46, slower=1.0, 
         q_s[i] = kinematics.IK(Tmp)
 
     # Joint Velocities
-    W = np.eye(7)
-    W[3:,3:] *= 1.
+    # 2. Weighted pinv of jacobian
+    # W = np.eye(7)
+    # W[3:,3:] *= 1.
+    # H = np.zeros((10,10))
+    # H[:7,:7] = W
+    # b = np.zeros((10,1))
 
-    H = np.zeros((10,10))
-    H[:7,:7] = W
-    b = np.zeros((10,1))
     qv_s = np.zeros((len(xs),7,1))
     for i in range(len(qv_s)):
         Ji = kinematics.J(q_s[i])[:3,:]
-        H[7:,:7] = -Ji
-        H[:7,7:] = Ji.T
+        # 1. Pinv of jacobian
         # qv_s[i] = np.linalg.pinv(Ji).dot(vs[i])
-        b[7:] = -vs[i]
+        # 2. Weighted pinv of jacobian
+        # b[7:] = -vs[i]
+        # H[7:,:7] = -Ji
+        # H[:7,7:] = Ji.T
         # qv_s[i] = np.linalg.inv(H).dot(b)[:7]
+        # 3. Constrained optimization
         qv_s[i], vw = constrained_optim(Ji, np.zeros((7,1)), vs[i])
         print(i, vs[i].T, vw.T)
     q_traj, qv_traj, qa_traj, qj_traj = MinJerk.get_multi_interval_multi_dim_minjerk(dt, ts, q_s, qv_s, smooth_acc=True, only_pos=False, i_a_end=True)
     # q_traj, qv_traj, qa_traj, qj_traj = MinJerk.get_multi_interval_minjerk_xyz(dt, ts, q_s, qv_s, smooth_acc=False, only_pos=False, i_a_end=0)
     T_traj = kinematics.seqFK(q_traj)
+    ########################################################################################################
 
-    # Cartesian plan
+    # b. Cartesian space plan
+    ########################################################################################################
     N, x0, v0, a0, j0, rot_traj_des = plan.hands[0].get(get_thetas=True)  # get plan for hand0
     xXx = x0-offset.squeeze()+T_home[:3, -1]
     T_traj_cartesian = utils.utilities.pR2T(xXx, rot_traj_des)
     q_cartesian, _, _ = kinematics.seqIK(T_traj_cartesian, considered_joints=[])
     qv_cartesian = vel_from_position(q_cartesian, qv_traj[0], dt)
     joint_list = [0,1,2,3, 4, 5,6]
+    ########################################################################################################
+
 
     if verbose:
         plan.plot(orientation=True)
-        # Cartesian Plan
-        if False:
-            utils.plot_A(q_cartesian.reshape(1,-1,7,1), indexes_list=joint_list, dt=dt, limits=kinematics.limits, xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]", scatter_times=ts)
-            plt.suptitle("Angle positions [Cartesian space plan]")
-            # plt.savefig('Joint_Angle_Traj_joint.pdf')
-            utils.plot_A(qv_cartesian.reshape(1,-1,7,1), indexes_list=joint_list, dt=dt, limits=kinematics.vlimits, index_labels=[r"$\dot{\theta}_%d$" %(i+1) for i in range(7)],
-                    xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]", scatter_times=ts)
-            plt.suptitle("Angle velocities [Cartesian space plan]")
-
         joint_list = [0,1,2,3,4,5,6]
+
+        # 1.Joint trajectories for the joint-space and cartesian-space planning
+        # a. Jointspace Plan
         utils.plot_A(q_traj.reshape(1,-1,7,1), indexes_list=joint_list, dt=dt, limits=kinematics.limits, xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]", scatter_times=ts)
         plt.suptitle("Angle Positions [Joint space plan]")
         # plt.savefig('Joint_Angle_Traj_joint.pdf')
         utils.plot_A(qv_traj.reshape(1,-1,7,1), indexes_list=joint_list, dt=dt, limits=kinematics.vlimits, index_labels=[r"$\dot{\theta}_%d$" %(i+1) for i in range(7)],
-               xlabel=r"$t$ [s]", ylabel=r"[$\frac{grad}{s}$]", scatter_times=ts)
+            xlabel=r"$t$ [s]", ylabel=r"[$\frac{grad}{s}$]", scatter_times=ts)
         plt.suptitle("Angle Velocities [Joint space plan]")
         # plt.savefig('Joint_Angle_Vel_Traj_joint.pdf')
         # utils.plot_A(180./np.pi*qa_traj.reshape(1,-1,7,1))
         # plt.suptitle("Angle Accelerations")
         # plt.show()
+
+        # b. Cartesian Plan
+        utils.plot_A(q_cartesian.reshape(1,-1,7,1), indexes_list=joint_list, dt=dt, limits=kinematics.limits, xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]", scatter_times=ts)
+        plt.suptitle("Angle positions [Cartesian space plan]")
+        # plt.savefig('Joint_Angle_Traj_joint.pdf')
+        utils.plot_A(qv_cartesian.reshape(1,-1,7,1), indexes_list=joint_list, dt=dt, limits=kinematics.vlimits, index_labels=[r"$\dot{\theta}_%d$" %(i+1) for i in range(7)],
+                xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]", scatter_times=ts)
+        plt.suptitle("Angle velocities [Cartesian space plan]")
+
         plt.show()
 
-        # 3D plot
-        from mpl_toolkits.mplot3d import axes3d, Axes3D
+
+        # 1. 3D cartesian trajectories for the joint-space and cartesian-space planning
+
+        from mpl_toolkits.mplot3d import axes3d, Axes3D # 3D plot
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
 
         # prepare
-
         yYy = T_traj[:, 0:3, -1]
 
         balltraj_throw = cts[0].ballTraj.xxx[:] + T_home[:3, -1] -offset.squeeze()
@@ -144,14 +182,6 @@ def plan(dt, kinematics, h=0.5, throw_height=0.35, swing_size=0.46, slower=1.0, 
         ax.quiver(balltraj_throw[tss,0], balltraj_throw[tss,1], balltraj_throw[tss,2],
                   cts[0].ballTraj.vvv[tss,0], cts[0].ballTraj.vvv[tss,1], cts[0].ballTraj.vvv[tss,2],
                   length=0.07, normalize=True, color=a[0].get_color())
-
-
-        # balltraj_catch = cts[0].ct_c.ballTraj.xxx[:] + T_home[:3, -1] -offset.squeeze()
-        # a = ax.plot3D(balltraj_catch[:,0], balltraj_catch[:,1], balltraj_catch[:,2], linestyle='--', label='catch ball traj')
-        # tss = [0, len(balltraj_catch)//2, -1]
-        # ax.quiver(balltraj_catch[tss,0], balltraj_catch[tss,1], balltraj_catch[tss,2],
-        #           cts[0].ct_c.ballTraj.vvv[tss,0], cts[0].ct_c.ballTraj.vvv[tss,1], cts[0].ct_c.ballTraj.vvv[tss,2],
-        #           length=0.07, normalize=True, color=a[0].get_color(),)
 
         ax.plot3D(yYy[:,0], yYy[:,1], yYy[:,2], 'blue', label='joint space plan')
         ax.plot3D(xXx[:,0], xXx[:,1], xXx[:,2], 'red', label='cartesian space plan')
@@ -173,8 +203,10 @@ def plan(dt, kinematics, h=0.5, throw_height=0.35, swing_size=0.46, slower=1.0, 
         plt.legend()
         plt.show()
 
-    return q_traj, qv_traj, T_traj
-    return q_cartesian, qv_cartesian, T_traj_cartesian
+    if joint_space:
+        return q_traj, qv_traj, T_traj
+    else:
+        return q_cartesian, qv_cartesian, T_traj_cartesian
 
 
 def constrained_optim(J, q_init, vgoal, jac=None):
