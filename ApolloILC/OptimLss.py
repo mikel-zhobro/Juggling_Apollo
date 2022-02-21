@@ -52,7 +52,7 @@ class OptimLss:
       b = self.lss.GF.T.dot(Weight).dot(delta_y_des - self.lss.GK.dot(d) - self.lss.Gd0)
       delta_u_des = np.linalg.inv(A).dot(b)
     else:
-      # here we solve the least squared error optimization problem with inequality constrained
+      # here we solve the least squared error optimization problem with inequality constraines
       # we use the unconstrained solution as initial solution
       from scipy.optimize import minimize
       def loss(x):
