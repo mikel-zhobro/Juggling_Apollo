@@ -70,6 +70,7 @@ class DynamicSystem:
   def initTransferFunction(self, **kwargs):
     assert False, "The frequence domain TransferFunction is not implemented for this dynamical system."
 
+
 class BallAndPlateDynSys(DynamicSystem):
   """ Dynamic system for the simulated ball and plate system.
   """
@@ -150,6 +151,7 @@ class BallAndPlateDynSys(DynamicSystem):
 
     S = np.array([0, 1, 0, 0], dtype='float').reshape(-1, 1)
     return Ad, Bd, Cd, S, c
+
 
 class ApolloDynSys(DynamicSystem):
   """ Estimated velocity controlled dynamic system for Apollo.
