@@ -99,7 +99,12 @@ def IK_elbow_shoulder(DH_model, p0w_d, GC2, GC4, verbose):
     # Make sure position is within the reachable space
     dst1 = d_se + d_ew
     dst2 = np.linalg.norm(p0w_d-l0bs)
-    assert dst1  >= dst2, 'Unreachable wrist position {} >= {}'.format(dst1, dst2)
+    if dst1  >= dst2:
+        print("WARNING:")
+        print('Unreachable wrist position {} >= {}'.format(dst1, dst2))
+        print("We are projecting the unreachable position in the working space of the manipulator.")
+        print("This allowes us to still calculate the IK but may lead to problems!")
+    # assert dst1  >= dst2, 'Unreachable wrist position {} >= {}'.format(dst1, dst2)
 
     # Shoulder to Wrist axis
     x0sw = p0w_d - l0bs
