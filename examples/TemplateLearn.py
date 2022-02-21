@@ -8,9 +8,8 @@ from ApolloILC.DynamicSystem import ApolloDynSys, ApolloDynSysWithFeedback
 from ApolloInterface.Apollo_It import ApolloInterface
 from ApolloKinematics.ApolloKinematics import ApolloArmKinematics
 from ApolloKinematics import utilities
-from ApolloPlanners import SiteSwapPlanner, OneBallThrowPlanner, SiteSwapJointPlanner
 
-from utils import plot_A, save, save_all, colors, line_types, print_info, plot_info
+from utils import plot_A, save, save_all,  print_info, plot_info
 
 np.set_printoptions(precision=4, suppress=True)
 
@@ -67,7 +66,7 @@ rArmInterface = ApolloInterface(r_arm=True)
 rArmKinematics    = ApolloArmKinematics(r_arm=True, noise=NOISE)  ## kinematics with noise (used for its (wrong)IK calculations)
 rArmKinematics_nn = ApolloArmKinematics(r_arm=True)               ## kinematics without noise  (used to calculate measurments, plays the wrole of a localization system)
 
-# C) PLANNINGs
+# C) Build some triangle like trajectory to perform learning on
 N = int(0.9//dt)*2
 q_traj_des = np.zeros((N, 7, 1))
 
@@ -79,7 +78,6 @@ q_traj_des[N/2:,:,0] = q2
 
 T_traj = rArmKinematics.seqFK(q_traj_des)
 qv_traj_des = None
-# q_traj_des, qv_traj_des, T_traj = SiteSwapJointPlanner.plan(dt, rArmKinematics, verbose=True)
 
 # plot_A([q_traj_des])
 # plt.show()
