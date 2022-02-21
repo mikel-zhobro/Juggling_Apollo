@@ -15,9 +15,10 @@ from math import sin, cos, acos, sqrt, atan2, asin, atan ,tan
 from random import random
 
 import utilities
+from utilities import clip_c
 from Sets import ContinuousSet
 
-clip_c = utilities.mod2Pi
+# clip_c = utilities.mod2Pi
 np.set_printoptions(precision=4, suppress=True)
 
 # DH Params
@@ -123,7 +124,7 @@ def IK_elbow(DH_model, x0sw, d_se, d_ew, GC4, verbose):
         R34, th4, fset_4, plot_params_4
     """
     c_th4 = clip_c((np.linalg.norm(x0sw)**2 - d_se**2 - d_ew**2) / (2*d_se*d_ew))
-    th4 = GC4*acos(c_th4)
+    th4 = GC4*acos(clip_c(c_th4))
     root_func_4 = [None]
     fset_4 = [ContinuousSet(-np.pi, np.pi, False, True) if th4 in DH_model.joint(3).limit_range else ContinuousSet()]
     plot_params_4 = [(DH_model.joint(3).limit_range, th4) if verbose else None]
