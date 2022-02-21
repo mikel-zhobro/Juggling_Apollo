@@ -58,18 +58,18 @@ class Simulation:
     return F_p
 
   def simulate_one_iteration(self, dt, T, u, x0=None, repetitions=1, d=None, visual=False, pause_on_hight=None, it=0, slow=1):
-    """ Simulates the system from the time interval 0->T
+    """ Simulates the system for the time interval 0->T
 
     Args:
-        dt ([double]): [description]
-        T ([double]): [description]
-        x0 ([list]):
-        u ([np.array(double)]): [description]
-        d ([np.array(double)], optional): [description]. Defaults to None.
-        repetitions (int, optional): [description]. Defaults to 1.
+        dt ([float]): time step
+        T ([float]): time length to simulate for
+        x0 ([list]): initial state
+        u ([np.array(float)]): inputs to the system
+        d ([np.array(float)], optional): disturbance to disturbe the system with
+        repetitions (int, optional): Number of times we want to repeat the whole.
 
     Returns:
-        [type]: x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec of shape [1, N]
+        x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec: all have the shape [1, N]
     """
     if visual:
       if self.vis is None:
