@@ -67,7 +67,7 @@ def plan(dt, kinematics, joint_space=True, pattern=(3,), h=0.6, throw_height=0.2
     plan = jp.plan(dt, 2, pattern=pattern, h=h, r_dwell=r_dwell, throw_height=throw_height, swing_size=swing_size, w=w, rep=rep)
     # plan.plot()
 
-    # 1. Get CTs(edge conditions) for the first hand
+    # Get CTs(edge conditions) for the first hand
     cts  = plan.hands[0].ct_period
     ts = []
     xs = []
@@ -77,10 +77,10 @@ def plan(dt, kinematics, joint_space=True, pattern=(3,), h=0.6, throw_height=0.2
         xs += [xtmp.T.reshape(3,1) for xtmp in ct.traj.xx]
         vs += [vtmp.T.reshape(3,1)/slower for vtmp in ct.traj.vv]
 
-    # 2. Find best position to perform the throw at
 
-    # a. Joint space plan
+    # A. Joint space plan
     ########################################################################################################
+    # a. Find best position to perform the throw at by solving nonlinear optim problem `findBestThrowPosition`
     # dt = dt/slower
     q_init = np.array([0.2975, -0.9392, -0.5407,  1.4676,  1.35  , -0.4971, -0.4801]).reshape(7,1)
     T_home = kinematics.FK(q_init)
@@ -91,7 +91,7 @@ def plan(dt, kinematics, joint_space=True, pattern=(3,), h=0.6, throw_height=0.2
     q_init, qdot_init = findBestThrowPosition(FK=kinematics.FK, J=kinematics.J, q_init=q_init, qdot_init=np.zeros((7,1)), vgoal=vs[1], R_des=R_des)
 
 
-    # 3. Compute the joint space correspondigs of the CTs
+    # b. Compute the joint space correspondigs of the CTs
     #    used for joint-space planning
     offset = xs[1]
     q_s = np.zeros((len(xs),7,1))
@@ -103,7 +103,7 @@ def plan(dt, kinematics, joint_space=True, pattern=(3,), h=0.6, throw_height=0.2
         q_s[i] = kinematics.IK(Tmp)
 
     # Joint Velocities
-    # 2. Weighted pinv of jacobian
+    # Needed if we use the weighted pinv of jacobian
     # W = np.eye(7)
     # W[3:,3:] *= 1.
     # H = np.zeros((10,10))
@@ -115,10 +115,12 @@ def plan(dt, kinematics, joint_space=True, pattern=(3,), h=0.6, throw_height=0.2
         Ji = kinematics.J(q_s[i])[:3,:]
         # 1. Pinv of jacobian
         # qv_s[i] = np.linalg.pinv(Ji).dot(vs[i])
+
         # 2. Weighted pinv of jacobian
         # b[7:] = -vs[i]
         # H[7:,:7] = -Ji
         # H[:7,7:] = Ji.T
+
         # qv_s[i] = np.linalg.inv(H).dot(b)[:7]
         # 3. Constrained optimization
         qv_s[i], vw = constrained_optim(Ji, np.zeros((7,1)), vs[i])
@@ -128,7 +130,7 @@ def plan(dt, kinematics, joint_space=True, pattern=(3,), h=0.6, throw_height=0.2
     T_traj = kinematics.seqFK(q_traj)
     ########################################################################################################
 
-    # b. Cartesian space plan
+    # B. Cartesian space plan
     ########################################################################################################
     N, x0, v0, a0, j0, rot_traj_des = plan.hands[0].get(get_thetas=True)  # get plan for hand0
     xXx = x0-offset.squeeze()+T_home[:3, -1]
