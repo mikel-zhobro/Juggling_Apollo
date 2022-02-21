@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import time
 import os
@@ -8,7 +9,6 @@ from ApolloILC.settings import dt
 from ApolloInterface.Apollo_It import ApolloInterface
 from ApolloKinematics.ApolloKinematics import ApolloArmKinematics
 from utils import save, plot_info
-import matplotlib.pyplot as plt
 
 
 np.set_printoptions(precision=4, suppress=True)
@@ -39,7 +39,7 @@ N_step = 150; N_start = (N_1-N_step)//2
 step_value = -0.6
 try_out_joints = [
   [list(range(7))],
-  [[0],[1],[2],[3],[4],[5],[6]],
+  # [[0],[1],[2],[3],[4],[5],[6]],
   ]
 
 vs = [-0.8]

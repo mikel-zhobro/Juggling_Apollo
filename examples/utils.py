@@ -228,8 +228,8 @@ def plot_info(dt, learnable_joints=list(range(7)),
     plt.legend()
     save("cartesian_trajs", [ax])
 
-    if fname is None:
-      plt.show()
+  if fname is None:
+    plt.show()
 
 
 def save_all(filename, kinematics=None, special=None, **kwargs):

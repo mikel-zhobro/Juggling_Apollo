@@ -1,5 +1,7 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import time
+import os
 
 import __add_path__
 from ApolloILC.settings import dt
@@ -18,7 +20,7 @@ T_home = np.array([[0.0, -1.0, 0.0,  0.32],  # uppword orientation(cup is up)
 
 # 0. Create Apollo objects
 rArmKinematics = ApolloArmKinematics(r_arm=True)  ## noise noisifies the forward dynamics only
-q_start = rArmKinematics.IK_best(T_home)
+q_start = rArmKinematics.IK(T_home)
 # A) INTERFACE: create rArmInterface and go to home position
 N_joints = 7
 N_joints = 7
@@ -58,17 +60,15 @@ plot_info(dt, joint_torque_vec=joint_torque_vec,
           v=False, p=False, dp=False, e_xyz=False, e=False, torque=True)
 
 
-SAVING = True
-if SAVING:
-  # Saving Results
-  filename = "examplesReal/dataReal/TorqueTest/torque_" + time.strftime("%Y_%m_%d-%H_%M_%S.txt")
-  save(filename,
-       T_home=T_home,                                                                    # Home
-       joints_q_vec=joints_q_vec, joints_vq_vec=joints_vq_vec,                           # Joint Informations
-       joints_aq_vec=joints_aq_vec, joint_torque_vec=joint_torque_vec,                   #        =|=
-       dt=dt
-       )  # ILC parameters
+# Saving Results
+dir_name = "/home/apollo/Desktop/Investigation/TorqueTest/{}".format(time.strftime("%Y_%m_%d"))
+if not os.path.exists(dir_name):
+  os.makedirs(dir_name)
 
-  with open('examplesReal/dataReal/TorqueTest/list_files.txt', 'a') as f:
-    f.write(filename + "\n")
+filename = "examplesReal/dataReal/TorqueTest/torque_" + time.strftime("%Y_%m_%d-%H_%M_%S.txt")
+fname = dir_name + "/torque_" + time.strftime("%H_%M_%S")
 
+plot_info(0.004, joint_torque_vec=joint_torque_vec,
+        v=False, p=False, dp=False, e_xyz=False, e=False, torque=True, fname=fname)
+
+plt.show()
