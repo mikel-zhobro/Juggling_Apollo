@@ -15,11 +15,11 @@ np.set_printoptions(precision=4, suppress=True)
 
 
 print("juggling_apollo")
+
 T_home = np.array([[1.0, 0.0, 0.0,  0.32],  # uppword orientation(cup is up)
-                   [0.0, 1.0, 0.0,  0.81],
+                   [0.0, 1.0, 0.0,  0.6],
                    [0.0, 0.0, 1.0, -0.49],
                    [0.0, 0.0, 0.0,  0.0 ]], dtype='float')
-
 # 0. Create Apollo objects
 rArmKinematics = ApolloArmKinematics(r_arm=True)  ## noise noisifies the forward dynamics only
 q_start = rArmKinematics.IK(T_home)

@@ -13,10 +13,10 @@ from utils import plot_A, save, save_all,  print_info, plot_info
 
 np.set_printoptions(precision=4, suppress=True)
 
-T_home = np.array([[0.0, -1.0, 0.0,  0.32],  # uppword orientation(cup is up)
-                   [0.0,  0.0, 1.0,  0.81],
-                   [-1.0, 0.0, 0.0, -0.49],
-                   [0.0,  0.0, 0.0,  0.0 ]], dtype='float')
+T_home = np.array([[1.0, 0.0, 0.0,  0.32],  # uppword orientation(cup is up)
+                   [0.0, 1.0, 0.0,  0.6],
+                   [0.0, 0.0, 1.0, -0.49],
+                   [0.0, 0.0, 0.0,  0.0 ]], dtype='float')
 # PARAMS
 print("juggling_apollo")
 ########################################################################################################
@@ -76,7 +76,7 @@ N_delay = 30
 N = 300 + N_delay
 
 
-amplitudes = 8*np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]).reshape(7,1)
+amplitudes = 2*np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]).reshape(7,1)
 q_traj_des = np.zeros((N,7,1))
 q_traj_des[N_delay:100+N_delay,:,0] = -np.arange(100).reshape(-1,1)/100.0
 q_traj_des[100+N_delay:200+N_delay,:] = q_traj_des[99+N_delay]
