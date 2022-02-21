@@ -25,16 +25,16 @@ T_home = np.array([[0.0, -1.0, 0.0,  0.3],  # uppword orientation(cup is up)
                    [0.0,  0.0, 0.0,  1.0 ]], dtype='float')
 
 def plan(dt, kinematics, h=0.65, throw_height=0.25, swing_size=0.46, slower=1.0, rep=1, verbose=False):
-    """
+    """ Plan trajectory generation for simple catch-throw and use T_home as the position to perform the throw
     Args:
-        dt ([type]): [description]
-        IK ([type]): function to calc IK
-        J ([type]): function that calc jacobi given joint state
-        h (float, optional): Height the ball should achieve
-        throw_height (float, optional): at what height we perform the throw
-        swing_size (float, optional): how much we can swing
-        slower (float, optional):
-        rep (int, optional): [description]. Defaults to 1.
+        dt (float): time step
+        kinematics (ApolloKinematics): kinematics for apollo to compute IK, seqIK, FK, seqFK, Jacobian..
+        h (float): Height the ball should achieve
+        throw_height (float): at what height we perform the throw
+        swing_size (float): how much we can swing
+        slower (float): how many times slower we want to perform the juggling trajectory
+        rep (int): number of repitation of the juggling period
+        verbose (bool): whether to print/plot verbose information
     """
     dt = dt/slower
 
@@ -67,23 +67,13 @@ def plan(dt, kinematics, h=0.65, throw_height=0.25, swing_size=0.46, slower=1.0,
     Tmp = T_home.copy()
     R = Tmp[:3,:3]
     for i in range(len(q_s)):
-        # if i ==1:
-        #     alpha = -0.2
-        #     rx = -np.array([-np.sin(alpha), 0, np.cos(alpha)]).reshape(3,1)
-        #     # rx = -vs[i]/np.linalg.norm(vs[1])
-        #     ry = T_home[:3,1:2]
-        #     # ry = np.cross(rz, rx, axis=0)
-        #     rz = np.cross(rx, ry, axis=0)
-        #     # rx = -np.cross(rz, T_home[:3,1:2], axis=0)
-        #     R = np.hstack((rx, ry, rz))
-        # else:
-        #     R = T_home[:3,:3]
         Tmp[:3,:3] = R
         Tmp[:3,3:4] = T_home[:3, 3:4] + xs[i]
         print(Tmp)
         q_s[i] = kinematics.IK(Tmp)
 
     # Joint Velocities
+    # Use weighted pinv of jacobian to compute joint velocitie from cartesian velocities
     W = np.eye(7)
     W[3:,3:] *= 1.
     W[-2,-2] = 20.
@@ -135,16 +125,16 @@ def plan(dt, kinematics, h=0.65, throw_height=0.25, swing_size=0.46, slower=1.0,
 
 
 def plan2(dt, kinematics, h=0.5, throw_height=0.0, swing_size=0.46, slower=1.0, rep=1, verbose=False):
-    """
+    """ Plan trajectory generation for simple catch-throw and optimze for the position where to perform the throw
     Args:
-        dt ([type]): [description]
-        IK ([type]): function to calc IK
-        J ([type]): function that calc jacobi given joint state
-        h (float, optional): Height the ball should achieve
-        throw_height (float, optional): at what height we perform the throw
-        swing_size (float, optional): how much we can swing
-        slower (float, optional):
-        rep (int, optional): [description]. Defaults to 1.
+        dt (float): time step
+        kinematics (ApolloKinematics): kinematics for apollo to compute IK, seqIK, FK, seqFK, Jacobian..
+        h (float): Height the ball should achieve
+        throw_height (float): at what height we perform the throw
+        swing_size (float): how much we can swing
+        slower (float): how many times slower we want to perform the juggling trajectory
+        rep (int): number of repitation of the juggling period
+        verbose (bool): whether to print/plot verbose information
     """
     q_init = np.array([0.2975, -0.9392, -0.5407,  1.4676,  1.35  , -0.4971, -0.4801]).reshape(7,1)
     q_init = findBestThrowPosition(kinematics.FK, kinematics.J, q_init, np.zeros((7,1)), np.eye(3))
