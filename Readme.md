@@ -33,7 +33,7 @@ The routine for running a script on apollo consists of:
    ![pink_terminal](Readme.assets/pink_terminal.png)  
    **b.** Enter ```st``` followed by ```8``` in the blue(task) terminal  
    ![blue_terminal](Readme.assets/blue_terminal.png)
-5. Run the script, for example ```display_robot_state.py```
+5. Run the script, for example ```ApolloInterface/display_robot_state.py```
 
 
 
