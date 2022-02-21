@@ -95,7 +95,7 @@ if False:
 
 
 # INIT ILC
-# ILC Works on differences(ie delta)
+# A. Initialize desired trajectories
 T_home = T_traj[0].copy()
 q_traj_des_i       = q_traj_des.copy()
 q_start_i          = q_start.copy()
@@ -122,7 +122,7 @@ my_ilcs = [
   for i in range(N_joints)]
 
 
-# C. LEARN BY ITERATING
+# C. LEARN BY ITERATING Prepare matrixes to collect data
 T_FULL = N*dt - 0.002
 N_1 = N-1
 # Data collection
@@ -140,16 +140,6 @@ cartesian_error_norms = np.zeros([ILC_it, 6, 1], dtype='float')  # (x,y,z,nx,ny,
 joint_error_norms     = np.zeros([ILC_it, N_joints, 1], dtype='float')
 joints_d_vec          = np.zeros([ILC_it, N_1, N_joints, 1], dtype='float')
 d_xyz_rpy_vec         = np.zeros([ILC_it, N, 6], dtype='float')
-
-
-
-# D. Main Loop
-every_N = 5
-
-# Use linear model to compute first input
-u_ff   = np.zeros([N-1, N_joints, 1], dtype='float')
-for i in learnable_joints:
-  u_ff[:,i] = my_ilcs[i].init_uff_from_lin_model()
 
 
 ### PLOTING
@@ -183,7 +173,13 @@ if False:
   plt.show()
 
 
+# D. Main Loop
+every_N = 5
 
+# Use linear model to compute first input
+u_ff   = np.zeros([N-1, N_joints, 1], dtype='float')
+for i in learnable_joints:
+  u_ff[:,i] = my_ilcs[i].init_uff_from_lin_model()
 
 for j in range(ILC_it):
   # Limit Input
