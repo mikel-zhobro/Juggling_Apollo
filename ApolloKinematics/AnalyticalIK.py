@@ -14,10 +14,10 @@ import numpy as np
 from math import sin, cos, acos, sqrt, atan2, asin, atan ,tan
 from random import random
 
-from utilities import skew, vec, mod2Pi #, clip_c
+import utilities
 from Sets import ContinuousSet
 
-clip_c = mod2Pi
+clip_c = utilities.mod2Pi
 np.set_printoptions(precision=4, suppress=True)
 
 # DH Params
@@ -46,7 +46,7 @@ def IK_anallytical(p07_d, R07_d, DH_model, GC2=1.0, GC4=1.0, GC6=1.0, verbose=Fa
     p07_d, R07_d = DH_model.get_goal_in_dhtcp_frame(p07_d, R07_d)
 
     # Prepare desired wrist position
-    d_wt = DH_model.joint(6).d; l7wt = vec([0,   0,  d_wt])
+    d_wt = DH_model.joint(6).d; l7wt = utilities.vec([0,   0,  d_wt])
     p0w_d = p07_d - R07_d.dot(l7wt)
 
     # 1. Shoulder and elbo joints (set the wrist position)
@@ -91,9 +91,9 @@ def IK_elbow_shoulder(DH_model, p0w_d, GC2, GC4, verbose):
     Returns:
         th1, th2, th3, th4, As, Bs, Cs, fset_1_4, plot_params_1_4
     """
-    d_bs = DH_model.joint(0).d; l0bs = vec([0,   0,     d_bs])
-    d_se = DH_model.joint(2).d; l3se = vec([0,  -d_se,  0])
-    d_ew = DH_model.joint(4).d; l4ew = vec([0,   0,     d_ew])
+    d_bs = DH_model.joint(0).d; l0bs = utilities.vec([0,   0,     d_bs])
+    d_se = DH_model.joint(2).d; l3se = utilities.vec([0,  -d_se,  0])
+    d_ew = DH_model.joint(4).d; l4ew = utilities.vec([0,   0,     d_ew])
 
     # Make sure position is within the reachable space
     dst1 = d_se + d_ew
@@ -159,7 +159,7 @@ def IK_shoulder(DH_model, x0sw, d_se, d_ew, GC2, GC4, verbose):
     # Rotation axis to rotation matrix
     u0sw = x0sw/np.linalg.norm(x0sw)
     u0sw = u0sw/np.linalg.norm(u0sw)
-    u0sw_skew = skew(u0sw)
+    u0sw_skew = utilities.skew(u0sw)
 
     # Shoulder R03(psi) = As*sin(psi) + Bs*cos(psi) + C_s
     As = u0sw_skew.dot(R03_ref)
@@ -600,7 +600,7 @@ def IK_find_psi_and_GCs(p07_d, R07_d, q_init, DH_model):
 
     sf, psi_feasible_set, root_funcs = IK_anallytical(p07_d, R07_d, DH_model, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False)
 
-    root_list = [set(rf(mod2Pi(thi+j.offset))) for thi, rf, j in zip(q_init, root_funcs, DH_model.joints) if rf is not None]
+    root_list = [set(rf(utilities.mod2Pi(thi+j.offset))) for thi, rf, j in zip(q_init, root_funcs, DH_model.joints) if rf is not None]
     u = set.intersection(*root_list[:])
     if len(u) == 0:
         u = root_list[-3]

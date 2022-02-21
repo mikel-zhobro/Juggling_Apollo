@@ -12,12 +12,11 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import SiteSwapPlanner
-
 from scipy.optimize import minimize
 
 import MinJerk
-from utils import g, plot_A, set_axes_equal, utilities
+import SiteSwapPlanner
+import utils
 
 
 def vel_from_position(qtraj, qv0, dt):
@@ -28,8 +27,6 @@ def vel_from_position(qtraj, qv0, dt):
     for i in range(1, len(qtraj)):
         qvtraj[i] = ((qtraj[i] - qtraj[i-1])/dt  + qvtraj[i-1]) /2.
     return qvtraj
-
-
 
 
 def plan(dt, kinematics, h=0.5, throw_height=0.35, swing_size=0.46, slower=1.0, rep=1, verbose=False):
@@ -103,7 +100,7 @@ def plan(dt, kinematics, h=0.5, throw_height=0.35, swing_size=0.46, slower=1.0, 
     # Cartesian plan
     N, x0, v0, a0, j0, rot_traj_des = plan.hands[0].get(get_thetas=True)  # get plan for hand0
     xXx = x0-offset.squeeze()+T_home[:3, -1]
-    T_traj_cartesian = utilities.pR2T(xXx, rot_traj_des)
+    T_traj_cartesian = utils.utilities.pR2T(xXx, rot_traj_des)
     q_cartesian, _, _ = kinematics.seqIK(T_traj_cartesian, considered_joints=[])
     qv_cartesian = vel_from_position(q_cartesian, qv_traj[0], dt)
     joint_list = [0,1,2,3, 4, 5,6]
@@ -112,22 +109,22 @@ def plan(dt, kinematics, h=0.5, throw_height=0.35, swing_size=0.46, slower=1.0, 
         plan.plot(orientation=True)
         # Cartesian Plan
         if False:
-            plot_A(q_cartesian.reshape(1,-1,7,1), indexes_list=joint_list, dt=dt, limits=kinematics.limits, xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]", scatter_times=ts)
+            utils.plot_A(q_cartesian.reshape(1,-1,7,1), indexes_list=joint_list, dt=dt, limits=kinematics.limits, xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]", scatter_times=ts)
             plt.suptitle("Angle positions [Cartesian space plan]")
             # plt.savefig('Joint_Angle_Traj_joint.pdf')
-            plot_A(qv_cartesian.reshape(1,-1,7,1), indexes_list=joint_list, dt=dt, limits=kinematics.vlimits, index_labels=[r"$\dot{\theta}_%d$" %(i+1) for i in range(7)],
+            utils.plot_A(qv_cartesian.reshape(1,-1,7,1), indexes_list=joint_list, dt=dt, limits=kinematics.vlimits, index_labels=[r"$\dot{\theta}_%d$" %(i+1) for i in range(7)],
                     xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]", scatter_times=ts)
             plt.suptitle("Angle velocities [Cartesian space plan]")
 
         joint_list = [0,1,2,3,4,5,6]
-        plot_A(q_traj.reshape(1,-1,7,1), indexes_list=joint_list, dt=dt, limits=kinematics.limits, xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]", scatter_times=ts)
+        utils.plot_A(q_traj.reshape(1,-1,7,1), indexes_list=joint_list, dt=dt, limits=kinematics.limits, xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]", scatter_times=ts)
         plt.suptitle("Angle Positions [Joint space plan]")
         # plt.savefig('Joint_Angle_Traj_joint.pdf')
-        plot_A(qv_traj.reshape(1,-1,7,1), indexes_list=joint_list, dt=dt, limits=kinematics.vlimits, index_labels=[r"$\dot{\theta}_%d$" %(i+1) for i in range(7)],
+        utils.plot_A(qv_traj.reshape(1,-1,7,1), indexes_list=joint_list, dt=dt, limits=kinematics.vlimits, index_labels=[r"$\dot{\theta}_%d$" %(i+1) for i in range(7)],
                xlabel=r"$t$ [s]", ylabel=r"[$\frac{grad}{s}$]", scatter_times=ts)
         plt.suptitle("Angle Velocities [Joint space plan]")
         # plt.savefig('Joint_Angle_Vel_Traj_joint.pdf')
-        # plot_A(180./np.pi*qa_traj.reshape(1,-1,7,1))
+        # utils.plot_A(180./np.pi*qa_traj.reshape(1,-1,7,1))
         # plt.suptitle("Angle Accelerations")
         # plt.show()
         plt.show()
@@ -171,15 +168,13 @@ def plan(dt, kinematics, h=0.5, throw_height=0.35, swing_size=0.46, slower=1.0, 
         ax.set_xlabel('X axis')
         ax.set_ylabel('Y axis')
         ax.set_zlabel('Z axis')
-        set_axes_equal(ax)
+        utils.set_axes_equal(ax)
         plt.title('Right hand trajectory')
         plt.legend()
         plt.show()
 
     return q_traj, qv_traj, T_traj
     return q_cartesian, qv_cartesian, T_traj_cartesian
-
-
 
 
 def constrained_optim(J, q_init, vgoal, jac=None):
@@ -192,7 +187,7 @@ def constrained_optim(J, q_init, vgoal, jac=None):
             # {'type':'ineq', 'fun': lambda qdot: 0.5 - abs(J[1, :].dot(qdot))},
             )
 
-    bounds = [utilities.JOINTS_V_LIMITS[j] for j in utilities.R_joints]
+    bounds = [utils.utilities.JOINTS_V_LIMITS[j] for j in utils.utilities.R_joints]
 
     def fun(q_dot):
         # qd = np.asarray(q_dot).reshape(7,1).copy()
@@ -213,11 +208,6 @@ def constrained_optim(J, q_init, vgoal, jac=None):
     return result.x.reshape(7,1),  v_ach
 
 
-
-
-# def findBestThrowPosition(FK, J, q_init, qdot_init, v_throw, v_catch,  d_caresian R_des, jac=None):
-
-
 def findBestThrowPosition(FK, J, q_init, qdot_init, vgoal, R_des, jac=None):
     con = lambda i: lambda qqd: J(qqd[:7])[i, :].dot(qqd[7:]) - vgoal[i]
     con_R = lambda i, j: lambda qqd: FK(qqd[:7])[:3,:3].T.dot(R_des)[i,i]
@@ -225,7 +215,7 @@ def findBestThrowPosition(FK, J, q_init, qdot_init, vgoal, R_des, jac=None):
     cons = tuple({'type':'eq', 'fun': con(i)} for i in range(3)) + tuple({'type':'eq', 'fun': con_R(i, 2)} for i in range(3)) # for j in range(3))
 
 
-    bounds =  [utilities.JOINTS_LIMITS[j] for j in utilities.R_joints] + [utilities.JOINTS_V_LIMITS[j] for j in utilities.R_joints]
+    bounds =  [utils.utilities.JOINTS_LIMITS[j] for j in utils.utilities.R_joints] + [utils.utilities.JOINTS_V_LIMITS[j] for j in utils.utilities.R_joints]
 
     def fun(qqd):
         return J(qqd[:7])[2, :].dot(qqd[7:])

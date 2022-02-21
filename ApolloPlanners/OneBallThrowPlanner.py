@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 
 import MinJerk
-from utils import g, plot_A, set_axes_equal, utilities
+import utils
 
 
 T_home = np.array([[0.0, -1.0, 0.0,  0.3],  # uppword orientation(cup is up)
@@ -38,7 +38,7 @@ def plan(dt, kinematics, h=0.65, throw_height=0.25, swing_size=0.46, slower=1.0,
     """
     dt = dt/slower
 
-    tf = 2.0*math.sqrt(2.0*(h-throw_height)/g)  # time of flight
+    tf = 2.0*math.sqrt(2.0*(h-throw_height)/utils.g)  # time of flight
     t1 = 1.4                        # throw time
     t2 = 2*t1                       # catch time
     t3 = t2 + 0.8*tf                # home time
@@ -54,7 +54,7 @@ def plan(dt, kinematics, h=0.65, throw_height=0.25, swing_size=0.46, slower=1.0,
 
     # Cartesian velocities
     alpha = 0.
-    v_throw = 0.5*g*tf # in z direction
+    v_throw = 0.5*utils.g*tf # in z direction
     v_catch = -0.2*v_throw
     v0 = np.zeros((3,1))
     v1 = np.array([0.,np.sin(alpha)*v_throw, np.cos(alpha)*v_throw]).reshape(3,1)
@@ -106,11 +106,11 @@ def plan(dt, kinematics, h=0.65, throw_height=0.25, swing_size=0.46, slower=1.0,
     T_traj = kinematics.seqFK(q_traj)
 
     if verbose:
-        plot_A(q_traj.reshape(1,-1,7,1), dt=dt, limits=kinematics.limits)
+        utils.plot_A(q_traj.reshape(1,-1,7,1), dt=dt, limits=kinematics.limits)
         plt.suptitle("Joint angles")
-        plot_A(qv_traj.reshape(1,-1,7,1), dt=dt, limits=kinematics.vlimits, index_labels=[r"$\dot{\theta}_%d$" %i for i in range(7)])
+        utils.plot_A(qv_traj.reshape(1,-1,7,1), dt=dt, limits=kinematics.vlimits, index_labels=[r"$\dot{\theta}_%d$" %i for i in range(7)])
         plt.suptitle("Joint angle velocities")
-        # plot_A(180./np.pi*qa_traj.reshape(1,-1,7,1))
+        # utils.plot_A(180./np.pi*qa_traj.reshape(1,-1,7,1))
         # plt.suptitle("Angle Accelerations")
         # plt.show()
 
@@ -126,7 +126,7 @@ def plan(dt, kinematics, h=0.65, throw_height=0.25, swing_size=0.46, slower=1.0,
         ax.set_xlabel('X axis')
         ax.set_ylabel('Y axis')
         ax.set_zlabel('Z axis')
-        set_axes_equal(ax)
+        utils.set_axes_equal(ax)
         plt.legend()
         plt.show()
 
@@ -153,7 +153,7 @@ def plan2(dt, kinematics, h=0.5, throw_height=0.0, swing_size=0.46, slower=1.0, 
 
     dt = dt/slower
 
-    tf = 2.0*math.sqrt(2.0*(h-throw_height)/g)  # time of flight
+    tf = 2.0*math.sqrt(2.0*(h-throw_height)/utils.g)  # time of flight
     t1 = 0.8                     # throw time
     t2 = t1 + 0.5*tf              # home time
     ts = [0., t1, t2]
@@ -166,7 +166,7 @@ def plan2(dt, kinematics, h=0.5, throw_height=0.0, swing_size=0.46, slower=1.0, 
 
     # Cartesian velocities
     alpha = 0.
-    v_throw = 0.5*g*tf # in z direction
+    v_throw = 0.5*utils.g*tf # in z direction
     v0 = np.zeros((3,1))
     v1 = np.array([0.,np.sin(alpha)*v_throw, np.cos(alpha)*v_throw]).reshape(3,1)   # throw velocity
     v2 = np.zeros((3,1))     # catch velocity
@@ -203,12 +203,12 @@ def plan2(dt, kinematics, h=0.5, throw_height=0.0, swing_size=0.46, slower=1.0, 
     T_traj = kinematics.seqFK(q_traj)
 
     if verbose:
-        plot_A(q_traj.reshape(1,-1,7,1), dt=dt, limits=kinematics.limits, xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]")
+        utils.plot_A(q_traj.reshape(1,-1,7,1), dt=dt, limits=kinematics.limits, xlabel=r"$t$ [s]", ylabel=r"angle [$grad$]")
         plt.suptitle("Joint angles")
-        plot_A(qv_traj.reshape(1,-1,7,1), dt=dt, limits=kinematics.vlimits, index_labels=[r"$\dot{\theta}_%d$" %(i+1) for i in range(7)],
+        utils.plot_A(qv_traj.reshape(1,-1,7,1), dt=dt, limits=kinematics.vlimits, index_labels=[r"$\dot{\theta}_%d$" %(i+1) for i in range(7)],
                xlabel=r"$t$ [s]", ylabel=r"[$\frac{grad}{s}$]")
         plt.suptitle("Joint angle velocities")
-        # plot_A(180./np.pi*qa_traj.reshape(1,-1,7,1))
+        # utils.plot_A(180./np.pi*qa_traj.reshape(1,-1,7,1))
         # plt.suptitle("Angle Accelerations")
         # plt.show()
 
@@ -221,7 +221,7 @@ def plan2(dt, kinematics, h=0.5, throw_height=0.0, swing_size=0.46, slower=1.0, 
         ax.set_xlabel('X axis')
         ax.set_ylabel('Y axis')
         ax.set_zlabel('Z axis')
-        set_axes_equal(ax)
+        utils.set_axes_equal(ax)
         plt.legend()
         plt.show()
 
@@ -238,7 +238,7 @@ def constrained_optim(J, q_init, vgoal, jac=None):
             # {'type':'ineq', 'fun': lambda qdot: 0.5 - abs(J[1, :].dot(qdot))},
             )
 
-    bounds = [utilities.JOINTS_V_LIMITS[j] for j in utilities.R_joints]
+    bounds = [utils.utilities.JOINTS_V_LIMITS[j] for j in utils.utilities.R_joints]
 
     def fun(q_dot):
         qd = np.asarray(q_dot).reshape(7,1).copy()
@@ -266,7 +266,7 @@ def findBestThrowPosition(FK, J, q_init, qdot_init, R_des):
     cons = tuple({'type':'eq', 'fun': con(i)} for i in range(0)) + tuple({'type':'eq', 'fun': con_R(i)} for i in range(3))
 
 
-    bounds =  [utilities.JOINTS_LIMITS[j] for j in utilities.R_joints] + [utilities.JOINTS_V_LIMITS[j] for j in utilities.R_joints]
+    bounds =  [utils.utilities.JOINTS_LIMITS[j] for j in utils.utilities.R_joints] + [utils.utilities.JOINTS_V_LIMITS[j] for j in utils.utilities.R_joints]
 
     def fun(qqd):
         return - J(qqd[:7])[2, :].dot(qqd[7:])

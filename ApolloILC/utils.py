@@ -11,12 +11,12 @@
 '''
 
 import matplotlib.pyplot as plt
-import matplotlib as mpl
 from matplotlib.ticker import MaxNLocator
 from settings import g, ABS
 import numpy as np
 from matplotlib.transforms import Bbox
 
+# import matplotlib as mpl
 # mpl.use('TkAgg')
 np.set_printoptions(precision=3, suppress=True)
 
@@ -28,17 +28,6 @@ class DotDict(dict):
     __delattr__ = dict.__delitem__
     def __getstate__(self): return self.__dict__
     def __setstate__(self, d): self.__dict__.update(d)
-
-def plan_ball_trajectory(hb, d1=0, d2=0):
-    ub_0 = np.sqrt(2*g*(hb - d1))  # velocity of ball at throw point
-    Tb = 2*ub_0/g + d2  # flying time of the ball
-    return Tb, ub_0
-
-
-def flyTime2HeightAndVelocity(Tfly):
-  ub_0 = g*Tfly/2
-  Hb = ub_0**2 /(2*g)
-  return Hb, ub_0
 
 
 def time_from_step(N, dt):

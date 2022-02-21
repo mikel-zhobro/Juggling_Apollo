@@ -16,7 +16,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from utils import plot_intervals, steps_from_time, plot_lines_coord
+import utils
 
 
 ##### Helper Functions for multi-interval multi-dimensional minjerk
@@ -71,7 +71,7 @@ def get_multi_interval_minjerk_1D(dt, tt, xx, uu, smooth_acc=False, smooth_start
   """
   # Initialization
   T_whole = tt[-1] - tt[0]
-  N_Whole = steps_from_time(T_whole, dt)
+  N_Whole = utils.steps_from_time(T_whole, dt)
   x_ret = np.zeros(N_Whole, dtype='double')
   v_ret = np.zeros(N_Whole, dtype='double')
   a_ret = np.zeros(N_Whole, dtype='double')
@@ -250,7 +250,7 @@ def get_min_jerk_trajectory(dt, ta, tb, x_ta, x_tb, u_ta, u_tb, a_ta=None, a_tb=
     return lambda t: get_trajectories(t-ta, c1, c2, c3, c4, c5, c6)
   else:
     # Trajectory values ta->tb
-    N_Whole = steps_from_time(T, dt)
+    N_Whole = utils.steps_from_time(T, dt)
     t = np.linspace(ta, tb, N_Whole)
     # t = np.arange(ta, tb, dt)  # 0:dt:T ceil((stop - start)/step)
     x, v, a, j = get_trajectories(t-ta, c1, c2, c3, c4, c5, c6)
@@ -364,16 +364,16 @@ def plotMinJerkTraj(x, v, a, j, dt, title, intervals=None, colors=None, tt=None,
   axs[3].legend(loc=1, fontsize=fsize)
   if intervals is not None:
     for ax in axs:
-      ax = plot_intervals(ax, intervals, dt, colors)
+      ax = utils.plot_intervals(ax, intervals, dt, colors)
 
   if tt is not None:
     if xx is not None:
-      plot_lines_coord(axs[0], tt, xx, typ=None)
+      utils.plot_lines_coord(axs[0], tt, xx, typ=None)
     else:
       for t in tt:
         axs[0].axvline(t, linestyle='--')
     if uu is not None:
-      plot_lines_coord(axs[1], tt, uu, typ=None)
+      utils.plot_lines_coord(axs[1], tt, uu, typ=None)
     else:
       for t in tt:
         axs[1].axvline(t, linestyle='--')

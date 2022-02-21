@@ -13,11 +13,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+import utilities
 from DHFK import DH_revolut
-from utilities import R_joints, L_joints, JOINTS_LIMITS, JOINTS_V_LIMITS
-from utilities import invT
 from PinFK import PinRobot
-from AnalyticalIK import IK_anallytical, IK_heuristic2, IK_heuristic3, IK_find_psi_and_GCs
+import AnalyticalIK
 
 
 class ApolloArmKinematics():
@@ -42,7 +41,7 @@ class ApolloArmKinematics():
             noise (float, optional): If not none gives the amplitude of distance noise for the 4 distances of LWR. Defaults to None.
                                      Allow noiy parameters of forward kinematics
         """
-        joints2Use = R_joints if self.r_arm else L_joints
+        joints2Use = utilities.R_joints if self.r_arm else utilities.L_joints
         pi2 = np.pi/2
         d_bs = 0.378724; d_se = 0.4; d_ew = 0.39; d_wt = 0.186
         a_s            = [0.0] * 7
@@ -59,7 +58,7 @@ class ApolloArmKinematics():
             print('Noise', n_ds)
         dh_rob = DH_revolut()
         for a, alpha, d, theta, name, offset, n_d in zip(a_s, alpha_s, d_s, theta_s, joints2Use, offsets, n_ds):
-            dh_rob.add_joint(a, alpha, d+n_d, theta, JOINTS_LIMITS[name], JOINTS_V_LIMITS[name], name, offset)
+            dh_rob.add_joint(a, alpha, d+n_d, theta, utilities.JOINTS_LIMITS[name], utilities.JOINTS_V_LIMITS[name], name, offset)
         if noise is not None:
             print('Noise', dh_rob.joints)
         return dh_rob
@@ -104,13 +103,13 @@ class ApolloArmKinematics():
         # Returns joint configuration that correspond to the IK solutions with biggest PSI feasible set
         # PSI is choosen from the middle of the set
         if q_init is None:
-            GC2, GC4, GC6, feasible_set, solu =  IK_heuristic3(p07_d=T_d[:3, 3:4], R07_d=T_d[:3, :3], DH_model=self.dh_rob, considered_joints=considered_joints) # decide branch of solutions(GC2=1)
+            GC2, GC4, GC6, feasible_set, solu =  AnalyticalIK.IK_heuristic3(p07_d=T_d[:3, 3:4], R07_d=T_d[:3, :3], DH_model=self.dh_rob, considered_joints=considered_joints) # decide branch of solutions(GC2=1)
             assert not feasible_set.empty, "Not possible to calculate IK"
             feasible_set = feasible_set.max_range()
             psi = feasible_set.middle                     # Choose psi for start configuration
             q_joints = solu(psi)                          # Start configuration
         else:
-           psi, GC2, GC4, GC6, feasible_set, solu = IK_find_psi_and_GCs(p07_d=T_d[:3, 3:4], R07_d=T_d[:3, :3], q_init=q_init, DH_model=self.dh_rob) #, considered_joints=considered_joints) # decide branch based on q_init
+           psi, GC2, GC4, GC6, feasible_set, solu = AnalyticalIK.IK_find_psi_and_GCs(p07_d=T_d[:3, 3:4], R07_d=T_d[:3, :3], q_init=q_init, DH_model=self.dh_rob) #, considered_joints=considered_joints) # decide branch based on q_init
            q_joints = solu(psi)
 
         if for_seqik:
@@ -145,7 +144,7 @@ class ApolloArmKinematics():
         joint_trajs[0] = q_joint_state_start
         for i, T_i in enumerate(T_dhTCP_traj[1:]): # position_traj and thetas should start from 0
             # Calc IK for new pose
-            solu, feas_set, root_funcs = IK_anallytical(T_i[:3,3:4], T_i[:3,:3], self.dh_rob, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False, considered_joints=considered_joints)
+            solu, feas_set, root_funcs = AnalyticalIK.IK_anallytical(T_i[:3,3:4], T_i[:3,:3], self.dh_rob, GC2=GC2, GC4=GC4, GC6=GC6, verbose=False, considered_joints=considered_joints)
 
             # Choose psi for the new joint configuration
             feas_set = feas_set.range_of(psi)
@@ -174,7 +173,7 @@ class ApolloArmKinematics():
         """
         T_shape = T_TCP.shape
         TT = T_TCP.reshape(-1, 4, 4 ).copy()
-        T_TCP_dhTCP = invT(T_dhTCP_TCP)
+        T_TCP_dhTCP = utilities.invT(T_dhTCP_TCP)
         for i, Ti in enumerate(T_TCP):
             TT[i] =  Ti.dot(T_TCP_dhTCP)
         return TT.reshape(T_shape)

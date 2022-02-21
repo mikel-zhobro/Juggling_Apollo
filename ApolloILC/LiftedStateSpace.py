@@ -11,7 +11,6 @@
 '''
 
 import numpy as np
-from math import e
 
 
 class LiftedStateSpace:

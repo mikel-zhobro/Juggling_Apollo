@@ -81,7 +81,6 @@ ApolloPlanners
 ├── MinJerk.py                      # contains functions for minimum jerk interpolation
 ├── SiteSwapPlanner.py              # defines a juggling pattern parser for arbitrary patterns and hands
 ├── SiteSwapJointPlanner.py         # transforms plans for usage in Apollo
-├── JugglingPlanner.py              # transforms plans for usage in Apollo
 ├── OneBallThrowPlanner.py          # trajectory generation for simple catch-throw
 └── utils.py                        # contains helper functions
 

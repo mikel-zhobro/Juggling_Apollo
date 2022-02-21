@@ -2,7 +2,7 @@ import numpy as np
 
 from AnalyticalIK import IK_anallytical, IK_heuristic3, th3_offset
 from DHFK import DH_revolut
-from utilities import R_joints, L_joints, JOINTS_LIMITS, JOINTS_V_LIMITS
+import utilities
 
 
 if __name__ == "__main__":
@@ -18,8 +18,8 @@ if __name__ == "__main__":
 
     # Create Robot
     my_fk_dh = DH_revolut()
-    for a, alpha, d, theta, name, offset in zip(a_s, alpha_s, d_s, theta_s, R_joints, offsets):
-        my_fk_dh.add_joint(a, alpha, d, theta, JOINTS_LIMITS[name], JOINTS_V_LIMITS[name], name, offset)
+    for a, alpha, d, theta, name, offset in zip(a_s, alpha_s, d_s, theta_s, utilities.R_joints, offsets):
+        my_fk_dh.add_joint(a, alpha, d, theta, utilities.JOINTS_LIMITS[name], utilities.JOINTS_V_LIMITS[name], name, offset)
 
 
     home_pose = np.array([0.0, -0.0, -np.pi/6, np.pi/2, 0.0, -0.0, 0.0]).reshape(-1,1)

@@ -4,10 +4,9 @@ import time
 
 import __add_path__
 from ApolloILC.utils import steps_from_time, plt
-from ApolloPlanners.JugglingPlanner import calc
 from ApolloILC.settings import dt
 from ApolloILC.ILC import ILC
-from ApolloPlanners.MinJerk import plotMJ, get_multi_interval_minjerk_1D
+from ApolloPlanners import utils, MinJerk
 from ApolloILC.DynamicSystem import ApolloDynSys
 from ApolloInterface.Apollo_It import ApolloInterface, plot_simulation
 from ApolloKinematics.ApolloKinematics import ApolloArmKinematics
@@ -47,7 +46,7 @@ rArmKinematics_nn = ApolloArmKinematics(r_arm=True)  ## noise noisifies the forw
 Ex = 0.15                                                                 # Ex = z_catch - z_throw
 tau = 0.5                                                                 # tau = T_hand + T_empty (length of the repeatable part)
 dwell_ration = 0.6                                                        # what part of tau is used for T_hand
-T_hand, T_empty, ub_throw, H, z_catch = calc(tau, dwell_ration, Ex, slower=3.51)  # 2.0 gives error
+T_hand, T_empty, ub_throw, H, z_catch = utils.calc(tau, dwell_ration, Ex, slower=3.51)  # 2.0 gives error
 T_throw_first = T_hand*0.5                                                # Time to use for the first throw from home position
 
 T_fly = T_hand + 2*T_empty
@@ -68,19 +67,19 @@ tt=[0.0,      T_throw_first,     T_throw_first+T_empty,   T_FULL  ]
 zz=[0.0,      0.0,               z_catch,                 0.0     ]
 uu=[0.0,      ub_throw/12.0,     ub_catch/12.0,           0.0     ]
 
-z_des, velo, accel, jerk = get_multi_interval_minjerk_1D(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=zz, uu=uu, extra_at_end=end_repeat+1)  # Min jerk trajectories (out of the loop since trajectory doesn't change)
+z_des, velo, accel, jerk = MinJerk.get_multi_interval_minjerk_1D(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=zz, uu=uu, extra_at_end=end_repeat+1)  # Min jerk trajectories (out of the loop since trajectory doesn't change)
 
 tt=[0.0,      T_throw_first,     T_throw_first+T_empty,   T_FULL  ]
 yy=[0.0,      z_catch/4.0,       z_catch/2.0,             0.0     ]
 uu=[0.0,      ub_throw/12.0,     ub_catch/12.0,           0.0     ]
 
-y_des, velo2, accel2, jerk2 = get_multi_interval_minjerk_1D(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=yy, uu=uu, extra_at_end=end_repeat+1)  # Min jerk trajectories (out of the loop since trajectory doesn't change)
+y_des, velo2, accel2, jerk2 = MinJerk.get_multi_interval_minjerk_1D(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=yy, uu=uu, extra_at_end=end_repeat+1)  # Min jerk trajectories (out of the loop since trajectory doesn't change)
 
 
 if False:
   print(z_catch)
-  plotMJ(dt, tt, xx, uu, smooth_acc, (z_des, velo, accel, jerk))
-  plotMJ(dt, tt, xx, uu, smooth_acc, (y_des, velo2, accel2, jerk2))
+  MinJerk.plotMJ(dt, tt, xx, uu, smooth_acc, (z_des, velo, accel, jerk))
+  MinJerk.plotMJ(dt, tt, xx, uu, smooth_acc, (y_des, velo2, accel2, jerk2))
   plt.show()
 
 # Cartesian -> JointSpace                   <------------------------------------------------------------------------------------------ Min Jerk Trajectory (CARTESIAN AND JOINT SPACE)

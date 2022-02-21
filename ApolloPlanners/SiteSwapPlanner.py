@@ -17,7 +17,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 
-from utils import g, set_axes_equal
+import utils
 import MinJerk
 
 
@@ -82,7 +82,7 @@ class BallTraj():
     """
     self.t_t, self.p_t, self.v_t = t_t, p_t, v_t
     self.ttt = np.linspace(0, self.t_t, 50).reshape(-1,1)
-    self.aaa = np.zeros((50, 3)); self.aaa[:,-1] = -g
+    self.aaa = np.zeros((50, 3)); self.aaa[:,-1] = -utils.g
     self.vvv = self.v_t + self.aaa*self.ttt
     self.xxx = p_t + self.ttt*v_t + 0.5*self.aaa*self.ttt**2
 
@@ -313,7 +313,7 @@ class CatchThrow():
     # throw velocity
     self.v_t[0] = (self.ct_t.P[0] - self.p_t[0]) / self.t_fly
     self.v_t[1] = (self.ct_t.P[1] - self.p_t[1]) / self.t_fly
-    self.v_t[2] = 0.5 * g * self.t_fly  +  (self.ct_t.P[2]- throw_height)/self.t_fly
+    self.v_t[2] = 0.5 * utils.g * self.t_fly  +  (self.ct_t.P[2]- throw_height)/self.t_fly
 
   def initCTTraj(self, dt, ttt, last):
     """ Here we define the edge condition that the hand should satisfy for this CT.
@@ -542,7 +542,7 @@ class JugglingPlan():
     # Plot hands
     [h.plotHandTrajectory(ax, orientation) for h in self.hands]
 
-    set_axes_equal(ax) # IMPORTANT - this is also required
+    utils.set_axes_equal(ax) # IMPORTANT - this is also required
     ax.set_xlabel('X axis')
     ax.set_ylabel('Y axis')
     ax.set_zlabel('Z axis')
@@ -623,11 +623,11 @@ class JugglingPlanner():
     # tf3 = 0.5*(3*tH - 2*r_dwell*tH) = (3*tB - 2*r_dwell*tB) = tB(3 - 2*r_dwell)
     # where 2*r_dwell*tB is the dwell time with which we have to shorten the flight time. TODO: (not doing that right now, but could do)
     nb = 3
-    tf3 = 2.0*math.sqrt(nb*(h-throw_height)/g)  # time of flight for a 3-throw
+    tf3 = 2.0*math.sqrt(nb*(h-throw_height)/utils.g)  # time of flight for a 3-throw
 
     nb = 3
-    v = math.sqrt(2.0*(h-throw_height)*g)
-    tf = (v + math.sqrt(v**2 + 2.*throw_height*g))/g  # consider that we throw from a higher position than we catch
+    v = math.sqrt(2.0*(h-throw_height)*utils.g)
+    tf = (v + math.sqrt(v**2 + 2.*throw_height*utils.g))/utils.g  # consider that we throw from a higher position than we catch
     tB = tf / (nb - nh*r_dwell)
 
 

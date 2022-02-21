@@ -11,14 +11,13 @@
 '''
 
 import pinocchio as pin
-import numpy as np
-from numpy.linalg import norm, solve
 import matplotlib.pyplot as plt
-from utilities import modrad, reduce_model
-from settings import R_joints, L_joints, TCP, WORLD, BASE, FILENAME, JOINTS_LIMITS
+import numpy as np
 
 np.set_printoptions(precision=4, suppress=True)
 pin.switchToNumpyArray()  # https://github.com/stack-of-tasks/pinocchio/issues/802
+
+import utilities
 
 
 # inv kinematics params
@@ -33,13 +32,13 @@ class PinRobot():
         """ Initialize pinocchio dependent models/variables: model, data, joint_states
             filename ([str]): path to the urdf file
         """
-        self.joints_list = R_joints if r_arm else L_joints
-        self.model = reduce_model(FILENAME, jointsToUse=self.joints_list)
+        self.joints_list = utilities.R_joints if r_arm else utilities.L_joints
+        self.model = utilities.reduce_model(utilities.FILENAME, jointsToUse=self.joints_list)
         self.data = self.model.createData()  # information that changes according to joint configuration etc
                                              # Only used as internal state(still all functions should be called with certain joint_state as input)
 
         # Use "BASE" instead of 'universe' as base coordinate frame (Set the BASE Frame)
-        self.SE3_base_origin = self.FK_f2f(pin.neutral(self.model), BASE, WORLD, homog=False)
+        self.SE3_base_origin = self.FK_f2f(pin.neutral(self.model), utilities.BASE, utilities.WORLD, homog=False)
 
     def clip_limit_joints(self, Q):
         """ Clipps Q according to the joint limits
@@ -51,10 +50,10 @@ class PinRobot():
             Q_clipped (np.array(7,1)): clipped joint angles
         """
         for i, name in enumerate(self.joints_list):
-            Q[i, 0] = np.clip(Q[i, 0], *JOINTS_LIMITS[name])
+            Q[i, 0] = np.clip(Q[i, 0], *utilities.JOINTS_LIMITS[name])
         return Q
 
-    def FK(self, q, frameName=TCP, homog=True):
+    def FK(self, q, frameName=utilities.TCP, homog=True):
         """
         returns the SE3_base_frame(R,p) of frameName in base coordinates
         """
@@ -63,7 +62,7 @@ class PinRobot():
         ret = self.SE3_base_origin * pin.updateFramePlacement(self.model, self.data, frameId)
         return ret.homogeneous if homog else ret  # updates data and returns T_base_frame
 
-    def FK_f2f(self, q, baseName=BASE, frameName=TCP, homog=True):
+    def FK_f2f(self, q, baseName=utilities.BASE, frameName=utilities.TCP, homog=True):
         """
         returns the SE3_baseName_frameName(R,p) of frameName in baseName coordinates
         """
@@ -74,7 +73,7 @@ class PinRobot():
         T_origin_frame = pin.updateFramePlacement(self.model, self.data, frameId)
         return (T_origin_base.inverse() * T_origin_frame).homogeneous if homog else T_origin_base.inverse() * T_origin_frame
 
-    def J(self, q, frameName=TCP):
+    def J(self, q, frameName=utilities.TCP):
         """
         returns SE3(R,p) and J of TCP in BASE frame
         """
@@ -84,7 +83,7 @@ class PinRobot():
         J_local = pin.computeFrameJacobian(self.model, self.data, q, frameId)
         return J_local, self.SE3_base_origin * SE3_origin_tcp
 
-    def ik_apollo(self, Q_start, goal_p, goal_R=None, frameName=TCP, plot=False):
+    def ik_apollo(self, Q_start, goal_p, goal_R=None, frameName=utilities.TCP, plot=False):
         """ Inverse Kinematics
 
         Args:
@@ -122,7 +121,7 @@ class PinRobot():
             err = get_se3_error(SE3_base_tcp_i)
 
             # 1 Calc qoint velocities
-            qv = - J_base_tcp.T.dot(solve(J_base_tcp.dot(J_base_tcp.T) + damp * np.eye(6), err))
+            qv = - J_base_tcp.T.dot(np.linalg.solve(J_base_tcp.dot(J_base_tcp.T) + damp * np.eye(6), err))
 
             # 2
             # J_invj = np.linalg.pinv(J_base_tcp)
@@ -130,7 +129,7 @@ class PinRobot():
 
             # Update joint_states
             Q_i = pin.integrate(self.model, Q_i, qv*DT)
-            Q_i = modrad(Q_i)
+            Q_i = utilities.modrad(Q_i)
             # Q_i = self.clip_limit_joints(Q_i)
 
             i += 1
@@ -142,7 +141,7 @@ class PinRobot():
             if not i % 10:
                 print('\n {}:'.format(i) +' final error: %s' % err.T + '\t pos.norm(error): %s' % pos_norm_err + '\t orient.norm(error): %s' % orient_norm_err)
             if plot:
-                errs.append(norm(err))
+                errs.append(np.linalg.norm(err))
 
         if converged:
             print("Convergence achieved!")
@@ -186,14 +185,14 @@ if __name__ == "__main__":
     if False:
         print_FK("R_SFE", "R_EB")  # Shoulder -> Elbow
         print_FK("R_EB", "R_WFE")  # Elbow -> Wrist
-        print_FK("R_WFE", TCP)     # Wrist -> TCP
-        print_FK(BASE, TCP)        # Base -> TCP
+        print_FK("R_WFE", utilities.TCP)     # Wrist -> TCP
+        print_FK(utilities.BASE, utilities.TCP)        # Base -> TCP
 
 
 
-    print_FK("universe", BASE) # World -> TCP
-    print_FK(BASE, "R_BASE")   # Base  -> TCP
+    print_FK("universe", utilities.BASE) # World -> TCP
+    print_FK(utilities.BASE, "R_BASE")   # Base  -> TCP
 
-    print_FK("universe", TCP) # World  -> TCP
-    print_FK(BASE, TCP)       # R_Base -> TCP
-    print_FK("R_BASE", TCP)   # R_Base -> TCP
+    print_FK("universe", utilities.TCP) # World  -> TCP
+    print_FK(utilities.BASE, utilities.TCP)       # R_Base -> TCP
+    print_FK("R_BASE", utilities.TCP)   # R_Base -> TCP

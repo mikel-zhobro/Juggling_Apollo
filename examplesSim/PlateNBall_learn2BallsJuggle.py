@@ -2,12 +2,11 @@
 import numpy as np
 
 import __add_path__
-from ApolloILC.utils import steps_from_time, plotIterations, plt, rtime
 from Simulation.SimulationPaddleBall import Simulation, plot_simulation
+from ApolloILC.utils import steps_from_time, plotIterations, plt, rtime
 from ApolloILC.settings import dt, ABS, g
 from ApolloILC.ILC import ILC
-from ApolloPlanners.JugglingPlanner import calc
-from ApolloPlanners.MinJerk import plotMJ, get_multi_interval_minjerk_1D
+from ApolloPlanners import utils, MinJerk
 from ApolloILC.DynamicSystem import BallAndPlateDynSys as DynamicSystem
 
 
@@ -20,7 +19,7 @@ E = 0.15
 tau = 0.5
 dwell_ration = 0.6
 catch_throw_ratio = 0.5
-T_hand, T_empty, ub_throw, H, z_catch = calc(tau, dwell_ration, E)
+T_hand, T_empty, ub_throw, H, z_catch = utils.calc(tau, dwell_ration, E)
 T_hand, T_empty = rtime(T_hand, dt), rtime(T_empty, dt)
 T_throw = rtime(T_hand*(1-catch_throw_ratio), dt)
 T_fly = T_hand + 2*T_empty
@@ -84,9 +83,9 @@ tt=[0,        T_throw,     T_throw+T_empty,    T_FULL-T_empty,   T_FULL  ]
 xx=[x0[0],    0.0,         z_catch,            0.0,              z_catch ]
 uu=[x0[2],    ub_throw,    ub_catch,           ub_throw,         ub_catch]
 if False:
-  plotMJ(dt, tt, xx, uu, smooth_acc)
+  MinJerk.plotMJ(dt, tt, xx, uu, smooth_acc)
 
-y_des, velo, accel, jerk = get_multi_interval_minjerk_1D(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=xx, uu=uu)
+y_des, velo, accel, jerk = MinJerk.get_multi_interval_minjerk_1D(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=xx, uu=uu)
 
 
 
@@ -120,7 +119,7 @@ for j in range(ILC_it):
   # Learn feed-forward signal
   uu[1] = ub_throw  # update
   uu[3] = ub_throw2  # update
-  y_des, velo, accel, jerk = get_multi_interval_minjerk_1D(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=xx, uu=uu)
+  y_des, velo, accel, jerk = MinJerk.get_multi_interval_minjerk_1D(dt, smooth_acc=smooth_acc, i_a_end=i_a_end, tt=tt, xx=xx, uu=uu)
   u_ff = my_ilc.updateStep(y_des=y_des[1:], y_meas=y_meas)
 
   # Main Simulation

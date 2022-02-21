@@ -10,11 +10,12 @@
 @Desc    :   defines class for Denavit-Hartenberg forward kinematics
 '''
 
-import numpy as np
-from Sets import ContinuousSet
-from utilities import JOINTS_LIMITS, pR2T, invT
 from math import sin, cos
+import numpy as np
 np.set_printoptions(precision=4, suppress=True)
+
+from Sets import ContinuousSet
+import utilities
 
 
 spi6 = 0.5
@@ -43,7 +44,7 @@ class DH_revolut():
                             [-1.0,  0.0,  0.0,  0.0],
                             [ 0.0,  1.0,  0.0,  0.01],
                             [ 0.0,  0.0,  0.0,  1.0 ]], dtype='float')
-                # = invT(np.array([[0.0, -1.0, 0.0,  0.0],
+                # = utilities.invT(np.array([[0.0, -1.0, 0.0,  0.0],
                 #                  [0.0,  0.0, 1.0,  0.01],
                 #                  [-1.0, 0.0, 0.0, -0.04],
                 #                  [0.0,  0.0, 0.0,  1.0]], dtype='float'))
@@ -182,13 +183,13 @@ class DH_revolut():
         Returns:
             R_dhbase_x, p_dhbase_x: rotation and position in (dh)base frame
         """
-        T_base_x = pR2T(p_base_x, R_base_x).squeeze()
+        T_base_x = utilities.pR2T(p_base_x, R_base_x).squeeze()
         # base-> rbase
-        T_rbase_base = invT(self.T_base_rbase)
+        T_rbase_base = utilities.invT(self.T_base_rbase)
         T_rbase_x = T_rbase_base.dot(T_base_x)
 
         # rbase -> dh_base
-        T_dhbase_rbase = invT(self.T_rbase_dhbase)
+        T_dhbase_rbase = utilities.invT(self.T_rbase_dhbase)
         T_dhbase_x = T_dhbase_rbase.dot(T_rbase_x)
 
         return T_dhbase_x[:3,3:4], T_dhbase_x[:3,:3]
@@ -205,8 +206,8 @@ class DH_revolut():
         Returns:
            T_0_dhtcp np.array(4,4): homogenous transformation matrix for (dh)TCP
         """
-        T_0_tcp = pR2T(p_0_tcp, R_0_tcp).squeeze()
-        T_0_dhtcp = T_0_tcp.dot(invT(self.T_dhtcp_tcp))  # T_0_7
+        T_0_tcp = utilities.pR2T(p_0_tcp, R_0_tcp).squeeze()
+        T_0_dhtcp = T_0_tcp.dot(utilities.invT(self.T_dhtcp_tcp))  # T_0_7
         return T_0_dhtcp[:3,3:4], T_0_dhtcp[:3,:3]
 
     def i_J_j(self, i, j, Qi_j):
@@ -310,7 +311,7 @@ if __name__ == "__main__":
     # Create Robot
     my_fk_dh = DH_revolut()
     for a, alpha, d, theta, name, offset in zip(a_s, alpha_s, d_s, theta_s, R_joints, offsets):
-        my_fk_dh.add_joint(a, alpha, d, theta, JOINTS_LIMITS[name], name, offset)
+        my_fk_dh.add_joint(a, alpha, d, theta, utilities.JOINTS_LIMITS[name], name, offset)
 
 
 
