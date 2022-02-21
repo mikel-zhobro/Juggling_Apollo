@@ -7,7 +7,9 @@
 @Version :   1.0
 @Contact :   zhobromikel@gmail.com
 @License :   (C)Copyright 2021-2022, Mikel Zhobro
-@Desc    :   trajectory generation for simple catch-throw
+@Desc    :   trajectory generation for simple catch-throw.
+             plan(.) uses T_home to set the throw position
+             plan2(.) optimizes for a joint configurtion where we can best perform the throw.
 '''
 
 import math
