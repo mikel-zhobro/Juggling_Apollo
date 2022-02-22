@@ -413,7 +413,7 @@ class ApolloInterface:
         return thetas_s, vel_s, thetas_dess, vel_dess
 
     def go_to_speed_array(self, speeds, nb_iterations, bursting, override=True):
-        """Move right arm to a certain joint configuration and reset pinocchio jointstates.
+        """Move right arm to a certain joint configuration.
 
         Args:
             speeds ([array]): [7x1] the joint configuration as array
@@ -427,7 +427,7 @@ class ApolloInterface:
         return obs_np
 
     def go_to_posture_array(self, posture, nb_iterations, bursting, override=False):
-        """Move right arm to a certain joint configuration and reset pinocchio jointstates.
+        """Move right arm to a certain joint configuration.
 
         Args:
             posture ([array]): [7x1] the joint configuration as array
@@ -550,7 +550,7 @@ def main():
 
     r_arm = ApolloInterface(r_arm=True)
     print("GOING HOME!")
-    r_arm.go_to_home_position()
+    r_arm.go_to_home_position(verbose=True)
 
     if False:
         # Run apollo
