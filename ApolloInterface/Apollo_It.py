@@ -199,7 +199,7 @@ class ApolloInterface:
             obs ([type]): O8O observation
 
         Returns:
-            [type]: a [10, 4] numpy array:  angle, angle_velocity, angle_acceleration, sensed_torque
+            [type]: a [7, 4] numpy array:  angle, angle_velocity, angle_acceleration, sensed_torque
         """
         # first for loop traverses the joints, second one the angle, ang_vel, ang_acc of the end effector!!!
         obs_o = obs.get_observed_states()
