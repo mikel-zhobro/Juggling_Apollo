@@ -36,18 +36,18 @@ T_FULL=N_1*dt-0.00001
 ILC_it = 1  # number of ILC iteration
 
 # a. System Trajectories
-joints_q_vec   = np.zeros([ILC_it, N_1+1, N_joints, 1], dtype='float')
-joints_vq_vec  = np.zeros([ILC_it, N_1+1, N_joints, 1], dtype='float')
-joints_aq_vec  = np.zeros([ILC_it, N_1+1, N_joints, 1], dtype='float')
+joints_q_vec   = np.zeros([ILC_it, N_1, N_joints, 1], dtype='float')
+joints_vq_vec  = np.zeros([ILC_it, N_1, N_joints, 1], dtype='float')
+joints_aq_vec  = np.zeros([ILC_it, N_1, N_joints, 1], dtype='float')
 # c. Measurments
-joint_torque_vec     = np.zeros([ILC_it, N_1+1, N_joints, 1], dtype='float')
+joint_torque_vec     = np.zeros([ILC_it, N_1, N_joints, 1], dtype='float')
 
 # ILC Vectors Init
 u_ff = [None] * N_joints
 y_meas = np.zeros((N_1, N_joints), dtype='float')
 
 ####################################################################################################################################
-q_traj, q_v_traj, q_a_traj, F_N_vec, u_vec = rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL, u=np.zeros((N_1,7,1)), joint_home_config=q_start, repetitions=1)
+q_traj, q_v_traj, q_a_traj, F_N_vec, u_vec, _ = rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL, u=np.zeros((N_1,7,1)), joint_home_config=q_start, repetitions=1)
 
 # Collect Data
 joints_q_vec[0]       = q_traj

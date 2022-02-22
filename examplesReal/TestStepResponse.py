@@ -58,11 +58,11 @@ for step_value in vs:
         u_ff[N_start:N_start+N_step,i,0] = -step_value if i !=1 else step_value
 
 
-      q_traj, q_v_traj, q_a_traj, F_N_vec, u_vec = rArmInterface.apollo_run_one_iteration(dt=dt, T=T_FULL, u=u_ff, joint_home_config=q_start, repetitions=1)
+      q_traj, q_v_traj, q_a_traj, F_N_vec, u_vec, _ = rArmInterface.apollo_run_one_iteration2(dt=dt, T=T_FULL, u=u_ff, joint_home_config=q_start, repetitions=1)
 
       for i in learnable_joints:
         uff_collect[jj,:,i] = (180.0 / np.pi) * u_ff[:,i] * (-1 if i ==1 else 1)
-        q_v_traj_vec[jj,:,i] = (180.0 / np.pi) * q_v_traj[1:,i] * (-1 if i ==1 else 1)
+        q_v_traj_vec[jj,:,i] = (180.0 / np.pi) * q_v_traj[0, :,i] * (-1 if i ==1 else 1)
     jj += 1
 
 

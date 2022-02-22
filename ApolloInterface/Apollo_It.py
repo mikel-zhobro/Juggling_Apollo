@@ -199,7 +199,7 @@ class ApolloInterface:
             obs ([type]): O8O observation
 
         Returns:
-            [type]: a [7, 4] numpy array:  angle, angle_velocity, angle_acceleration, sensed_torque
+            [7, 4] numpy array:  angle, angle_velocity, angle_acceleration, sensed_torque
         """
         # first for loop traverses the joints, second one the angle, ang_vel, ang_acc of the end effector!!!
         obs_o = obs.get_observed_states()
@@ -231,59 +231,9 @@ class ApolloInterface:
             nb_iteration (int): If not None, waits nb_iteration before reading.
 
         Returns:
-            [type]: obs or (obs, des)
+            obs or (obs, des)
         """
         return self.obs_to_numpy(read(nb_iteration), des=des)
-
-    def apollo_run_one_iteration(self, dt, T, u, joint_home_config=None, repetitions=1, it=0, go2position=False):
-        """ Runs the system for the time interval 0->T
-
-        Args:
-            dt ([double]): timestep
-            T ([double]): approximate time required for the iteration
-            joint_home_config ([list]): home_state(if set the robot has to first go there before runing the inputs)
-            u ([np.array(double)]): inputs of the shape [N_steps, 7(n_joints)]
-            repetitions (int, optional): Nr of times to repeat the given input trajectory.
-
-        Returns:
-            [type]: x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec of shape [1, N]
-        """
-        assert abs(T-len(u)*dt) <= dt, "Input signal is of length {} instead of length {}".format(len(u)*dt ,T)
-
-        N0 = len(u)
-        u = np.squeeze(np.tile(u.squeeze(), [repetitions, 1]))
-
-        real_home = 0.0
-        if joint_home_config is not None:
-            real_home = self.go_to_home_position(joint_home_config)
-
-        # Vectors to collect the history of the system states
-        N = N0 * repetitions + 1
-        n_joints = 7
-        thetas_s = np.zeros((N, n_joints, 1));  thetas_s[0] = real_home[:,0:1]
-        vel_s    = np.zeros((N, n_joints, 1))
-        acc_s    = np.zeros((N, n_joints, 1))
-        dP_N_vec = np.zeros((N, n_joints, 1))
-
-        # Action Loop
-        delta_it = int(1000*dt)
-        for i in range(N-1):
-            # one step simulation
-            if go2position:
-                obs_np = self.go_to_posture_array(u[i], delta_it, globs.bursting)
-            else:
-                obs_np = self.go_to_speed_array(u[i], delta_it, globs.bursting)
-            # collect state of the system
-            thetas_s[i+1] = obs_np[:,0].reshape(7, 1)
-            vel_s[i+1] = obs_np[:,1].reshape(7, 1)
-            acc_s[i+1] = obs_np[:,2].reshape(7, 1)
-            # collect helpers
-            dP_N_vec[i+1] = obs_np[:,3].reshape(7, 1)
-
-        if joint_home_config is not None:
-            return thetas_s, vel_s, acc_s, dP_N_vec, u
-        else:
-            return thetas_s[1:], vel_s[1:], acc_s[1:],dP_N_vec[1:], u
 
     def apollo_run_one_iteration2(self, dt, T, u, joint_home_config=None, repetitions=1, it=0, go2position=False):
         """ Runs the system for the time interval 0->T
@@ -296,7 +246,7 @@ class ApolloInterface:
             repetitions (int, optional): Nr of times to repeat the given input trajectory.
 
         Returns:
-            [type]: x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec of shape [1, N]
+            [np.array(R, N, 7, 1)]: x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec of shape [R, N, 7, 1]
         """
         N0 = len(u)
         assert N0>0, "Please give a valid feed forward input"
@@ -346,7 +296,7 @@ class ApolloInterface:
             repetitions (int, optional): Nr of times to repeat the given input trajectory.
 
         Returns:
-            [type]: x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec of shape [1, N]
+            [np.array(R, N, 7, 1)]: x_b, u_b, x_p, u_p, dP_N_vec, gN_vec, u_vec of shape [R, N, 7, 1]
         """
         N0 = len(u)
         assert N0>0, "Please give a valid feed forward input"
@@ -395,8 +345,8 @@ class ApolloInterface:
             time (float): time interval we want to measure for
 
         Returns:
-            thetas_s, vel_s (np.array(N,1)):        the actual position, velocity trajecytories during this time
-            thetas_dess, vel_dess (np.array(N,1)):  the desired position, velocity that Apollo sees during this time
+            thetas_s, vel_s (np.array(N, 7, 1)):        the actual position, velocity trajecytories during this time
+            thetas_dess, vel_dess (np.array(N, 7, 1)):  the desired position, velocity that Apollo sees during this time
         """
         N_extra = int(time/dt)
         thetas_s = np.zeros((N_extra, 7, 1))
@@ -508,34 +458,6 @@ class ApolloInterface:
             print((180.0 / np.pi)*(np.array(home_pose).squeeze()- obs[:,0].squeeze()))
         return obs[:,0:2].reshape(7, 2)
 
-def plot_simulation(dt, u, thetas_s, vel_s, acc_s, dP_N_vec=None, thetas_s_des=None, title=None, vertical_lines=None, horizontal_lines=None):
-  # Everything are column vectors
-  for i in range(thetas_s.shape[1]):
-    fig, axs = plt.subplots(4, 1)
-    timesteps = np.arange(u.shape[0]) * dt
-    axs[0].plot(timesteps, thetas_s[:,i], label='Theta_{} [rad]'.format(i))
-    if horizontal_lines is not None:
-        for pos, label in horizontal_lines.items():
-            axs[0].axhline(pos, linestyle='--', color='brown')  # , label=label
-    if thetas_s_des is not None:
-        axs[0].plot(timesteps, thetas_s_des, color='green', linestyle='dashed', label='Desired')
-    axs[1].plot(timesteps, vel_s[:,i], label='w_{} [rad/s]'.format(i))
-    axs[2].plot(timesteps, acc_s[:,i], 'r', label='a_{} [rad/s^2]'.format(i))
-    if dP_N_vec is not None:
-        axs[2].plot(timesteps, dP_N_vec[:,i], label='dP_N')
-    axs[3].plot(timesteps, u[:,i], 'b', label='u_in_{} [rad/s]'.format(i))
-
-    for ax in axs:
-        if vertical_lines is not None:
-            for pos in vertical_lines:
-                ax.axvline(pos, linestyle='--', color='k')
-        ax.legend(loc=1)
-
-    if title is not None:
-        fig.suptitle(title)
-  plt.show(block=True)
-
-
 def main():
     # go_to_posture_array([np.pi/4, 0.0, np.pi/4, np.pi/4, 3*np.pi/4, 3*np.pi/4, 0.0], 2000, False)
     rep = 2
@@ -551,17 +473,6 @@ def main():
     r_arm = ApolloInterface(r_arm=True)
     print("GOING HOME!")
     r_arm.go_to_home_position(verbose=True)
-
-    if False:
-        # Run apollo
-        poses, velocities, acc, _, u = r_arm.apollo_run_one_iteration(dt, T=dt*len(timesteps), u=inputs, repetitions=rep)
-
-        # Test plot_simulation
-        # poses = np.random.rand(*inputs.shape)
-        # velocities = np.random.rand(*inputs.shape)
-        # acc = np.random.rand(*inputs.shape)
-
-        plot_simulation(dt, u, poses, velocities, acc)
 
 
 def main2():
