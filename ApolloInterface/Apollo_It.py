@@ -205,22 +205,22 @@ class ApolloInterface:
         obs_o = obs.get_observed_states()
 
         obs_np = np.zeros((len(self.joints_list), 4))
-        for joint in self.joints_list:
+        for n, joint in enumerate(self.joints_list):
             i = jointsToIndexDict[joint]
             for k in range(3):
-                obs_np[i][k] = obs_o.get(i).get()[k]
-            obs_np[i][3] = obs_o.get(i).get_sensed_load()
+                obs_np[n][k] = obs_o.get(i).get()[k]
+            obs_np[n][3] = obs_o.get(i).get_sensed_load()
 
         if not des:
             return obs_np
 
         obs_o = obs.get_desired_states()
         des_np = np.zeros((len(self.joints_list), 4))
-        for joint in self.joints_list:
+        for n, joint in enumerate(self.joints_list):
             i = jointsToIndexDict[joint]
             for k in range(3):
-                des_np[i][k] = obs_o.get(i).get()[k]
-            des_np[i][3] = obs_o.get(i).get_sensed_load()
+                des_np[n][k] = obs_o.get(i).get()[k]
+            des_np[n][3] = obs_o.get(i).get_sensed_load()
 
         return obs_np, des_np
 
