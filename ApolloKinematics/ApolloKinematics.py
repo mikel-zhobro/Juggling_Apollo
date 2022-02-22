@@ -63,16 +63,22 @@ class ApolloArmKinematics():
 
     def FK(self, q):
         """
-        returns the Transformationsmatrix base_T_tcp ((np.array(4,4)))
+        returns the Transformation matrix base_T_tcp ((np.array(4,4)))
         """
         # return self.pin_rob.FK(q.reshape(7, 1)).homogeneous
         return self.dh_rob.FK(q)
 
     def J(self, q):
         """
-        returns the Transformationsmatrix base_T_tcp (np.array(6,7))
+        returns the Jacobian matrix base_T_tcp (np.array(6,7))
         """
         return self.dh_rob.J(q.reshape(7, 1))
+
+    def H(self, q):
+        """
+        returns the Hessian matrix base_T_tcp (np.array(6,7,7))
+        """
+        return self.dh_rob.H(q.reshape(7, 1))
 
     def seqFK(self, qs):
         """ Calculates the forward kinematics for the input joint trajectory
