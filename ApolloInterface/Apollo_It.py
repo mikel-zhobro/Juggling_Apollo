@@ -460,6 +460,7 @@ class ApolloInterface:
         # eps: degree
         if home_pose is None:
             home_pose = np.zeros((7,1))
+            home_pose[1] = -0.2
 
         i = 0 if reset_PID else 1
         dt = 0.002 if reset_PID else 0.01
@@ -479,7 +480,7 @@ class ApolloInterface:
                     break
         else:
             if verbose:
-                print("Not using IK_dynamics")
+                print("Using PID control at the end")
 
             obs = self.read()
             error = np.array(home_pose).squeeze()-obs[:,0].squeeze()
@@ -491,6 +492,7 @@ class ApolloInterface:
                     k +=1
                 if i==0:
                     obs = self.go_to_posture_array(home_pose, it_time, globs.bursting)
+                    print("HOME ERROR", np.array(home_pose).squeeze()-obs[:,0].squeeze())
                 i += 1
                 error = np.array(home_pose).squeeze()-obs[:,0].squeeze()
                 self.error_D = (error - self.error_P)/dt
@@ -568,4 +570,4 @@ def main2():
         A = 180./np.pi
         print ((p[0] *A, p[1]*A))
 if __name__ == "__main__":
-    main2()
+    main()
