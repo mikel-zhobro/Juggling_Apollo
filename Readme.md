@@ -2,8 +2,6 @@
 # Juggling Apollo
 
 
-
-
 https://github.com/user-attachments/assets/86405d5a-9c61-4a97-92ee-ae1593eba9c8
 
 
@@ -42,19 +40,21 @@ The routine for running a script on apollo consists of:
 
 ### Constrained Inverse Kinematics
 
+![apollo_ik](https://github.com/user-attachments/assets/45ec6d1c-ec80-4f32-8150-79a4745b46c9)
 
+<table>
+  <tr>
+    <td><img src="https://github.com/user-attachments/assets/a6f433e1-f8f3-40fd-ae7f-4c8e3b7dc562" width="50%"></td>
+    <td><img src="https://github.com/user-attachments/assets/a3cdec97-027e-4a15-8ceb-5d2119963756" width="50%"></td>
+  </tr>
+</table>
 
-https://github.com/user-attachments/assets/03c370d2-9d15-4bbc-8e7f-8f67015e3318
 
 
 ## Trajectory Planning for Juggling
 
 ### SiteSwap
-
-
-https://github.com/user-attachments/assets/648ca09c-fab6-4d25-b643-7efc51ef39c1
-
-
+![siteswap](https://github.com/user-attachments/assets/01bca480-ba17-46a7-a1dd-d0cd07dfb6de)
 
 ## Directory Structure
 The essential parts of the code and a short discription of their functionality is presented below:
