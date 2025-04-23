@@ -2,7 +2,11 @@
 # Juggling Apollo
 
 
-![Apollo Robot](https://am.is.mpg.de/uploads/ckeditor/pictures/80/content_Apollo2__1600x1067_.jpg)
+
+
+https://github.com/user-attachments/assets/86405d5a-9c61-4a97-92ee-ae1593eba9c8
+
+
 
 
 This tutorial assumes that the Apollo software is installed successfully.
@@ -34,6 +38,21 @@ The routine for running a script on apollo consists of:
    **b.** Enter ```st``` followed by ```8``` in the blue(task) terminal  
    ![blue_terminal](Readme.assets/blue_terminal.png)
 5. Run the script, for example ```ApolloInterface/display_robot_state.py```
+
+
+### Constrained Inverse Kinematics
+
+
+
+https://github.com/user-attachments/assets/03c370d2-9d15-4bbc-8e7f-8f67015e3318
+
+
+## Trajectory Planning for Juggling
+
+### SiteSwap
+
+
+https://github.com/user-attachments/assets/648ca09c-fab6-4d25-b643-7efc51ef39c1
 
 
 
